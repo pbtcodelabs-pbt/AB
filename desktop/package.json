@@ -1,0 +1,25 @@
+{
+  "name": "aarhat-book",
+  "productName": "آڑھت بک",
+  "version": "1.0.0",
+  "description": "آڑھت بک — آڑھتی کا حساب",
+  "author": "PBT Codelabs",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win nsis portable --publish never"
+  },
+  "devDependencies": {
+    "electron": "33.2.1",
+    "electron-builder": "25.1.8"
+  },
+  "build": {
+    "appId": "com.pbtcodelabs.aarhatbook",
+    "productName": "AarhatBook",
+    "files": ["main.js", "app/**/*"],
+    "directories": { "output": "dist" },
+    "win": { "icon": "app/icons/icon-512.png", "artifactName": "AarhatBook-${env.AB_VERSION}-${arch}-${target}.${ext}" },
+    "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true, "createDesktopShortcut": true, "shortcutName": "آڑھت بک" },
+    "portable": { "artifactName": "AarhatBook-${env.AB_VERSION}-portable.${ext}" }
+  }
+}

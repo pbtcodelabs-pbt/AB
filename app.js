@@ -8,8 +8,8 @@
    ===================================================================== */
 (function(){
   'use strict';
-  const APP_VERSION = 'AB2310FR002';
-  const UPDATE_NOTE = 'آڑھت بک نئے سرے سے: پرچی، کمیشن و خرچے، زمیندار و خریدار کے کھاتے، روزنامچہ، سرخ رنگ';
+  const APP_VERSION = 'AB2310FR003';
+  const UPDATE_NOTE = 'کئی فون اور کمپیوٹر کا ڈیٹا ملانے کی تیاری؛ کمپیوٹر (ونڈوز) کی ایپ';
   const C = window.ABCalc;
   const { fmt, toPaisa, toGrams, int, calcParchi, lineAmount, KINDS, SIDES, TEMPLATES, rateText } = C;
 
@@ -22,8 +22,28 @@
   function loadAll(){
     DB.settings = rd('ab_settings', {}); DB.charges = rd('ab_charges', null); DB.parties = rd('ab_parties', []);
     DB.parchis = rd('ab_parchis', []); DB.cash = rd('ab_cash', []); DB.log = rd('ab_log', []); DB.locks = rd('ab_locks', {});
+    Object.keys(DB.locks).forEach(d => { if(typeof DB.locks[d] !== 'object') DB.locks[d] = { on: !!DB.locks[d] }; }); // پرانی شکل
+    SYNCED.forEach(n => { seen[n] = new Map(); recs(n).forEach(r => seen[n].set(r.__k, sig(r.v))); });
+  }
+  // ---------- 🔄 کئی فون / کمپیوٹر کا ڈیٹا ملانے کی تیاری: ہر ریکارڈ پر «کب بدلا (upd)، کس آلے سے (dev)» کی مہر ----------
+  // کوئی بھی ریکارڈ بدلے تو put() خود مہر لگاتا ہے؛ کچھ بھی پکا حذف نہیں ہوتا (deleted نشان) تاکہ حذف بھی دوسرے آلات تک پہنچے
+  const DEV = (function(){ let d = null; try{ d = localStorage.getItem('ab_device'); if(!d){ d = 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); localStorage.setItem('ab_device', d); } }catch(e){ d = 'd0'; } return d; })();
+  const SYNCED = ['settings', 'charges', 'parties', 'parchis', 'cash', 'locks'];
+  const seen = {};
+  function recs(n){
+    const v = DB[n];
+    if(Array.isArray(v)) return v.map(r => ({ __k: r.id, v: r }));
+    if(n === 'locks') return Object.keys(v || {}).map(d => ({ __k: d, v: v[d] }));
+    return v ? [{ __k: '_', v }] : [];
+  }
+  function sig(r){ const o = Object.assign({}, r); delete o.upd; delete o.dev; return JSON.stringify(o); }
+  function stamp(n){
+    if(!seen[n]) seen[n] = new Map();
+    const now = Date.now();
+    recs(n).forEach(x => { const g = sig(x.v); if(seen[n].get(x.__k) !== g){ x.v.upd = now; x.v.dev = DEV; seen[n].set(x.__k, g); } });
   }
   function put(name){
+    if(SYNCED.includes(name)) stamp(name);
     const k = 'ab_' + name;
     try{ localStorage.setItem(k, JSON.stringify(DB[name])); }
     catch(e){ toast('⚠️ محفوظ نہیں ہو سکا — فون میں جگہ کم ہے، بیک اپ لے کر پرانا ریکارڈ ہٹائیں'); return false; }
@@ -88,7 +108,8 @@
     });
   }
   function shopName(){ return (DB.settings.shop || '').trim() || 'آڑھت بک'; }
-  function chargesList(){ if(!DB.charges){ DB.charges = TEMPLATES.fruit.list().map(c => Object.assign({ id: uid() }, c)); put('charges'); } return DB.charges; }
+  function chargesAll(){ if(!DB.charges){ DB.charges = TEMPLATES.fruit.list().map(c => Object.assign({ id: uid() }, c)); put('charges'); } return DB.charges; }
+  function chargesList(){ return chargesAll().filter(c => !c.deleted); }
 
   // =====================================================================
   //   کھاتے: زمیندار اور خریدار
@@ -129,7 +150,7 @@
   // =====================================================================
   //   دن کا تالا
   // =====================================================================
-  function isLocked(date){ return !!DB.locks[date]; }
+  function isLocked(date){ return !!(DB.locks[date] && DB.locks[date].on); }
   async function unlockFor(date){
     if(!isLocked(date)) return true;
     if(!DB.settings.pin){ toast('⚠️ یہ دن بند ہے — پہلے سیٹنگ میں مالک کا پن لگائیں'); return false; }
@@ -196,7 +217,7 @@
     const shop = $('rShop').value.trim(), owner = $('rOwner').value.trim(), phone = $('rPhone').value.trim();
     if(!shop){ toast('⚠️ آڑھت کا نام لکھیں'); return; }
     DB.settings = Object.assign(DB.settings, { shop, owner, phone, address: $('rAddr').value.trim(), registered: true, createdAt: Date.now(), nextParchiNo: 1 });
-    DB.charges = TEMPLATES[$('rTpl').value].list().map(c => Object.assign({ id: uid() }, c));
+    DB.charges = (DB.charges || []).map(c => Object.assign(c, { deleted: Date.now() })).concat(TEMPLATES[$('rTpl').value].list().map(c => Object.assign({ id: uid() }, c)));
     put('settings'); put('charges'); logIt('آڑھت رجسٹر: ' + shop);
     go('home'); toast('✅ خوش آمدید — آڑھت بک تیار ہے');
   }
@@ -530,11 +551,11 @@
       <div class="card"><h3>💵 اس دن کی وصولی / ادائیگی</h3><div class="list">${cs.map(c => { const p = party(c.partyId); return `<div class="it"><div>${c.kind === 'pay' ? '💸 ادائیگی' : '💵 وصولی'} — ${esc(p ? p.name : '')}</div><div class="a ${c.kind === 'pay' ? 'amt-out' : 'amt-in'}">${fmt(c.amount)}</div></div>`; }).join('') || '<div class="muted">کوئی اندراج نہیں</div>'}</div></div>`;
   };
   async function toggleLock(d){
-    if(isLocked(d)){ if(!(await unlockFor(d))) return; delete DB.locks[d]; put('locks'); logIt('دن کھولا: ' + d); toast('🔓 دن کھل گیا'); }
+    if(isLocked(d)){ if(!(await unlockFor(d))) return; DB.locks[d] = { on: false }; put('locks'); logIt('دن کھولا: ' + d); toast('🔓 دن کھل گیا'); }
     else {
       if(!DB.settings.pin){ toast('⚠️ دن بند کرنے کے لیے پہلے سیٹنگ میں مالک کا پن لگائیں'); go('settings'); return; }
       if(!(await ask(urDate(d) + ' بند کر دیں؟ اس کے بعد اس دن کی پرچی یا وصولی صرف مالک کے پن سے بدلے گی۔'))) return;
-      DB.locks[d] = Date.now(); put('locks'); logIt('دن بند: ' + d); toast('🔒 دن بند ہو گیا');
+      DB.locks[d] = { on: true, at: Date.now() }; put('locks'); logIt('دن بند: ' + d); toast('🔒 دن بند ہو گیا');
     }
     render();
   }
@@ -576,7 +597,7 @@
     const itemRates = {};
     v('chIR').split(/[،,\n]/).forEach(x => { const m = x.split('='); if(m.length === 2 && m[0].trim() && m[1].trim() !== '') itemRates[m[0].trim()] = toPaisa(m[1]); });
     const c = Object.assign(editCh, { name, kind: v('chK'), rate: toPaisa(v('chR')), side: v('chS'), income: v('chI') === '1', itemRates });
-    const ch = chargesList();
+    const ch = chargesAll();
     if(!c.id){ c.id = uid(); c.on = true; ch.push(c); } else ch[ch.findIndex(x => x.id === c.id)] = c;
     put('charges'); logIt('خرچہ محفوظ: ' + name + ' ' + rateText(c)); editCh = null; render(); toast('✅ محفوظ');
   }
@@ -687,8 +708,8 @@
     chEdit(id){ editCh = id ? JSON.parse(JSON.stringify(chargesList().find(x => x.id === id))) : { id: '', name: '', kind: 'percent', rate: 0, side: 'zamindar', income: true, on: true, itemRates: {} }; render(); },
     chCancel(){ editCh = null; render(); }, chSave,
     chToggle(id, on){ const c = chargesList().find(x => x.id === id); if(c){ c.on = on; put('charges'); logIt('خرچہ ' + (on ? 'چالو' : 'بند') + ': ' + c.name); render(); } },
-    async chRemove(id){ if(!(await ask('یہ خرچہ فہرست سے ہٹا دیں؟ (محفوظ پرچیاں نہیں بدلیں گی)'))) return; const c = chargesList().find(x => x.id === id); DB.charges = chargesList().filter(x => x.id !== id); put('charges'); logIt('خرچہ ہٹایا: ' + (c ? c.name : '')); editCh = null; render(); },
-    async chTemplate(k){ if(!(await ask(TEMPLATES[k].label + ' کا سانچہ لگ جائے گا اور موجودہ فہرست بدل جائے گی۔'))) return; DB.charges = TEMPLATES[k].list().map(c => Object.assign({ id: uid() }, c)); put('charges'); logIt('سانچہ لگا: ' + TEMPLATES[k].label); render(); toast('✅ سانچہ لگ گیا'); },
+    async chRemove(id){ if(!(await ask('یہ خرچہ فہرست سے ہٹا دیں؟ (محفوظ پرچیاں نہیں بدلیں گی)'))) return; const c = chargesAll().find(x => x.id === id); if(c) c.deleted = Date.now(); put('charges'); logIt('خرچہ ہٹایا: ' + (c ? c.name : '')); editCh = null; render(); },
+    async chTemplate(k){ if(!(await ask(TEMPLATES[k].label + ' کا سانچہ لگ جائے گا اور موجودہ فہرست بدل جائے گی۔'))) return; const now = Date.now(); chargesAll().forEach(c => { if(!c.deleted) c.deleted = now; }); DB.charges = chargesAll().concat(TEMPLATES[k].list().map(c => Object.assign({ id: uid() }, c))); put('charges'); logIt('سانچہ لگا: ' + TEMPLATES[k].label); render(); toast('✅ سانچہ لگ گیا'); },
     exportBackup, importBackup, saveSettings, setPin, removePin
   };
 
