@@ -207,6 +207,12 @@ html[data-theme="white"] .gateForm{background:#fff; border-color:#e7e5e4;}
 html[data-theme="white"] .gateForm .f input,html[data-theme="white"] .gateForm .f select{border-color:#d6d3d1; background:#fafaf9;}
 .themesCard .themes{justify-content:flex-start;} .themesCard .themes .tl{color:var(--ink);}
 html[data-theme="white"] .themes button{border-color:#d6d3d1;}
+.dstatus{border-radius:10px; padding:4px 10px; margin:4px 0 6px; font-size:16px;}
+.dstatus.ok{background:#f0fdf4; color:#166534; border:1.5px solid #86efac;}
+.dstatus.warn,.dstatus.off{background:var(--l0); color:var(--c4); border:1.5px solid var(--l3);}
+.dstatus.busy{background:#fffbeb; color:#92400e; border:1.5px solid #fcd34d;}
+#topbar .dchip.ok{background:rgba(34,197,94,.25);} #topbar .dchip.warn{background:rgba(251,191,36,.35);}
+.bkBanner{background:#fffbeb; border:2px solid #f59e0b; color:#78350f; border-radius:14px; padding:6px 10px; margin-bottom:10px; box-shadow:0 4px 12px rgba(0,0,0,.2);}
 @media print{ body{background:#fff;} #topbar,#side,#sideShade{display:none !important;} }
 </style>
 <script>window.APP_UPD_LANG='ur';</script>
@@ -305,6 +311,7 @@ html[data-theme="white"] .themes button{border-color:#d6d3d1;}
 <div id="topbar">
   <button class="ib" id="menuBtn" onclick="App.menu(true)" aria-label="مینو">☰</button>
   <div class="ttl" id="ttl">آڑھت بک</div>
+  <button class="ib dchip" id="driveChip" onclick="App.go('backup')" aria-label="بیک اپ">☁️</button>
   <span id="verBadge" onclick="App.verTap()"></span>
 </div>
 <div id="sideShade" onclick="App.menu(false)"></div>
@@ -315,6 +322,7 @@ html[data-theme="white"] .themes button{border-color:#d6d3d1;}
 <div id="modal"><div class="box" id="modalBox"></div></div>
 <div id="toast"></div>
 <script src="calc.js"></script>
+<script src="drive.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
