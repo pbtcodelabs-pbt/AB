@@ -1,0 +1,43 @@
+# 📒 آڑھت بک — کمپیوٹر (ونڈوز) کی .exe بنائیں اور GitHub Release میں سیدھے ڈاؤن لوڈ لنک کے ساتھ لگائیں
+# صرف ہاتھ سے چلتا ہے (Actions → Build Windows EXE → Run workflow)
+name: Build Windows EXE
+on:
+  workflow_dispatch: {}
+permissions:
+  contents: write
+jobs:
+  exe:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Version
+        shell: bash
+        run: echo "AB_VERSION=$(grep -o "APP_VERSION = '[^']*'" app.js | head -1 | cut -d"'" -f2)" >> $GITHUB_ENV
+      - name: Copy app files
+        shell: bash
+        run: |
+          mkdir -p desktop/app
+          cp index.html app.js calc.js manifest.json desktop/app/
+          cp -r icons fonts desktop/app/
+      - name: Test calculations
+        run: node tools/arhat_test.js
+      - name: Build
+        working-directory: desktop
+        run: |
+          npm install --no-audit --no-fund
+          npx electron-builder --win nsis portable --publish never
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: exe-${{ env.AB_VERSION }}
+          name: آڑھت بک ${{ env.AB_VERSION }} — کمپیوٹر (ونڈوز)
+          body: |
+            کمپیوٹر کے لیے آڑھت بک۔
+            - Setup والی فائل: انسٹال ہو کر ڈیسک ٹاپ پر آئیکن بن جاتا ہے
+            - portable والی فائل: بغیر انسٹال کیے سیدھی چلتی ہے
+          files: |
+            desktop/dist/*.exe
+          make_latest: true
