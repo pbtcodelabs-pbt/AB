@@ -16,10 +16,25 @@
   "build": {
     "appId": "com.pbtcodelabs.aarhatbook",
     "productName": "AarhatBook",
-    "files": ["main.js", "app/**/*"],
-    "directories": { "output": "dist" },
-    "win": { "icon": "app/icons/icon-512.png", "artifactName": "AarhatBook-${env.AB_VERSION}-${arch}-${target}.${ext}" },
-    "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true, "createDesktopShortcut": true, "shortcutName": "آڑھت بک" },
-    "portable": { "artifactName": "AarhatBook-${env.AB_VERSION}-portable.${ext}" }
+    "files": [
+      "main.js",
+      "app/**/*"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "icon": "app/icons/icon-512.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "آڑھت بک",
+      "artifactName": "AarhatBook-${env.AB_VERSION}-Setup.${ext}"
+    },
+    "portable": {
+      "artifactName": "AarhatBook-${env.AB_VERSION}-portable.${ext}"
+    }
   }
 }
