@@ -8,8 +8,8 @@
    ===================================================================== */
 (function(){
   'use strict';
-  const APP_VERSION = 'AB2310FR006';
-  const UPDATE_NOTE = 'گوگل ڈرائیو پر خودکار بیک اپ (ہر دن کی نقل 90 دن)؛ آج بیک اپ نہ ہو تو ہوم پر یاد دہانی';
+  const APP_VERSION = 'AB2410SA007';
+  const UPDATE_NOTE = 'بیک اپ فائل کا نام باقی ایپس جیسا: BKAR + تاریخ + دن + وقت';
   const C = window.ABCalc;
   const { fmt, toPaisa, toGrams, int, calcParchi, lineAmount, KINDS, SIDES, TEMPLATES, rateText } = C;
 
@@ -654,10 +654,16 @@
     loadAll(); safeCopy(); logIt('بیک اپ واپس لایا گیا (' + (b.at || '') + ')'); unlocked = true; go('home'); toast('✅ بیک اپ واپس آ گیا');
     return true;
   }
+  function backupFileName(d){
+    const p = n => String(n).padStart(2, '0');
+    const h = d.getHours(), h12 = h % 12 || 12;
+    return 'BKAR' + p(d.getDate()) + p(d.getMonth() + 1) + ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'][d.getDay()] + p(h12) + p(d.getMinutes()) + (h < 12 ? 'AM' : 'PM') + '.json';
+  }
   function exportBackup(){
     const blob = new Blob([JSON.stringify(snapshot())], { type: 'application/json' });
-    // فائل کا نام انگریزی حروف میں: براؤزر ڈاؤن لوڈ میں اردو نام قبول نہیں کرتا (فائل «download» بن جاتی تھی)
-    const d = new Date(), name = 'AarhatBook-' + d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0') + '-' + String(d.getHours()).padStart(2, '0') + String(d.getMinutes()).padStart(2, '0') + '.json';
+    // فائل کا نام باقی ایپس کے انداز پر: BKAR + تاریخ + مہینہ + دن + وقت + AM/PM، مثلاً BKAR2410SA0455AM.json
+    // (انگریزی حروف میں — براؤزر ڈاؤن لوڈ میں اردو نام قبول نہیں کرتا)
+    const name = backupFileName(new Date());
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
     DB.settings.lastBackup = Date.now(); put('settings'); toast('✅ بیک اپ فائل بن گئی'); render();
   }
