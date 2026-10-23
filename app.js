@@ -8,8 +8,8 @@
    ===================================================================== */
 (function(){
   'use strict';
-  const APP_VERSION = 'AB2310FR004';
-  const UPDATE_NOTE = 'نیا ورژن اب خود فوراً آ جاتا ہے؛ پرانا ورژن نہیں اٹکتا';
+  const APP_VERSION = 'AB2310FR005';
+  const UPDATE_NOTE = 'رجسٹریشن صفحہ چھوٹا؛ رنگ بدلیں: سرخ، نیلا، سبز، کالا، سلیٹی، سادہ سفید';
   const C = window.ABCalc;
   const { fmt, toPaisa, toGrams, int, calcParchi, lineAmount, KINDS, SIDES, TEMPLATES, rateText } = C;
 
@@ -202,16 +202,30 @@
   // =====================================================================
   //   رجسٹریشن اور تالا
   // =====================================================================
+  // ---------- 🎨 رنگ کا تھیم (ہر آلے کا اپنا؛ سرخ بنیادی) ----------
+  const THEMES = [['red', 'سرخ', '#b91c1c'], ['blue', 'نیلا', '#1d4ed8'], ['green', 'سبز', '#15803d'], ['black', 'کالا', '#171717'], ['gray', 'سلیٹی', '#475569'], ['white', 'سادہ سفید', '#f5f5f4']];
+  function curTheme(){ try{ return localStorage.getItem('ab_theme') || 'red'; }catch(e){ return 'red'; } }
+  function applyTheme(k){
+    if(k === 'red') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', k);
+    const t = THEMES.find(x => x[0] === k) || THEMES[0];
+    const m = document.querySelector('meta[name=theme-color]'); if(m) m.setAttribute('content', k === 'white' ? '#ffffff' : t[2]);
+  }
+  function themePicker(){
+    const c = curTheme();
+    return `<div class="themes"><span class="tl">🎨 رنگ:</span>${THEMES.map(t => `<button class="${c === t[0] ? 'on' : ''}" style="background:${t[2]}" title="${t[1]}" aria-label="${t[1]}" onclick="App.setTheme('${t[0]}')"></button>`).join('')}</div>`;
+  }
   function viewRegister(){
-    return `<div class="gate"><img class="logo" src="icons/icon-192.png" alt=""><h1>آڑھت بک</h1><div class="sub">آڑھتی کا مکمل حساب — زمیندار، گاڑی، بکری، پرچی، خریدار</div>
-      <div class="card"><h3>🏪 اپنی آڑھت کی معلومات</h3>
-        <div class="f"><label>آڑھت / دکان کا نام</label><input id="rShop" placeholder="مثلاً رحمان کمیشن شاپ"></div>
-        <div class="f"><label>مالک کا نام</label><input id="rOwner" placeholder="مالک کا پورا نام"></div>
-        <div class="f"><label>موبائل نمبر</label><input id="rPhone" inputmode="tel" placeholder="03001234567"></div>
-        <div class="f"><label>منڈی کا پتہ</label><input id="rAddr" placeholder="مثلاً فروٹ منڈی، ملتان"></div>
-        <div class="f"><label>آپ کی آڑھت کس منڈی کی ہے؟ (خرچوں کا تیار سانچہ)</label><select id="rTpl">${Object.keys(TEMPLATES).map(k => `<option value="${k}">${TEMPLATES[k].label}</option>`).join('')}</select></div>
-        <div class="muted" style="margin:4px 0 8px">کمیشن اور خرچے بعد میں «خرچے اور کمیشن» میں اپنی مرضی سے بدل سکتے ہیں۔</div>
-        <button class="btn wide" onclick="App.register()">✅ شروع کریں</button></div></div>`;
+    return `<div class="gate">${themePicker()}
+      <div class="gateForm"><div class="gt">🏪 اپنی آڑھت کی معلومات</div>
+        <div class="gGrid">
+          <div class="f"><label>آڑھت / دکان کا نام</label><input id="rShop" placeholder="مثلاً رحمان کمیشن شاپ"></div>
+          <div class="f"><label>مالک کا نام</label><input id="rOwner" placeholder="مالک کا پورا نام"></div>
+          <div class="f"><label>موبائل نمبر</label><input id="rPhone" inputmode="tel" placeholder="03001234567"></div>
+          <div class="f"><label>منڈی کا پتہ</label><input id="rAddr" placeholder="مثلاً فروٹ منڈی، ملتان"></div>
+          <div class="f" style="grid-column:1/-1"><label>آپ کی آڑھت کس منڈی کی ہے؟ (خرچوں کا تیار سانچہ)</label><select id="rTpl">${Object.keys(TEMPLATES).map(k => `<option value="${k}">${TEMPLATES[k].label}</option>`).join('')}</select></div>
+        </div>
+        <div class="gm">کمیشن اور خرچے بعد میں «خرچے اور کمیشن» میں اپنی مرضی سے بدل سکتے ہیں۔</div>
+        <button class="btn gold wide" onclick="App.register()">✅ شروع کریں</button></div></div>`;
   }
   function register(){
     const shop = $('rShop').value.trim(), owner = $('rOwner').value.trim(), phone = $('rPhone').value.trim();
@@ -223,7 +237,7 @@
   }
   let pinBuf = '';
   function viewPinGate(){
-    return `<div class="gate"><img class="logo" src="icons/icon-192.png" alt=""><h1>${esc(shopName())}</h1><div class="sub">پن لکھیں</div>
+    return `<div class="gate">${themePicker()}<div class="gt" style="text-align:center">🔒 پن لکھیں</div>
       <div class="card"><div class="pinDots">${[...Array(String(DB.settings.pin || '').length || 4).keys()].map(i => `<i class="${pinBuf.length > i ? 'f' : ''}"></i>`).join('')}</div>
       <div class="pinPad">${[1,2,3,4,5,6,7,8,9,'⌫',0,'✓'].map(k => `<button onclick="App.pinKey('${k}')">${k}</button>`).join('')}</div></div></div>`;
   }
@@ -579,7 +593,7 @@
   function chForm(){
     const c = editCh;
     const ir = Object.keys(c.itemRates || {}).map(k => k + '=' + c.itemRates[k] / 100).join('، ');
-    return `<div class="card" style="border-top-color:#f59e0b"><h3>${c.id ? '✏️ بدلیں: ' + esc(c.name) : '➕ نیا خرچہ / کمیشن'}</h3>
+    return `<div class="card" style="border-top-color:var(--gold)"><h3>${c.id ? '✏️ بدلیں: ' + esc(c.name) : '➕ نیا خرچہ / کمیشن'}</h3>
       <div class="grid2 wideable">
         <div class="f"><label>نام</label><input id="chN" value="${esc(c.name)}" placeholder="مثلاً کمیشن، مزدوری، چنگی"></div>
         <div class="f"><label>حساب کی قسم</label><select id="chK">${Object.keys(KINDS).map(k => `<option value="${k}" ${c.kind === k ? 'selected' : ''}>${KINDS[k]}</option>`).join('')}</select></div>
@@ -650,6 +664,7 @@
         <div class="f"><label>موبائل نمبر</label><input id="sPhone" inputmode="tel" value="${esc(s.phone)}"></div>
         <div class="f"><label>منڈی کا پتہ</label><input id="sAddr" value="${esc(s.address)}"></div></div>
         <button class="btn" style="margin-top:8px" onclick="App.saveSettings()">💾 محفوظ</button></div>
+      <div class="card"><h3>🎨 رنگ</h3><div class="themesCard">${themePicker()}</div><div class="muted">رنگ صرف اس آلے پر بدلتا ہے؛ ریکارڈ پر کوئی اثر نہیں۔</div></div>
       <div class="card"><h3>🔒 مالک کا پن</h3><div class="muted">پن لگانے سے ایپ کھلتے وقت پن پوچھے گی، اور بند دن کی تبدیلی بھی صرف اسی سے ہوگی۔ ${s.pin ? '✅ پن لگا ہوا ہے' : '❌ ابھی پن نہیں لگا'}</div>
         <div class="row" style="margin-top:6px"><div class="f" style="flex:1"><input id="sPin" type="password" inputmode="numeric" maxlength="8" placeholder="نیا پن (4 سے 8 ہندسے)"></div>
         <button class="btn" onclick="App.setPin()">💾 پن لگائیں</button>${s.pin ? '<button class="btn gray" onclick="App.removePin()">ہٹائیں</button>' : ''}</div></div>
@@ -696,7 +711,8 @@
   //   عوامی بٹن
   // =====================================================================
   window.App = {
-    go, menu, register, pinKey, closeModal, verTap(){ toast('ورژن ' + APP_VERSION); },
+    go, menu, register, pinKey, closeModal,
+    setTheme(k){ try{ localStorage.setItem('ab_theme', k); }catch(e){} applyTheme(k); render(); }, verTap(){ toast('ورژن ' + APP_VERSION); },
     newParchi(){ cur = blankParchi(); render(); },
     pset(k, v){ cur[k] = v; if(k === 'zamindar' || k === 'place' || k === 'vehicle') renderResult(); if(k === 'date') render(); },
     lset(i, k, v){ const l = cur.lines[i]; if(!l) return; if(k === 'rate') l.rate = toPaisa(v); else if(k === 'grams') l.grams = toGrams(v); else if(k === 'nag') l.nag = String(v).replace(/[^\d]/g, ''); else l[k] = v; if(k === 'buyer') delete l.buyerId; renderResult(); },
@@ -719,7 +735,7 @@
   //   شروع
   // =====================================================================
   (async function start(){
-    $('verBadge').textContent = APP_VERSION;
+    $('verBadge').textContent = APP_VERSION; applyTheme(curTheme());
     const restored = await safeRestoreIfEmpty();
     loadAll();
     try{ history.replaceState({ s: 'home', a: null }, ''); }catch(e){}
