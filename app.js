@@ -8,8 +8,8 @@
    ===================================================================== */
 (function(){
   'use strict';
-  const APP_VERSION = 'AB2410SA007';
-  const UPDATE_NOTE = 'بیک اپ فائل کا نام باقی ایپس جیسا: BKAR + تاریخ + دن + وقت';
+  const APP_VERSION = 'AB2410SA008';
+  const UPDATE_NOTE = 'گوگل ڈرائیو پر فولڈر BKAR Backup اور فائلیں BKAR… نام سے';
   const C = window.ABCalc;
   const { fmt, toPaisa, toGrams, int, calcParchi, lineAmount, KINDS, SIDES, TEMPLATES, rateText } = C;
 
@@ -628,7 +628,7 @@
     return `<div class="pageTitle">💾 بیک اپ</div>
       <div class="card"><h3>☁️ گوگل ڈرائیو پر خودکار بیک اپ</h3>
         <div id="driveStatus" class="dstatus"></div>
-        <div class="muted">ایک بار جوڑ دیں: ہر تبدیلی کے چند سیکنڈ بعد سارا ریکارڈ آپ کی اپنی گوگل ڈرائیو کے فولڈر «آڑھت بک — بیک اپ» میں خود محفوظ ہوگا، اور ہر دن کی الگ نقل 90 دن تک رہے گی۔ ایپ صرف اپنی بنائی فائلیں دیکھ سکتی ہے۔</div>
+        <div class="muted">ایک بار جوڑ دیں: ہر تبدیلی کے چند سیکنڈ بعد سارا ریکارڈ آپ کی اپنی گوگل ڈرائیو کے فولڈر <span class="num">BKAR Backup</span> میں خود محفوظ ہوگا (فائلیں <span class="num">BKAR…json</span> نام سے)، اور ہر دن کی الگ نقل 90 دن تک رہے گی۔ ایپ صرف اپنی بنائی فائلیں دیکھ سکتی ہے۔</div>
         ${D && D.supported ? `<div class="row" style="margin-top:8px">${on ? `<button class="btn" id="btnDriveNow" onclick="AB_DRIVE.now()">☁️ ابھی محفوظ کریں</button><button class="btn light" onclick="AB_DRIVE.openRestore()">📂 ڈرائیو سے واپس لائیں</button><button class="btn gray sm" onclick="App.driveOff()">الگ کریں</button>` : `<button class="btn gold" onclick="AB_DRIVE.connect()">☁️ گوگل ڈرائیو جوڑیں</button>`}</div>` : ''}
         <div id="driveFiles" style="margin-top:8px"></div></div>
       <div class="card"><h3>📥 بیک اپ فائل بنائیں</h3><div class="muted">سارا ریکارڈ (پرچیاں، کھاتے، وصولی، خرچے) ایک فائل میں فون میں محفوظ ہو جائے گا۔ روز ایک بار ضرور بنائیں اور واٹس ایپ یا ای میل پر اپنے پاس بھیج دیں۔</div>
@@ -673,7 +673,7 @@
     rdr.onload = async () => { let b; try{ b = JSON.parse(rdr.result); }catch(e){ toast('❌ یہ درست بیک اپ فائل نہیں'); return; } applyBackup(b); };
     rdr.readAsText(f);
   }
-  window.AB_HOST = { snapshot, apply: applyBackup, toast, version: APP_VERSION, count: () => liveParchis().length };
+  window.AB_HOST = { snapshot, apply: applyBackup, toast, version: APP_VERSION, fileName: backupFileName, count: () => liveParchis().length };
   // ---------- آج بیک اپ ہوا یا نہیں ----------
   function backedUpToday(){
     const t = today();
