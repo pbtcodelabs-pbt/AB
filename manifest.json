@@ -1,0 +1,38 @@
+{
+  "name": "آڑھت بک",
+  "short_name": "آڑھت بک",
+  "start_url": "./index.html",
+  "scope": "./",
+  "orientation": "portrait",
+  "description": "آڑھت بک — آڑھتی کا حساب: زمیندار، گاڑی، بکری، پرچی، خریدار کا کھاتہ",
+  "display": "standalone",
+  "background_color": "#065f46",
+  "theme_color": "#065f46",
+  "dir": "rtl",
+  "lang": "ur",
+  "icons": [
+    {
+      "src": "icons/favicon-32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-180.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
