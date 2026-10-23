@@ -8,8 +8,8 @@
    ===================================================================== */
 (function(){
   'use strict';
-  const APP_VERSION = 'AB2310FR005';
-  const UPDATE_NOTE = 'رجسٹریشن صفحہ چھوٹا؛ رنگ بدلیں: سرخ، نیلا، سبز، کالا، سلیٹی، سادہ سفید';
+  const APP_VERSION = 'AB2310FR006';
+  const UPDATE_NOTE = 'گوگل ڈرائیو پر خودکار بیک اپ (ہر دن کی نقل 90 دن)؛ آج بیک اپ نہ ہو تو ہوم پر یاد دہانی';
   const C = window.ABCalc;
   const { fmt, toPaisa, toGrams, int, calcParchi, lineAmount, KINDS, SIDES, TEMPLATES, rateText } = C;
 
@@ -47,7 +47,9 @@
     const k = 'ab_' + name;
     try{ localStorage.setItem(k, JSON.stringify(DB[name])); }
     catch(e){ toast('⚠️ محفوظ نہیں ہو سکا — فون میں جگہ کم ہے، بیک اپ لے کر پرانا ریکارڈ ہٹائیں'); return false; }
-    safeCopy(); return true;
+    safeCopy();
+    if(SYNCED.includes(name)){ try{ window.dispatchEvent(new Event('ab-data-changed')); }catch(e){} } // گوگل ڈرائیو کا خودکار بیک اپ
+    return true;
   }
   // ---------- IndexedDB حفاظتی کاپی ----------
   const SAFE_DB = 'abSafe_v1';
@@ -196,6 +198,7 @@
     const fn = VIEWS[screen] || VIEWS.home;
     v.innerHTML = fn(arg);
     if(AFTER[screen]) AFTER[screen](arg);
+    if(window.AB_DRIVE) AB_DRIVE.render();
   }
   let unlocked = false;
 
@@ -266,7 +269,7 @@
   VIEWS.home = function(){
     const t = totalsFor(today());
     const tiles = [['parchis', '📚', 'پرچیاں'], ['zamindar', '🧑‍🌾', 'زمیندار'], ['buyer', '🧑‍💼', 'خریدار'], ['cash', '💵', 'وصولی / ادائیگی'], ['roznamcha', '📖', 'روزنامچہ'], ['charges', '⚙️', 'خرچے اور کمیشن'], ['backup', '💾', 'بیک اپ'], ['settings', '🛠️', 'سیٹنگ']];
-    return `<div class="pageTitle">🏠 ${esc(urDate(today(), true))}</div>
+    return `<div class="pageTitle">🏠 ${esc(urDate(today(), true))}</div>${backupBanner()}
       <div class="stats">
         <div class="stat"><div class="l">آج کی بکری (${t.n} پرچی، ${t.nag} نگ)</div><div class="n">${fmt(t.gross)}</div></div>
         <div class="stat g"><div class="l">آج کی کمائی</div><div class="n">${fmt(t.income)}</div></div>
@@ -317,6 +320,7 @@
       </div></div>`;
   };
   AFTER.parchi = function(){ renderResult(); };
+  AFTER.backup = function(){ if(window.AB_DRIVE) AB_DRIVE.render(); };
   function lineHtml(l, i){
     return `<div class="line"><span class="no">${i + 1}</span><div class="lineGrid">
         <div class="f"><label>جنس</label><input list="dlI" value="${esc(l.item)}" placeholder="مثلاً آم" oninput="App.lset(${i},'item',this.value)"></div>
@@ -620,7 +624,13 @@
   //   بیک اپ
   // =====================================================================
   VIEWS.backup = function(){
+    const D = window.AB_DRIVE, on = D && D.connected();
     return `<div class="pageTitle">💾 بیک اپ</div>
+      <div class="card"><h3>☁️ گوگل ڈرائیو پر خودکار بیک اپ</h3>
+        <div id="driveStatus" class="dstatus"></div>
+        <div class="muted">ایک بار جوڑ دیں: ہر تبدیلی کے چند سیکنڈ بعد سارا ریکارڈ آپ کی اپنی گوگل ڈرائیو کے فولڈر «آڑھت بک — بیک اپ» میں خود محفوظ ہوگا، اور ہر دن کی الگ نقل 90 دن تک رہے گی۔ ایپ صرف اپنی بنائی فائلیں دیکھ سکتی ہے۔</div>
+        ${D && D.supported ? `<div class="row" style="margin-top:8px">${on ? `<button class="btn" id="btnDriveNow" onclick="AB_DRIVE.now()">☁️ ابھی محفوظ کریں</button><button class="btn light" onclick="AB_DRIVE.openRestore()">📂 ڈرائیو سے واپس لائیں</button><button class="btn gray sm" onclick="App.driveOff()">الگ کریں</button>` : `<button class="btn gold" onclick="AB_DRIVE.connect()">☁️ گوگل ڈرائیو جوڑیں</button>`}</div>` : ''}
+        <div id="driveFiles" style="margin-top:8px"></div></div>
       <div class="card"><h3>📥 بیک اپ فائل بنائیں</h3><div class="muted">سارا ریکارڈ (پرچیاں، کھاتے، وصولی، خرچے) ایک فائل میں فون میں محفوظ ہو جائے گا۔ روز ایک بار ضرور بنائیں اور واٹس ایپ یا ای میل پر اپنے پاس بھیج دیں۔</div>
         <button class="btn wide" style="margin-top:8px" onclick="App.exportBackup()">📥 بیک اپ فائل بنائیں</button></div>
       <div class="card"><h3>📤 بیک اپ واپس لائیں</h3><div class="muted">صرف آڑھت بک کی بیک اپ فائل لگے گی۔ موجودہ ریکارڈ اس فائل سے بدل جائے گا۔</div>
@@ -628,27 +638,50 @@
         <button class="btn light wide" style="margin-top:8px" onclick="document.getElementById('bkFile').click()">📤 فائل چنیں</button></div>
       <div class="card plain"><div class="muted">🛡️ ہر تبدیلی کی ایک حفاظتی کاپی فون کے اندر الگ جگہ بھی بنتی ہے؛ ایپ کا ریکارڈ مٹ جائے تو ایپ کھلتے ہی خود واپس آ جاتا ہے۔</div></div>`;
   };
-  function exportBackup(){
+  function snapshot(){
     const data = { appKind: 'AB', app: 'آڑھت بک', version: APP_VERSION, at: new Date().toISOString(), data: {} };
     KEYS.forEach(k => { data.data[k] = localStorage.getItem(k); });
-    const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
-    const d = new Date(), name = 'AarhatBook-' + d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0') + '-' + String(d.getHours()).padStart(2, '0') + String(d.getMinutes()).padStart(2, '0') + '.json';
+    return data;
+  }
+  // ---------- بیک اپ واپس لانا (فائل یا ڈرائیو) — صرف آڑھت بک کی فائل؛ پہلے موجودہ ریکارڈ کی حفاظتی کاپی ----------
+  async function applyBackup(b){
+    if(!b || b.appKind !== 'AB' || !b.data){ toast('❌ یہ آڑھت بک کی بیک اپ فائل نہیں — کسی دوسری ایپ کی ہے'); return false; }
+    let st = {}; try{ st = JSON.parse(b.data.ab_settings || '{}') || {}; }catch(e){}
+    let np = 0; try{ np = (JSON.parse(b.data.ab_parchis || '[]') || []).filter(p => !p.deleted).length; }catch(e){}
+    if(!(await ask('بیک اپ: «' + esc(st.shop || '') + '» — ' + esc(b.at ? b.at.slice(0, 10) : '') + ' — ' + np + ' پرچیاں۔ موجودہ ریکارڈ اس سے بدل جائے گا۔ جاری رکھیں؟', 'واپس لائیں'))) return false;
+    try{ const db = await idb(); const tx = db.transaction('kv', 'readwrite'); const s = tx.objectStore('kv'); KEYS.forEach(k => { const v = localStorage.getItem(k); if(v != null) s.put(v, 'before_import_' + k); }); }catch(e){}
+    KEYS.forEach(k => { if(b.data[k] != null) localStorage.setItem(k, b.data[k]); else localStorage.removeItem(k); });
+    loadAll(); safeCopy(); logIt('بیک اپ واپس لایا گیا (' + (b.at || '') + ')'); unlocked = true; go('home'); toast('✅ بیک اپ واپس آ گیا');
+    return true;
+  }
+  function exportBackup(){
+    const blob = new Blob([JSON.stringify(snapshot())], { type: 'application/json' });
+    // فائل کا نام انگریزی حروف میں: براؤزر ڈاؤن لوڈ میں اردو نام قبول نہیں کرتا (فائل «download» بن جاتی تھی)
+    const d = new Date(), name = 'AarhatBook-' + d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0') + '-' + String(d.getHours()).padStart(2, '0') + String(d.getMinutes()).padStart(2, '0') + '.json';
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
-    DB.settings.lastBackup = Date.now(); put('settings'); toast('✅ بیک اپ فائل بن گئی');
+    DB.settings.lastBackup = Date.now(); put('settings'); toast('✅ بیک اپ فائل بن گئی'); render();
   }
   function importBackup(inp){
     const f = inp.files && inp.files[0]; inp.value = ''; if(!f) return;
     const rdr = new FileReader();
-    rdr.onload = async () => {
-      let b; try{ b = JSON.parse(rdr.result); }catch(e){ toast('❌ یہ درست بیک اپ فائل نہیں'); return; }
-      if(!b || b.appKind !== 'AB' || !b.data){ toast('❌ یہ آڑھت بک کی بیک اپ فائل نہیں — کسی دوسری ایپ کی ہے'); return; }
-      let st = {}; try{ st = JSON.parse(b.data.ab_settings || '{}') || {}; }catch(e){}
-      if(!(await ask('بیک اپ: «' + esc(st.shop || '') + '» — ' + esc(b.at ? b.at.slice(0, 10) : '') + '۔ موجودہ ریکارڈ اس سے بدل جائے گا۔ جاری رکھیں؟', 'واپس لائیں'))) return;
-      try{ const db = await idb(); const tx = db.transaction('kv', 'readwrite'); const s = tx.objectStore('kv'); KEYS.forEach(k => { const v = localStorage.getItem(k); if(v != null) s.put(v, 'before_import_' + k); }); }catch(e){}
-      KEYS.forEach(k => { if(b.data[k] != null) localStorage.setItem(k, b.data[k]); else localStorage.removeItem(k); });
-      loadAll(); safeCopy(); logIt('بیک اپ واپس لایا گیا (' + (b.at || '') + ')'); unlocked = true; go('home'); toast('✅ بیک اپ واپس آ گیا');
-    };
+    rdr.onload = async () => { let b; try{ b = JSON.parse(rdr.result); }catch(e){ toast('❌ یہ درست بیک اپ فائل نہیں'); return; } applyBackup(b); };
     rdr.readAsText(f);
+  }
+  window.AB_HOST = { snapshot, apply: applyBackup, toast, version: APP_VERSION, count: () => liveParchis().length };
+  // ---------- آج بیک اپ ہوا یا نہیں ----------
+  function backedUpToday(){
+    const t = today();
+    const isToday = ms => { if(!ms) return false; const d = new Date(ms); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0') === t; };
+    const D = window.AB_DRIVE;
+    return isToday(DB.settings.lastBackup) || (D && D.connected() && !D.pending() && isToday(D.lastBackup() && Date.parse(D.lastBackup())));
+  }
+  function backupBanner(){
+    const D = window.AB_DRIVE;
+    if(!liveParchis().length && !DB.cash.length) return '';
+    if(D && D.connected() && D.supported) return '';
+    if(backedUpToday()) return '';
+    return `<div class="bkBanner"><div>⚠️ آج کا بیک اپ نہیں ہوا — فون خراب یا گم ہو جائے تو ریکارڈ ضائع ہو سکتا ہے</div>
+      <div class="row">${D && D.supported ? '<button class="btn gold sm" onclick="AB_DRIVE.connect()">☁️ گوگل ڈرائیو جوڑیں</button>' : ''}<button class="btn light sm" onclick="App.exportBackup()">📥 بیک اپ فائل</button></div></div>`;
   }
 
   // =====================================================================
@@ -728,7 +761,8 @@
     chToggle(id, on){ const c = chargesList().find(x => x.id === id); if(c){ c.on = on; put('charges'); logIt('خرچہ ' + (on ? 'چالو' : 'بند') + ': ' + c.name); render(); } },
     async chRemove(id){ if(!(await ask('یہ خرچہ فہرست سے ہٹا دیں؟ (محفوظ پرچیاں نہیں بدلیں گی)'))) return; const c = chargesAll().find(x => x.id === id); if(c) c.deleted = Date.now(); put('charges'); logIt('خرچہ ہٹایا: ' + (c ? c.name : '')); editCh = null; render(); },
     async chTemplate(k){ if(!(await ask(TEMPLATES[k].label + ' کا سانچہ لگ جائے گا اور موجودہ فہرست بدل جائے گی۔'))) return; const now = Date.now(); chargesAll().forEach(c => { if(!c.deleted) c.deleted = now; }); DB.charges = chargesAll().concat(TEMPLATES[k].list().map(c => Object.assign({ id: uid() }, c))); put('charges'); logIt('سانچہ لگا: ' + TEMPLATES[k].label); render(); toast('✅ سانچہ لگ گیا'); },
-    exportBackup, importBackup, saveSettings, setPin, removePin
+    exportBackup, importBackup, saveSettings, setPin, removePin,
+    async driveOff(){ if(!(await ask('ڈرائیو سے خودکار بیک اپ بند کریں؟ ڈرائیو پر پہلے سے محفوظ فائلیں رہیں گی۔'))) return; AB_DRIVE.disconnect(); render(); }
   };
 
   // =====================================================================
