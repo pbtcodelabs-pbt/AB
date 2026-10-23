@@ -9,9 +9,10 @@
 
   const CLIENT_ID = '954131537356-2be2rne30mje71l9qibosblvj3j0eqoj.apps.googleusercontent.com';
   const SCOPE = 'https://www.googleapis.com/auth/drive.file openid email';
-  const FOLDER_NAME = 'آڑھت بک — بیک اپ';
-  const LATEST_NAME = 'آڑھت بک — تازہ ترین.json';
-  const DAILY_RE = /^آڑھت بک — (\d{4}-\d\d-\d\d)\.json$/;
+  // نام انگریزی حروف میں (مالک کی ہدایت): اردو نام فون کے فائل مینیجر میں ٹھیک نہیں پڑھے جاتے
+  // فولڈر BKAR Backup؛ ہر دن کی فائل BKAR + تاریخ + مہینہ + دن + وقت + AM/PM (مثلاً BKAR2410SA0455AM.json)؛ ساتھ BKAR-LATEST.json
+  const FOLDER_NAME = 'BKAR Backup';
+  const LATEST_NAME = 'BKAR-LATEST.json';
   const META_KEY = 'ab_drive';
   const KEEP_DAILY = 90;
   const AUTO_DELAY = 4000;
@@ -85,8 +86,11 @@
   async function ensureFolder() {
     if (meta.folderId) {
       try {
-        const j = await (await api(`${DRIVE}/${meta.folderId}?fields=id,trashed`)).json();
-        if (!j.trashed) return meta.folderId;
+        const j = await (await api(`${DRIVE}/${meta.folderId}?fields=id,name,trashed`)).json();
+        if (!j.trashed) {
+          if (j.name !== FOLDER_NAME) await api(`${DRIVE}/${meta.folderId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: FOLDER_NAME }) });
+          return meta.folderId;
+        }
       } catch (e) { if (e.message === 'expired') throw e; }
       meta.folderId = null; meta.latestId = null; meta.dailyId = null;
     }
@@ -115,12 +119,12 @@
     };
   }
   async function upload(name, content, count, existingId) {
-    const props = { appProperties: { count: String(count), app: 'aarhat-book' } };
+    const props = { name, appProperties: { count: String(count), app: 'aarhat-book', day: dayStamp() } };
     if (existingId) {
       return (await api(`${UPLOAD}/${existingId}?uploadType=multipart&fields=id`, Object.assign({ method: 'PATCH' }, multipart(props, content)))).json();
     }
     return (await api(`${UPLOAD}?uploadType=multipart&fields=id`, Object.assign({ method: 'POST' },
-      multipart(Object.assign({ name, mimeType: 'application/json', parents: [meta.folderId] }, props), content)))).json();
+      multipart(Object.assign({ mimeType: 'application/json', parents: [meta.folderId] }, props), content)))).json();
   }
 
   // ---------- بیک اپ ----------
@@ -142,7 +146,7 @@
       try { meta.latestId = (await upload(LATEST_NAME, content, n, latestId)).id; }
       catch (e) { if (latestId && /404/.test(e.message)) meta.latestId = (await upload(LATEST_NAME, content, n, null)).id; else throw e; }
 
-      const today = dayStamp(), dailyName = `آڑھت بک — ${today}.json`;
+      const today = dayStamp(), dailyName = host().fileName(new Date()); // دن کی فائل کا نام ہر بار آخری وقت سے بدلتا ہے
       if (meta.dailyDay === today && meta.dailyId) {
         try { await upload(dailyName, content, n, meta.dailyId); }
         catch (e) { meta.dailyId = (await upload(dailyName, content, n, null)).id; }
@@ -161,7 +165,7 @@
 
   async function cleanupOld() {
     const cutoff = dayStamp(new Date(Date.now() - KEEP_DAILY * 864e5));
-    const old = (await listFiles()).filter(f => { const m = DAILY_RE.exec(f.name); return m && m[1] < cutoff; });
+    const old = (await listFiles()).filter(f => f.name !== LATEST_NAME && f.appProperties && f.appProperties.day && f.appProperties.day < cutoff);
     for (const f of old) await api(`${DRIVE}/${f.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ trashed: true }) });
   }
 
@@ -191,8 +195,8 @@
       files.sort((a, b) => (b.name === LATEST_NAME) - (a.name === LATEST_NAME) || b.modifiedTime.localeCompare(a.modifiedTime));
       box.innerHTML = '<div class="list">' + files.slice(0, 60).map(f => {
         const n = (f.appProperties && f.appProperties.count) || '؟';
-        const m = DAILY_RE.exec(f.name);
-        const lbl = f.name === LATEST_NAME ? `⭐ تازہ ترین — <span class="num">${when(f.modifiedTime)}</span>` : `📅 <span class="num">${m ? m[1].split('-').reverse().join('-') : ''}</span> کی نقل`;
+        const day = f.appProperties && f.appProperties.day;
+        const lbl = f.name === LATEST_NAME ? `⭐ تازہ ترین — <span class="num">${when(f.modifiedTime)}</span>` : `📅 <span class="num">${day ? day.split('-').reverse().join('-') : when(f.modifiedTime)}</span> کی نقل <span class="muted num">${f.name}</span>`;
         return `<div class="it" data-id="${f.id}" data-n="${n}"><div>${lbl}</div><span class="muted"><span class="num">${n}</span> پرچیاں</span></div>`;
       }).join('') + '</div>';
       box.querySelectorAll('.it').forEach(b => b.onclick = () => restoreFile(b.dataset.id));
