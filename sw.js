@@ -1,6 +1,6 @@
 // ---------- 📒 آڑھت بک (AB) — سروس ورکر ----------
 // ہر ریلیز پر CACHE_VERSION بدلیں (index.html / app.js والے APP_VERSION جیسا)
-const CACHE_VERSION = 'AB2310FR003';
+const CACHE_VERSION = 'AB2310FR004';
 const CACHE_PREFIX = 'arth-book-';
 const CACHE_NAME = CACHE_PREFIX + CACHE_VERSION;
 const FONT_CACHE = CACHE_PREFIX + 'fonts-v1'; // فونٹ کبھی نہیں بدلتے — ہر ریلیز پر دوبارہ نہ اتریں
@@ -15,6 +15,9 @@ const WRONG = /\.github\.io$/.test(self.location.hostname) && /^\/(SM|FM)(\/|$)/
 
 self.addEventListener('install', (event) => {
   if(WRONG){ event.waitUntil(Promise.reject(new Error('غلط ایپ کی sw.js'))); return; }
+  // نیا ورژن انتظار نہ کرے، فوراً آگے آئے — پرانا ورژن (سبزی منڈی والا ڈھانچہ) اسے آگے آنے کا اشارہ نہیں دیتا تھا،
+  // اس لیے فون پر AB2310FR001 ہی اٹکا رہتا تھا۔ ڈیٹا فون میں الگ محفوظ ہے، اس پر کوئی اثر نہیں
+  self.skipWaiting();
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE_NAME);
     await cache.addAll(SHELL.map((u) => new Request(u, { cache: 'reload' })));

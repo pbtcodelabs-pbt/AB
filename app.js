@@ -8,8 +8,8 @@
    ===================================================================== */
 (function(){
   'use strict';
-  const APP_VERSION = 'AB2310FR003';
-  const UPDATE_NOTE = 'کئی فون اور کمپیوٹر کا ڈیٹا ملانے کی تیاری؛ کمپیوٹر (ونڈوز) کی ایپ';
+  const APP_VERSION = 'AB2310FR004';
+  const UPDATE_NOTE = 'نیا ورژن اب خود فوراً آ جاتا ہے؛ پرانا ورژن نہیں اٹکتا';
   const C = window.ABCalc;
   const { fmt, toPaisa, toGrams, int, calcParchi, lineAmount, KINDS, SIDES, TEMPLATES, rateText } = C;
 
@@ -673,9 +673,8 @@
   // =====================================================================
   function showUpdated(){
     let from = null; try{ from = localStorage.getItem('ab_updFrom'); }catch(e){}
-    if(from && from !== APP_VERSION){
-      modal(`<h3>✅ اپڈیٹ مکمل</h3><div class="num" style="direction:ltr;font-size:18px">${esc(from)} → ${APP_VERSION}</div><div style="margin:8px 0">${esc(UPDATE_NOTE)}</div><button class="btn" onclick="App.closeModal()">ٹھیک ہے</button>`);
-    }
+    // یکساں اپڈیٹ کارڈ (سب ایپس جیسا): پرانا (کٹا ہوا) → نیا ورژن، نیچے کیا نیا ہے، درمیان میں اوکے
+    if(from && from !== APP_VERSION){ try{ AppUpd.done(from, APP_VERSION, UPDATE_NOTE); }catch(e){} }
     try{ localStorage.setItem('ab_updFrom', APP_VERSION); }catch(e){}
   }
   function registerSW(){
@@ -683,9 +682,12 @@
     let refreshing = false;
     navigator.serviceWorker.addEventListener('controllerchange', () => { if(refreshing) return; refreshing = true; location.reload(); });
     navigator.serviceWorker.register('./sw.js').then(reg => {
-      const ask = w => { toast('🔄 نیا ورژن آ گیا — تازہ ہو رہا ہے…'); w.postMessage('SKIP_WAITING'); };
+      // نیا ورژن آتے ہی یکساں «اپڈیٹ ہو رہی ہے» پٹی (ریت گھڑی + زیبرا پٹی)، پھر خود تازہ
+      const ask = w => { try{ if(!AppUpd.isWaiting()) AppUpd.waiting(); }catch(e){} w.postMessage('SKIP_WAITING'); };
       if(reg.waiting && navigator.serviceWorker.controller) ask(reg.waiting);
-      reg.addEventListener('updatefound', () => { const w = reg.installing; if(!w) return; w.addEventListener('statechange', () => { if(w.state === 'installed' && navigator.serviceWorker.controller) ask(w); }); });
+      reg.addEventListener('updatefound', () => { const w = reg.installing; if(!w) return;
+        if(navigator.serviceWorker.controller){ try{ if(!AppUpd.isWaiting()) AppUpd.waiting(); }catch(e){} }
+        w.addEventListener('statechange', () => { if(w.state === 'installed' && navigator.serviceWorker.controller) ask(w); }); });
       setInterval(() => reg.update().catch(() => {}), 30 * 60 * 1000);
     }).catch(() => {});
   }
