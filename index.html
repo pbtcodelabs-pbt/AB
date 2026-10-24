@@ -181,7 +181,7 @@ input,select,textarea{font:inherit;}
 #toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
 #modal{position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:9000; display:none; align-items:center; justify-content:center; padding:16px;}
 #modal.open{display:flex;}
-#modal .box{background:#fff; border-radius:18px; max-width:440px; width:100%; padding:16px; box-shadow:0 10px 30px rgba(0,0,0,.4); border-top:6px solid var(--red); text-align:center;}
+#modal .box{background:#fff; border-radius:18px; max-width:440px; width:100%; padding:16px; max-height:calc(100dvh - 24px); overflow-y:auto; overscroll-behavior:contain; box-shadow:0 10px 30px rgba(0,0,0,.4); border-top:6px solid var(--red); text-align:center;}
 #modal .box h3{margin:0 0 6px; color:var(--red3); font-family:'NooriKasheeda','Noori',serif; font-size:26px; font-weight:normal;}
 
 /* ---------- رجسٹریشن / تالا ---------- */
@@ -220,6 +220,18 @@ html[data-theme="white"] .themes button{border-color:#d6d3d1;}
 .licStrip.off{background:#fef2f2; border-color:#ef4444; color:#7f1d1d;}
 .licState{font-size:17px; margin:4px 0 6px;}
 .licPlans{display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:6px;}
+.dvp h3{font-size:21px !important; margin-bottom:2px !important;}
+.dvp .f label{font-size:13px; line-height:1.5;}
+.dvp .f input,.dvp .f select{min-height:36px; font-size:16px; padding:2px 8px; line-height:1.5;}
+.dvp .grid2{gap:6px;}
+.dvp .btn{padding:4px 12px; font-size:15px;}
+.dvp .uBox{font-size:13px;}
+.dvp .uHead{font-size:15px;}
+.dvp .uRow{margin:3px 0;}
+.dvp .uTop{font-size:13px;} .dvp .uSub{font-size:11.5px;}
+.dvp .uBar{height:10px;}
+.dvp .uCost{font-size:13px; line-height:1.7;}
+.dvp details summary{cursor:pointer; color:var(--c4); font-size:15px; margin-top:6px;}
 .uBox{margin-top:10px; border-top:2px dashed var(--l3); padding-top:8px;}
 .uHead{font-size:17px; color:var(--c4); margin-bottom:4px;}
 .uRow{margin:6px 0;}

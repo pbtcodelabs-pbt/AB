@@ -8,9 +8,17 @@
    ===================================================================== */
 (function(){
   'use strict';
-  const APP_VERSION = 'AB2410SA017';
-  const UPDATE_NOTE = 'ہر جگہ «آلہ / آلات» کی جگہ «ڈیوائس / ڈیوائسز»';
+  const APP_VERSION = 'AB2410SA018';
+  const UPDATE_NOTE = 'اردو کی بورڈ کے ہندسے (۰۱۲…) ہر خانے میں درست؛ ڈویلپر پینل چھوٹا اور اسکرین میں پورا';
   const C = window.ABCalc;
+  // ---------- اردو / عربی کی بورڈ کے ہندسے (۰۱۲… / ٠١٢…) لکھتے ہی 0-9 میں — ورنہ رقم، نمبر اور کوڈ نہیں پہچانے جاتے ----------
+  document.addEventListener('input', e => {
+    const el = e.target; if(!el || (el.tagName !== 'INPUT' && el.tagName !== 'TEXTAREA')) return;
+    const v = el.value; if(!/[\u0660-\u0669\u06F0-\u06F9]/.test(v)) return;
+    const pos = el.selectionStart;
+    el.value = v.replace(/[\u0660-\u0669]/g, d => String(d.charCodeAt(0) - 0x660)).replace(/[\u06F0-\u06F9]/g, d => String(d.charCodeAt(0) - 0x6F0));
+    try{ if(pos != null) el.setSelectionRange(pos, pos); }catch(err){}
+  }, true);
   const { fmt, toPaisa, toGrams, int, calcParchi, lineAmount, KINDS, SIDES, TEMPLATES, rateText } = C;
 
   // =====================================================================
