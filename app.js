@@ -8,8 +8,8 @@
    ===================================================================== */
 (function(){
   'use strict';
-  const APP_VERSION = 'AB2410SA014';
-  const UPDATE_NOTE = 'سبسکرپشن: 14 دن مفت؛ چھ مہینے 15,000 اور ایک سال 25,000 روپے';
+  const APP_VERSION = 'AB2410SA015';
+  const UPDATE_NOTE = 'کلاؤڈ سے فالتو پوچھنا کم (کام نہ ہو تو 5 منٹ بعد)؛ ڈویلپر پینل میں فائربیس استعمال کا میٹر';
   const C = window.ABCalc;
   const { fmt, toPaisa, toGrams, int, calcParchi, lineAmount, KINDS, SIDES, TEMPLATES, rateText } = C;
 

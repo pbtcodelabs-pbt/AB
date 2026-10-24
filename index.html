@@ -220,6 +220,16 @@ html[data-theme="white"] .themes button{border-color:#d6d3d1;}
 .licStrip.off{background:#fef2f2; border-color:#ef4444; color:#7f1d1d;}
 .licState{font-size:17px; margin:4px 0 6px;}
 .licPlans{display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:6px;}
+.uBox{margin-top:10px; border-top:2px dashed var(--l3); padding-top:8px;}
+.uHead{font-size:17px; color:var(--c4); margin-bottom:4px;}
+.uRow{margin:6px 0;}
+.uTop,.uSub{display:flex; justify-content:space-between; gap:8px; font-size:15px;}
+.uSub{font-size:13px; opacity:.85;}
+.uBar{height:14px; background:var(--l0); border:1px solid var(--l3); border-radius:8px; overflow:hidden; direction:rtl;}
+.uBar i{display:block; height:100%; border-radius:8px; transition:width .6s;}
+.uBar i.grn{background:linear-gradient(90deg,#16a34a,#4ade80);} .uBar i.yel{background:linear-gradient(90deg,#d97706,#fbbf24);} .uBar i.red{background:linear-gradient(90deg,#b91c1c,#f87171);}
+.uCost{background:var(--l0); border:1px solid var(--l3); border-radius:10px; padding:6px 8px; font-size:15px; line-height:1.9;}
+.uDays div{display:grid; grid-template-columns:repeat(4,1fr); gap:4px; font-size:14px; border-bottom:1px dotted var(--l3); padding:2px 0;}
 .okBox{background:#fffbeb; border:1.5px solid #f59e0b; color:#78350f; border-radius:12px; padding:6px 10px; margin:8px 0; font-size:15px;}
 .joinCode{font-size:17px; letter-spacing:.5px; direction:ltr; text-align:center; background:var(--l0); border:2px dashed var(--l3); border-radius:12px; padding:6px; margin:6px 0; color:var(--c4); word-break:break-all;}
 @media print{ body{background:#fff;} #topbar,#side,#sideShade{display:none !important;} }
@@ -333,6 +343,7 @@ html[data-theme="white"] .themes button{border-color:#d6d3d1;}
 <script src="calc.js"></script>
 <script src="drive.js"></script>
 <script src="cloud-config.js"></script>
+<script src="usage.js"></script>
 <script src="cloud.js"></script>
 <script src="license.js"></script>
 <script src="app.js"></script>
