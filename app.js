@@ -8,8 +8,8 @@
    ===================================================================== */
 (function(){
   'use strict';
-  const APP_VERSION = 'AB2410SA020';
-  const UPDATE_NOTE = 'کوڈ میں مدت کا نشان (180D-…)؛ کوڈ کاپی؛ ڈویلپر پینل میں سب کوڈوں کی فہرست: حساب، معطل، حذف، ترتیب، شیئر، پرنٹ';
+  const APP_VERSION = 'AB2410SA021';
+  const UPDATE_NOTE = 'پرچی اور خریدار کا بل تصویر بن کر واٹس ایپ پر — پہلے ایپ میں دیکھیں، پھر بھیجیں';
   const C = window.ABCalc;
   // ---------- اردو / عربی کی بورڈ کے ہندسے (۰۱۲… / ٠١٢…) لکھتے ہی 0-9 میں — ورنہ رقم، نمبر اور کوڈ نہیں پہچانے جاتے ----------
   document.addEventListener('input', e => {
@@ -388,6 +388,8 @@
         <div class="row"><button class="btn" onclick="App.saveParchi()">💾 پرچی محفوظ کریں</button>
           <button class="btn light" onclick="App.printParchi()">🖨️ زمیندار کی پرچی</button>
           <button class="btn light" onclick="App.printBuyers()">🖨️ خریداروں کے بل</button></div>
+        <div class="row" style="margin-top:6px"><button class="btn wa" onclick="App.shareParchi('z')">📤 زمیندار کو پرچی (واٹس ایپ)</button>
+          <button class="btn wa" onclick="App.shareParchi('b')">📤 خریدار کو بل (واٹس ایپ)</button></div>
       </div></div>`;
   };
   AFTER.parchi = function(){ renderResult(); };
@@ -529,6 +531,75 @@
       ${b.charges.map(x => `<tr><td colspan="3">➕ ${esc(x.name)}</td><td class="v">${fmt(x.amount)}</td></tr>`).join('')}
       <tr class="net"><td colspan="3">کل رقم</td><td class="v">${fmt(b.total)}</td></tr></table></div>`).join('<div style="page-break-after:always"></div>'));
   }
+
+  // ---------- 📤 واٹس ایپ: پرچی / بل کی تصویر (receipt.js) — پہلے ایپ میں دکھے، پھر بھیجیں ----------
+  function shopSub(){ const s = DB.settings; return [s.address, s.phone].filter(Boolean).join(' • '); }
+  function partyBal(pid){ return pid ? ledger(pid).bal : null; }
+  function zamindarSpec(p, r){
+    const z = p.zamindarId, bal = partyBal(z);
+    return { shop: shopSub() ? shopName() : shopName(), sub: shopSub(), title: 'زمیندار کی پرچی — نمبر ' + p.no,
+      meta: [['تاریخ', urDate(p.date)], ['زمیندار', p.zamindar], ['گاؤں / شہر', p.place || '—'], ['گاڑی', p.vehicle || '—'], ...(p.bilty ? [['بلٹی', p.bilty]] : [])],
+      cols: [{ t: 'جنس', w: 3 }, { t: 'خریدار', w: 3 }, { t: 'نگ', w: 1.4, num: 1 }, { t: 'ریٹ', w: 2 }, { t: 'رقم', w: 2.4, num: 1 }],
+      rows: r.lines.map(l => [l.item, l.buyer, l.nag || (l.grams ? (int(l.grams) / 1000) + ' کلو' : ''), fmt(int(l.rate)) + (l.basis === 'maund' ? ' / من' : ''), fmt(lineAmount(l))]),
+      lines: [['کل بکری (' + r.nag + ' نگ)', fmt(r.gross), '']].concat(r.zCharges.filter(x => x.amount).map(x => ['➖ ' + x.name, fmt(x.amount), '']))
+        .concat([['کل کٹوتی', fmt(r.zTotal), 'tot'], ['زمیندار کو صاف رقم (روپے)', fmt(r.net), 'net']])
+        .concat(bal != null ? [['کھاتے کا کل بقایا — ' + balText('zamindar', bal), fmt(Math.abs(bal)), 'tot']] : []),
+      foot: 'آڑھت بک • ' + urDate(today()) };
+  }
+  function buyerSpec(p, r, b){
+    const bal = partyBal(b.id);
+    const ls = r.lines.filter(l => (l.buyerId && l.buyerId === b.id) || (!l.buyerId && String(l.buyer).trim() === b.name));
+    return { shop: shopName(), sub: shopSub(), title: 'خریدار کا بل — پرچی نمبر ' + p.no,
+      meta: [['تاریخ', urDate(p.date)], ['خریدار', b.name], ['زمیندار', p.zamindar], ['گاڑی', p.vehicle || '—']],
+      cols: [{ t: 'جنس', w: 3.5 }, { t: 'نگ', w: 1.5, num: 1 }, { t: 'ریٹ', w: 2.2 }, { t: 'رقم', w: 2.6, num: 1 }],
+      rows: ls.map(l => [l.item, l.nag || (l.grams ? (int(l.grams) / 1000) + ' کلو' : ''), fmt(int(l.rate)) + (l.basis === 'maund' ? ' / من' : ''), fmt(lineAmount(l))]),
+      lines: [['مال کی رقم (' + b.nag + ' نگ)', fmt(b.goods), '']].concat(b.charges.filter(x => x.amount).map(x => ['➕ ' + x.name, fmt(x.amount), '']))
+        .concat([['اس بل کی کل رقم (روپے)', fmt(b.total), 'net']])
+        .concat(bal != null ? [['کھاتے کا کل بقایا — ' + balText('buyer', bal), fmt(Math.abs(bal)), 'tot']] : []),
+      foot: 'آڑھت بک • ' + urDate(today()) };
+  }
+  async function shareParchi(kind, key){
+    if(!cur || !cur.no){ toast('⚠️ پہلے پرچی محفوظ کریں'); return; }
+    if(!window.AB_RECEIPT){ toast('⚠️ تصویر نہیں بن سکی'); return; }
+    const r = calcParchi(cur, parchiCharges());
+    let spec, pid, file;
+    if(kind === 'z'){ spec = zamindarSpec(cur, r); pid = cur.zamindarId; file = 'parchi-' + cur.no + '.png'; }
+    else {
+      if(!r.buyers.length){ toast('⚠️ اس پرچی میں کوئی خریدار نہیں'); return; }
+      const b = key != null ? r.buyers[+key] : (r.buyers.length === 1 ? r.buyers[0] : null);
+      if(!b){
+        modal(`<h3>📤 کس خریدار کو بل؟</h3><div class="list">${r.buyers.map((x, i) => `<div class="it" onclick="App.shareParchi('b',${i})"><div><b>${esc(x.name)}</b> <span class="muted">${x.nag} نگ</span></div><span class="num">${fmt(x.total)}</span></div>`).join('')}</div>
+          <div class="row" style="justify-content:center;margin-top:8px"><button class="btn gray" onclick="App.closeModal()">بند</button></div>`);
+        return;
+      }
+      spec = buyerSpec(cur, r, b); pid = b.id; file = 'bill-' + cur.no + '-' + (r.buyers.indexOf(b) + 1) + '.png';
+    }
+    const cv = await AB_RECEIPT.draw(spec);
+    const pp = pid ? party(pid) : null;
+    const phone = pp && pp.phone && window.AB_LIC ? AB_LIC.normPhone(pp.phone) : '';
+    shareCv = { cv, file, phone, name: pp ? pp.name : '' };
+    modal(`<h3>${kind === 'z' ? '🧾 زمیندار کی پرچی' : '🧾 خریدار کا بل'}</h3>
+      <img src="${cv.toDataURL('image/png')}" style="width:100%;border-radius:10px;border:1px solid var(--l3)" alt="">
+      <div class="row" style="justify-content:center;margin-top:8px"><button class="btn wa" onclick="App.shareSend()">📤 بھیجیں</button>
+        ${phone ? `<button class="btn light" onclick="App.shareChat()">💬 ${esc(shareCv.name)} کی چیٹ</button>` : ''}
+        <button class="btn light" onclick="App.shareSave()">⬇️ محفوظ کریں</button><button class="btn gray" onclick="App.closeModal()">بند</button></div>
+      ${phone ? '' : `<div class="muted" style="margin-top:4px">${pp ? 'اس کھاتے میں فون نمبر لکھیں تو سیدھا اسی کی چیٹ کھلے گی۔' : ''}</div>`}`);
+  }
+  let shareCv = null;
+  async function shareSend(){
+    if(!shareCv) return;
+    if(await AB_RECEIPT.share(shareCv.cv, shareCv.file)) return;
+    AB_RECEIPT.download(shareCv.cv, shareCv.file);
+    toast('⬇️ تصویر محفوظ ہو گئی — واٹس ایپ میں تصویر لگا کر بھیجیں');
+  }
+  async function shareChat(){
+    if(!shareCv || !shareCv.phone) return;
+    const ok = await AB_RECEIPT.copyImage(shareCv.cv);
+    toast(ok ? '📋 تصویر کاپی ہو گئی — چیٹ میں دبا کر «پیسٹ» کریں' : '⬇️ تصویر محفوظ کی — چیٹ میں لگا دیں');
+    if(!ok) AB_RECEIPT.download(shareCv.cv, shareCv.file);
+    window.open('https://wa.me/' + shareCv.phone, '_blank');
+  }
+  function shareSave(){ if(shareCv){ AB_RECEIPT.download(shareCv.cv, shareCv.file); toast('⬇️ تصویر محفوظ'); } }
 
   // =====================================================================
   //   پرچیاں
@@ -974,7 +1045,7 @@
     pman(id, v){ if(String(v).trim() === '') delete cur.manual[id]; else cur.manual[id] = toPaisa(v); renderResult(); },
     addLine(){ const last = cur.lines[cur.lines.length - 1] || {}; cur.lines.push(Object.assign(blankLine(), { item: last.item || '', basis: last.basis || 'nag' })); render(); },
     delLine(i){ cur.lines.splice(i, 1); render(); },
-    saveParchi, printParchi, printBuyers, delParchi, restoreParchi,
+    saveParchi, printParchi, printBuyers, delParchi, restoreParchi, shareParchi, shareSend, shareChat, shareSave,
     setListDate(d){ listDate = d; render(); }, setRozDate(d){ rozDate = d; render(); }, toggleLock,
     psearch(v, type){ partySearch = v; const pos = v.length; render(); const i = document.querySelector('#view .f input'); if(i){ i.focus(); i.setSelectionRange(pos, pos); } },
     partyForm, saveParty, printLedger, cashHint, saveCash, delCash,
