@@ -8,8 +8,8 @@
    ===================================================================== */
 (function(){
   'use strict';
-  const APP_VERSION = 'AB2410SA024';
-  const UPDATE_NOTE = '📊 رپورٹیں: خلاصہ، زمیندار وار، خریدار وار، جنس وار، خرچے و کمیشن، مہینہ وار کمائی — پرنٹ اور تصویر';
+  const APP_VERSION = 'AB2410SA025';
+  const UPDATE_NOTE = 'زمیندار کو پیشگی، خریدار کی ادھار حد، 🔔 رکی ہوئی وصولی کی یاد دہانی (واٹس ایپ)';
   const C = window.ABCalc;
   // ---------- اردو / عربی کی بورڈ کے ہندسے (۰۱۲… / ٠١٢…) لکھتے ہی 0-9 میں — ورنہ رقم، نمبر اور کوڈ نہیں پہچانے جاتے ----------
   document.addEventListener('input', e => {
@@ -127,6 +127,7 @@
     const m = me(); if(!m || m.role === 'owner') return true;
     if(sc === 'home' || sc === 'search') return true;   // تلاش سب کے لیے؛ نتیجے اجازت کے حساب سے
     if(sc === 'party') return m.screens.includes('zamindar') || m.screens.includes('buyer');
+    if(sc === 'due') return m.screens.includes('buyer') || m.screens.includes('cash');
     return m.screens.includes(sc);
   }
   // ملازم کے لیے: حذف/پرانی چیز بدلنے پر مالک کا پن
@@ -201,7 +202,7 @@
       if(p.type === 'zamindar' && x.zamindarId === pid) rows.push({ date: x.date, at: x.createdAt, text: 'پرچی نمبر ' + x.no + ' — صاف رقم (' + r.nag + ' نگ)', amt: r.net, parchi: x.id });
       if(p.type === 'buyer') r.buyers.filter(b => b.id === pid).forEach(b => rows.push({ date: x.date, at: x.createdAt, text: 'پرچی نمبر ' + x.no + ' — مال (' + b.nag + ' نگ، زمیندار ' + (x.zamindar || '') + ')', amt: b.total, parchi: x.id }));
     });
-    liveCash().filter(c => c.partyId === pid).forEach(c => rows.push({ date: c.date, at: c.at, text: (c.kind === 'pay' ? 'ادائیگی' : 'وصولی') + (c.note ? ' — ' + c.note : ''), amt: -c.amount, cash: c.id }));
+    liveCash().filter(c => c.partyId === pid).forEach(c => rows.push({ date: c.date, at: c.at, text: (c.kind === 'pay' ? (c.adv ? 'پیشگی (ایڈوانس)' : 'ادائیگی') : 'وصولی') + (c.note ? ' — ' + c.note : ''), amt: -c.amount, cash: c.id }));
     rows.sort((a, b) => (a.date || '').localeCompare(b.date || '') || a.at - b.at);
     let bal = 0; rows.forEach(r => { bal += r.amt; r.bal = bal; });
     return { rows, bal };
@@ -340,7 +341,7 @@
   VIEWS.home = function(){
     const t = totalsFor(today());
     const tiles = [['parchis', '📚', 'پرچیاں'], ['zamindar', '🧑‍🌾', 'زمیندار'], ['buyer', '🧑‍💼', 'خریدار'], ['cash', '💵', 'وصولی / ادائیگی'], ['roznamcha', '📖', 'روزنامچہ'], ['reports', '📊', 'رپورٹیں'], ['charges', '⚙️', 'خرچے اور کمیشن'], ['backup', '💾', 'بیک اپ'], ['settings', '🛠️', 'سیٹنگ']];
-    return `<div class="pageTitle">🏠 ${esc(urDate(today(), true))}</div>${window.AB_LIC ? AB_LIC.strip() : ''}${backupBanner()}
+    return `<div class="pageTitle">🏠 ${esc(urDate(today(), true))}</div>${window.AB_LIC ? AB_LIC.strip() : ''}${backupBanner()}${dueBanner()}
       <div class="stats">
         <div class="stat"><div class="l">آج کی بکری (${t.n} پرچی، ${t.nag} نگ)</div><div class="n">${fmt(t.gross)}</div></div>
         ${isStaff() ? '' : `<div class="stat g"><div class="l">آج کی کمائی</div><div class="n">${fmt(t.income)}</div></div>`}
@@ -450,6 +451,16 @@
         ${cur.lines.length > 1 ? `<button class="btn gray sm" onclick="App.delLine(${i})">🗑️ ہٹائیں</button>` : ''}</div></div>`;
   }
   function parchiCharges(){ return cur.chargesSnap && cur.no ? cur.chargesSnap : chargesList(); }
+  // زمیندار کا پچھلا حساب (پیشگی ہو تو اسی پرچی سے کٹتی دکھے)
+  function zPrevHtml(p, r){
+    const z = p.zamindarId ? party(p.zamindarId) : findParty('zamindar', p.zamindar); if(!z) return '';
+    const old = DB.parchis.find(x => x.id === p.id && !x.deleted);
+    const prior = ledger(z.id).bal - (old ? calcParchi(old, old.chargesSnap || chargesList()).net : 0);
+    if(!prior) return '';
+    const after = prior + r.net;
+    return `<table class="t" style="margin-top:4px"><tr><td>${prior < 0 ? '➖ پہلے سے پیشگی / لینے ہیں' : '➕ پچھلا بقایا (دینے ہیں)'}</td><td class="v">${fmt(Math.abs(prior))}</td></tr>
+      <tr class="tot"><td>اس پرچی کے بعد کل — ${balText('zamindar', after)}</td><td class="v">${fmt(Math.abs(after))}</td></tr></table>`;
+  }
   function resultHtml(r, p, forPrint){
     const tag = x => forPrint ? '' : `<span class="tag ${x.income ? 'in' : 'out'}">${x.income ? 'آمدن' : 'آگے ادا'}</span>`;
     let h = `<div class="card"><h3>🧾 زمیندار کی پرچی</h3>
@@ -457,7 +468,7 @@
       <table class="t"><tr><th>کل بکری (${r.nag} نگ)</th><th class="v">${fmt(r.gross)}</th></tr>
       ${r.zCharges.map(x => `<tr><td>➖ ${esc(x.name)} ${tag(x)}</td><td class="v">${fmt(x.amount)}</td></tr>`).join('')}
       <tr class="tot"><td>کل کٹوتی</td><td class="v">${fmt(r.zTotal)}</td></tr>
-      <tr class="net"><td>زمیندار کو صاف رقم</td><td class="v">${fmt(r.net)}</td></tr></table></div>`;
+      <tr class="net"><td>زمیندار کو صاف رقم</td><td class="v">${fmt(r.net)}</td></tr></table>${forPrint ? '' : zPrevHtml(p, r)}</div>`;
     h += `<div class="card"><h3>🧑‍💼 خریداروں کا حساب</h3>${r.buyers.length ? r.buyers.map(b => `
       <table class="t" style="margin-bottom:8px"><tr><th>${esc(b.name)} (${b.nag} نگ) — مال</th><th class="v">${fmt(b.goods)}</th></tr>
       ${b.charges.map(x => `<tr><td>➕ ${esc(x.name)} ${tag(x)}</td><td class="v">${fmt(x.amount)}</td></tr>`).join('')}
@@ -488,6 +499,14 @@
     const z = ensureParty('zamindar', cur.zamindar); cur.zamindarId = z.id; cur.zamindar = z.name;
     if(!z.place && cur.place){ z.place = cur.place; put('parties'); }
     cur.lines.forEach(l => { if(String(l.buyer || '').trim()){ const b = ensureParty('buyer', l.buyer); l.buyerId = b.id; l.buyer = b.name; } });
+    // ادھار کی حد: اس پرچی کے بعد کسی خریدار کا بقایا اس کی حد سے بڑھے تو پوچھیں
+    {
+      const rNew = calcParchi(cur, parchiCharges()), rOld = old ? calcParchi(old, old.chargesSnap || chargesList()) : null;
+      const over = rNew.buyers.map(b => { const bp = b.id && party(b.id); if(!bp || !bp.limit) return null;
+        const oldB = rOld ? rOld.buyers.filter(x => x.id === b.id).reduce((s, x) => s + x.total, 0) : 0;
+        const nb = ledger(bp.id).bal - oldB + b.total; return nb > bp.limit ? { n: bp.name, nb, lim: bp.limit } : null; }).filter(Boolean);
+      if(over.length && !(await ask('⛔ ادھار کی حد سے زیادہ:<br>' + over.map(x => esc(x.n) + ' — بقایا ' + fmt(x.nb) + ' (حد ' + fmt(x.lim) + ')').join('<br>') + '<br>پھر بھی پرچی محفوظ کریں؟', 'پھر بھی محفوظ کریں'))) return;
+    }
     const snap = JSON.parse(JSON.stringify(cur));
     if(!snap.chargesSnap || !old) snap.chargesSnap = JSON.parse(JSON.stringify(chargesList().filter(c => c.on)));
     const r2 = calcParchi(snap, snap.chargesSnap);
@@ -674,11 +693,11 @@
     const list = parties(type).filter(p => !partySearch || p.name.includes(partySearch) || (p.phone || '').includes(partySearch))
       .map(p => ({ p, bal: ledger(p.id).bal })).sort((a, b) => Math.abs(b.bal) - Math.abs(a.bal));
     const sum = list.reduce((s, x) => s + (x.bal > 0 ? x.bal : 0), 0);
-    return `<div class="pageTitle">${type === 'zamindar' ? '🧑‍🌾 زمیندار' : '🧑‍💼 خریدار'} (${parties(type).length})<span class="sp"></span><button class="btn gold sm" onclick="App.partyForm('${type}')">➕ نیا ${PT[type]}</button></div>
+    return `<div class="pageTitle">${type === 'zamindar' ? '🧑‍🌾 زمیندار' : '🧑‍💼 خریدار'} (${parties(type).length})<span class="sp"></span>${type === 'buyer' ? '<button class="btn light sm" onclick="App.go(\'due\')">🔔 یاد دہانی</button>' : ''}<button class="btn gold sm" onclick="App.partyForm('${type}')">➕ نیا ${PT[type]}</button></div>
       <div class="card"><div class="f"><input placeholder="🔍 نام یا فون سے تلاش" value="${esc(partySearch)}" oninput="App.psearch(this.value,'${type}')"></div>
         <table class="t" style="margin-top:6px"><tr class="tot"><td>${type === 'zamindar' ? 'کل جو زمینداروں کو دینے ہیں' : 'کل جو خریداروں سے لینے ہیں'}</td><td class="v">${fmt(sum)}</td></tr></table></div>
       <div class="card"><div class="list" id="plist">${list.map(x => `<div class="it" onclick="App.go('party','${x.p.id}')"><div><b>${esc(x.p.name)}</b> <span class="muted">${esc(x.p.place || '')} ${esc(x.p.phone || '')}</span>
-        <div class="muted">${balText(type, x.bal)}</div></div><div class="a ${x.bal > 0 ? (type === 'zamindar' ? 'amt-out' : 'amt-in') : ''}">${fmt(Math.abs(x.bal))}</div></div>`).join('') || '<div class="muted">کوئی کھاتہ نہیں — پرچی محفوظ کرنے پر خود بن جاتا ہے</div>'}</div></div>`;
+        <div class="muted">${balText(type, x.bal)}${type === 'buyer' && x.p.limit && x.bal > x.p.limit ? ' • <span class="tag out">⛔ حد سے زیادہ</span>' : ''}${type === 'zamindar' && x.bal < 0 ? ' • پیشگی باقی' : ''}</div></div><div class="a ${x.bal > 0 ? (type === 'zamindar' ? 'amt-out' : 'amt-in') : ''}">${fmt(Math.abs(x.bal))}</div></div>`).join('') || '<div class="muted">کوئی کھاتہ نہیں — پرچی محفوظ کرنے پر خود بن جاتا ہے</div>'}</div></div>`;
   }
   VIEWS.zamindar = () => viewParties('zamindar');
   VIEWS.buyer = () => viewParties('buyer');
@@ -689,7 +708,8 @@
         <button class="btn gold sm" onclick="App.go('cash','${p.type === 'zamindar' ? 'pay' : 'receive'}:${p.id}')">${p.type === 'zamindar' ? '💸 ادائیگی' : '💵 وصولی'}</button>
         <button class="btn light sm" onclick="App.printLedger('${p.id}')">🖨️</button>
         <button class="btn light sm" onclick="App.partyForm('${p.type}','${p.id}')">✏️</button></div>
-      <div class="card"><div class="muted">${PT[p.type]} ${p.place ? '• ' + esc(p.place) : ''} ${p.phone ? '• فون ' + esc(p.phone) : ''}</div>
+      <div class="card"><div class="muted">${PT[p.type]} ${p.place ? '• ' + esc(p.place) : ''} ${p.phone ? '• فون ' + esc(p.phone) : ''}${p.limit ? ' • ادھار کی حد ' + fmt(p.limit) : ''}</div>
+        ${p.limit && L.bal > p.limit ? `<div class="warn">⛔ ادھار حد سے <span class="num">${fmt(L.bal - p.limit)}</span> روپے زیادہ</div>` : ''}
         <table class="t"><tr class="net"><td>${balText(p.type, L.bal)}</td><td class="v">${fmt(Math.abs(L.bal))}</td></tr></table></div>
       <div class="card"><h3>📖 کھاتہ</h3><div class="tblWrap">${ledgerTable(p, L)}</div></div>`;
   };
@@ -710,7 +730,9 @@
       <div class="f"><label>نام</label><input id="pfN" value="${esc(p.name)}"></div>
       <div class="f"><label>فون</label><input id="pfP" inputmode="tel" value="${esc(p.phone)}"></div>
       <div class="f"><label>گاؤں / شہر</label><input id="pfL" value="${esc(p.place)}"></div>
-      <div class="f"><label>پچھلا بقایا (روپے) — ${type === 'zamindar' ? 'جو ہم نے اسے دینے ہیں' : 'جو اس سے لینے ہیں'}</label><input id="pfO" inputmode="decimal" value="${esc(inRs(p.opening))}" placeholder="0"></div></div>
+      <div class="f"><label>پچھلا بقایا (روپے) — ${type === 'zamindar' ? 'جو ہم نے اسے دینے ہیں' : 'جو اس سے لینے ہیں'}</label><input id="pfO" inputmode="decimal" value="${esc(inRs(p.opening))}" placeholder="0"></div>
+      ${type === 'buyer' ? `<div class="grid2"><div class="f"><label>ادھار کی حد (روپے؛ خالی = کوئی حد نہیں)</label><input id="pfLim" inputmode="decimal" value="${esc(inRs(p.limit))}" placeholder="مثلاً 500000"></div>
+        <div class="f"><label>یاد دہانی: کتنے دن بعد (خالی = عام)</label><input id="pfDue" inputmode="numeric" value="${esc(p.dueDays || '')}" placeholder="${int(DB.settings.dueDays) || 7}"></div></div>` : ''}</div>
       <div class="row" style="justify-content:center;margin-top:10px"><button class="btn" onclick="App.saveParty('${type}','${id || ''}')">💾 محفوظ</button><button class="btn gray" onclick="App.closeModal()">منسوخ</button></div>`);
   }
   function saveParty(type, id){
@@ -720,6 +742,7 @@
     if(!p){ p = { id: uid(), type, createdAt: Date.now() }; DB.parties.push(p); }
     const oldName = p.name;
     Object.assign(p, { name, phone: $('pfP').value.trim(), place: $('pfL').value.trim(), opening: toPaisa($('pfO').value) });
+    if(type === 'buyer' && $('pfLim')){ p.limit = toPaisa($('pfLim').value) || 0; p.dueDays = int($('pfDue').value) || 0; }
     if(oldName && oldName !== name){ DB.parchis.forEach(x => { if(x.zamindarId === p.id) x.zamindar = name; x.lines.forEach(l => { if(l.buyerId === p.id) l.buyer = name; }); }); put('parchis'); }
     put('parties'); logIt((id ? 'کھاتہ بدلا: ' : 'نیا کھاتہ: ') + name, p.id); closeModal(); render(); toast('✅ محفوظ');
   }
@@ -773,6 +796,50 @@
   };
   AFTER.search = function(){ const i = $('sQ'); if(i){ i.focus(); try{ i.setSelectionRange(i.value.length, i.value.length); }catch(e){} } };
 
+  // =====================================================================
+  //   🔔 وصولی کی یاد دہانی — جن خریداروں نے کئی دن سے ادائیگی نہیں کی؛ زمیندار جن پر پیشگی باقی
+  // =====================================================================
+  const daysAgo = iso => iso ? Math.floor((new Date(today()) - new Date(iso)) / 864e5) : 9999;
+  function dueDays(p){ return int(p && p.dueDays) || int(DB.settings.dueDays) || 7; }
+  function dueList(){
+    return parties('buyer').map(p => {
+      const L = ledger(p.id); if(L.bal <= 0) return null;
+      const lastRec = liveCash().filter(c => c.partyId === p.id && c.kind !== 'pay').reduce((m, c) => c.date > m ? c.date : m, '');
+      const firstDebt = (L.rows.find(r => r.amt > 0) || {}).date || '';
+      const since = lastRec || firstDebt, d = daysAgo(since);
+      return { p, bal: L.bal, lastRec, d, over: !!(p.limit && L.bal > p.limit), due: d >= dueDays(p) };
+    }).filter(Boolean).sort((a, b) => (b.due - a.due) || (b.bal - a.bal));
+  }
+  function advList(){ return parties('zamindar').map(p => ({ p, bal: ledger(p.id).bal })).filter(x => x.bal < 0).sort((a, b) => a.bal - b.bal); }
+  function dueBanner(){
+    if(!(canSee('buyer') || canSee('cash'))) return '';
+    const l = dueList().filter(x => x.due || x.over); if(!l.length) return '';
+    return `<div class="licStrip warn" onclick="App.go('due')"><div>🔔 <span class="num">${l.length}</span> خریداروں کی ادائیگی رکی ہوئی — کل <span class="num">${fmt(l.reduce((s, x) => s + x.bal, 0))}</span> روپے</div><button class="btn gold sm">دیکھیں</button></div>`;
+  }
+  function remindText(x){
+    return 'السلام علیکم ' + x.p.name + '،\n' + shopName() + ' کی طرف سے یاد دہانی: آپ کے ذمے ' + fmt(x.bal) + ' روپے بقایا ہیں'
+      + (x.lastRec ? '، آخری ادائیگی ' + urDate(x.lastRec) + ' کو ہوئی تھی' : '') + '۔\nمہربانی فرما کر جلد ادائیگی کر دیں۔ شکریہ\n' + (DB.settings.phone ? 'رابطہ: ' + DB.settings.phone : '');
+  }
+  VIEWS.due = function(){
+    const l = dueList(), adv = canSee('zamindar') ? advList() : [];
+    const row = x => `<div class="it ${x.over ? 'overLim' : ''}"><div onclick="App.go('party','${x.p.id}')" style="flex:1;cursor:pointer"><b>${esc(x.p.name)}</b> ${x.over ? '<span class="tag out">⛔ حد سے زیادہ</span>' : ''}
+        <div class="muted">${x.lastRec ? 'آخری وصولی: ' + esc(urDate(x.lastRec)) + ' • ' : 'ابھی کوئی وصولی نہیں • '}<span class="num">${x.d >= 9999 ? '—' : x.d}</span> دن${x.p.limit ? ' • حد: ' + fmt(x.p.limit) : ''}</div></div>
+        <div class="row" style="gap:4px"><span class="num amt-in">${fmt(x.bal)}</span>
+        ${x.p.phone ? `<button class="btn wa sm" onclick="App.remind('${x.p.id}')">💬</button><a class="btn light sm" href="tel:${esc(x.p.phone)}">📞</a>` : `<button class="btn light sm" onclick="App.partyForm('buyer','${x.p.id}')" title="فون لکھیں">📞➕</button>`}</div></div>`;
+    const due = l.filter(x => x.due || x.over), rest = l.filter(x => !(x.due || x.over));
+    return `<div class="pageTitle">🔔 وصولی کی یاد دہانی</div>
+      <div class="card"><div class="row"><div class="f" style="flex:1"><label>کتنے دن ادائیگی نہ ہو تو یاد دہانی (عام حد؛ ہر خریدار کے کھاتے میں الگ بھی)</label><input inputmode="numeric" value="${int(DB.settings.dueDays) || 7}" onchange="App.setDueDays(this.value)"></div></div></div>
+      <div class="card"><h3>🔴 ادائیگی رکی ہوئی (${due.length}) — <span class="num">${fmt(due.reduce((s, x) => s + x.bal, 0))}</span></h3><div class="list">${due.map(row).join('') || '<div class="muted">کوئی نہیں ✅</div>'}</div></div>
+      ${rest.length ? `<div class="card"><h3>🟢 باقی ادھار (${rest.length}) — <span class="num">${fmt(rest.reduce((s, x) => s + x.bal, 0))}</span></h3><div class="list">${rest.map(row).join('')}</div></div>` : ''}
+      ${adv.length ? `<div class="card"><h3>🧑‍🌾 زمینداروں پر پیشگی (${adv.length}) — <span class="num">${fmt(adv.reduce((s, x) => s - x.bal, 0))}</span></h3><div class="muted">یہ رقم ان کی اگلی پرچی کی صاف رقم سے خود کٹ جائے گی</div><div class="list">${adv.map(x => `<div class="it" onclick="App.go('party','${x.p.id}')"><div><b>${esc(x.p.name)}</b></div><span class="num amt-out">${fmt(-x.bal)}</span></div>`).join('')}</div></div>` : ''}`;
+  };
+  function remind(pid){
+    const x = dueList().find(y => y.p.id === pid); if(!x) return;
+    const ph = window.AB_LIC ? AB_LIC.normPhone(x.p.phone) : x.p.phone;
+    window.open('https://wa.me/' + ph + '?text=' + encodeURIComponent(remindText(x)), '_blank');
+    logIt('یاد دہانی بھیجی: ' + x.p.name + ' — ' + fmt(x.bal), x.p.id);
+  }
+
   VIEWS.cash = function(a){
     const [kind0, pid] = String(a || 'receive:').split(':');
     const kind = kind0 === 'pay' ? 'pay' : 'receive';
@@ -787,11 +854,12 @@
           <div class="f"><label>رقم (روپے)</label><input id="cA" inputmode="decimal" placeholder="0"></div>
           <div class="f"><label>تاریخ</label><input id="cD" type="date" value="${today()}"></div>
           <div class="f"><label>طریقہ</label><select id="cM"><option>نقد</option><option>بینک</option><option>چیک</option><option>موبائل والٹ</option></select></div>
+          ${kind === 'pay' ? '<div class="f"><label>ادائیگی کی قسم</label><select id="cT"><option value="">عام ادائیگی (حساب میں سے)</option><option value="adv">پیشگی (ایڈوانس) — مال آنے سے پہلے</option></select></div>' : ''}
           <div class="f" style="grid-column:1/-1"><label>نوٹ</label><input id="cN" placeholder="اختیاری"></div>
         </div><div id="cHint" class="muted" style="margin:6px 0"></div>
         <button class="btn wide" onclick="App.saveCash('${kind}')">💾 ${kind === 'pay' ? 'ادائیگی' : 'وصولی'} محفوظ کریں</button></div>
       <div class="card"><h3>🕘 حالیہ اندراج</h3><div class="list">${recent.map(c => { const p = party(c.partyId);
-        return `<div class="it"><div>${c.kind === 'pay' ? '💸 ادائیگی' : '💵 وصولی'} — <b>${esc(p ? p.name : '')}</b> <span class="muted">${esc(urDate(c.date))} • ${esc(c.method || '')} ${c.note ? '• ' + esc(c.note) : ''}${c.by ? ' • 👤 ' + esc(c.by) : ''}</span></div>
+        return `<div class="it"><div>${c.kind === 'pay' ? (c.adv ? '💸 پیشگی' : '💸 ادائیگی') : '💵 وصولی'} — <b>${esc(p ? p.name : '')}</b> <span class="muted">${esc(urDate(c.date))} • ${esc(c.method || '')} ${c.note ? '• ' + esc(c.note) : ''}${c.by ? ' • 👤 ' + esc(c.by) : ''}</span></div>
           <div class="row"><span class="a ${c.kind === 'pay' ? 'amt-out' : 'amt-in'}">${fmt(c.amount)}</span><button class="btn gray sm" onclick="App.delCash('${c.id}')">🗑️</button></div></div>`; }).join('') || '<div class="muted">کوئی اندراج نہیں</div>'}</div></div>`;
   };
   AFTER.cash = function(){ const t = String(arg || '').startsWith('pay') ? 'zamindar' : 'buyer'; cashHint(t); };
@@ -806,6 +874,7 @@
     let p = findParty(type, name);
     if(!p){ if(!(await ask('«' + esc(name) + '» نام کا کوئی ' + PT[type] + ' نہیں۔ نیا کھاتہ بنا دیں؟', 'نیا کھاتہ بنائیں'))) return; p = ensureParty(type, name); }
     const c = { id: uid(), kind, partyId: p.id, amount, date, method: $('cM').value, note: $('cN').value.trim(), at: Date.now(), by: (me() || {}).name || '' };
+    if(kind === 'pay' && $('cT') && $('cT').value === 'adv') c.adv = true;
     DB.cash.push(c); put('cash'); logIt((kind === 'pay' ? 'ادائیگی ' : 'وصولی ') + p.name + ': ' + fmt(amount), c.id);
     toast('✅ ' + (kind === 'pay' ? 'ادائیگی' : 'وصولی') + ' محفوظ — ' + fmt(amount) + ' روپے'); render();
   }
@@ -1232,6 +1301,7 @@
   window.App = {
     go, menu, register, pinKey, closeModal, staffForm,
     rpSet(k, v){ if(k === 'preset') rpPreset(v); else { RP[k] = v; if(k !== 'tab') RP.preset = ''; } render(); }, rpPrint, rpShare,
+    remind, setDueDays(v){ DB.settings.dueDays = int(v) || 7; put('settings'); render(); },
     searchQ(v){ sQuery = v; const r = $('sRes'); if(r) r.innerHTML = searchResults(v); },
     logout(){ curUser = null; pinBuf = ''; menu(false); render(); },
     setTheme(k){ try{ localStorage.setItem('ab_theme', k); }catch(e){} applyTheme(k); render(); }, verTap(){ if(window.AB_LIC && AB_LIC.tap()) return; toast('ورژن ' + APP_VERSION); },
