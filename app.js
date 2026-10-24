@@ -8,8 +8,8 @@
    ===================================================================== */
 (function(){
   'use strict';
-  const APP_VERSION = 'AB2410SA022';
-  const UPDATE_NOTE = '🔍 تلاش: پرچی نمبر، گاڑی، بلٹی، زمیندار، خریدار، جنس، فون یا رقم — اوپر 🔍 دبائیں';
+  const APP_VERSION = 'AB2410SA023';
+  const UPDATE_NOTE = '🧾 تھرمل رسید (58 / 80 ملی میٹر): بلوٹوتھ پرنٹر، عام پرنٹ یا شیئر — اردو صاف';
   const C = window.ABCalc;
   // ---------- اردو / عربی کی بورڈ کے ہندسے (۰۱۲… / ٠١٢…) لکھتے ہی 0-9 میں — ورنہ رقم، نمبر اور کوڈ نہیں پہچانے جاتے ----------
   document.addEventListener('input', e => {
@@ -389,7 +389,8 @@
           <button class="btn light" onclick="App.printParchi()">🖨️ زمیندار کی پرچی</button>
           <button class="btn light" onclick="App.printBuyers()">🖨️ خریداروں کے بل</button></div>
         <div class="row" style="margin-top:6px"><button class="btn wa" onclick="App.shareParchi('z')">📤 زمیندار کو پرچی (واٹس ایپ)</button>
-          <button class="btn wa" onclick="App.shareParchi('b')">📤 خریدار کو بل (واٹس ایپ)</button></div>
+          <button class="btn wa" onclick="App.shareParchi('b')">📤 خریدار کو بل (واٹس ایپ)</button>
+          <button class="btn light" onclick="App.thermal()">🧾 تھرمل رسید</button></div>
       </div></div>`;
   };
   AFTER.parchi = function(){ renderResult(); };
@@ -585,6 +586,41 @@
         <button class="btn light" onclick="App.shareSave()">⬇️ محفوظ کریں</button><button class="btn gray" onclick="App.closeModal()">بند</button></div>
       ${phone ? '' : `<div class="muted" style="margin-top:4px">${pp ? 'اس کھاتے میں فون نمبر لکھیں تو سیدھا اسی کی چیٹ کھلے گی۔' : ''}</div>`}`);
   }
+  // ---------- 🧾 تھرمل رسید (58 / 80 ملی میٹر): بلوٹوتھ پرنٹر، عام پرنٹ، یا شیئر (پرنٹر ایپ) ----------
+  function rcptMM(){ try{ return +localStorage.getItem('ab_rcpt') === 58 ? 58 : 80; }catch(e){ return 80; } }
+  async function thermal(kind, key, mm){
+    if(!cur || !cur.no){ toast('⚠️ پہلے پرچی محفوظ کریں'); return; }
+    const r = calcParchi(cur, parchiCharges());
+    if(kind == null){
+      modal(`<h3>🧾 تھرمل رسید — کس کی؟</h3><div class="list">
+        <div class="it" onclick="App.thermal('z')"><div><b>🧑‍🌾 زمیندار کی پرچی</b> <span class="muted">${esc(cur.zamindar)}</span></div><span class="num">${fmt(r.net)}</span></div>
+        ${r.buyers.map((b, i) => `<div class="it" onclick="App.thermal('b',${i})"><div><b>🧑‍💼 ${esc(b.name)}</b> <span class="muted">خریدار کا بل</span></div><span class="num">${fmt(b.total)}</span></div>`).join('')}</div>
+        <div class="row" style="justify-content:center;margin-top:8px"><button class="btn gray" onclick="App.closeModal()">بند</button></div>`);
+      return;
+    }
+    mm = mm || rcptMM();
+    try{ localStorage.setItem('ab_rcpt', String(mm)); }catch(e){}
+    const spec = kind === 'z' ? zamindarSpec(cur, r) : buyerSpec(cur, r, r.buyers[+key]);
+    spec.foot = 'آڑھت بک • ' + urDate(today()) + ' • ' + urTime(Date.now());
+    const cv = await AB_RECEIPT.draw(spec, { thermal: mm });
+    shareCv = { cv, file: (kind === 'z' ? 'rcpt-' + cur.no : 'rcpt-' + cur.no + '-' + (+key + 1)) + '.png', thermal: mm };
+    const bt = AB_RECEIPT.btSupported();
+    modal(`<h3>🧾 تھرمل رسید</h3>
+      <div class="row" style="justify-content:center;margin-bottom:6px">${[58, 80].map(x => `<button class="btn ${x === mm ? '' : 'light'} sm" onclick="App.thermal('${kind}',${key == null ? 'null' : key},${x})"><span class="num">${x}</span> ملی میٹر</button>`).join('')}</div>
+      <div style="background:#e7e5e4;padding:8px;border-radius:10px;max-height:52vh;overflow:auto"><img src="${cv.toDataURL('image/png')}" style="width:${mm === 58 ? 220 : 300}px;max-width:100%;display:block;margin:auto;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25)" alt=""></div>
+      <div class="row" style="justify-content:center;margin-top:8px">${bt ? `<button class="btn" onclick="App.thermalBT()">🖨️ بلوٹوتھ پرنٹر${AB_RECEIPT.btName() ? ' (' + esc(AB_RECEIPT.btName()) + ')' : ''}</button>` : ''}
+        <button class="btn light" onclick="App.thermalPrint()">🖨️ عام پرنٹ</button><button class="btn light" onclick="App.shareSend()">📤 شیئر</button><button class="btn gray" onclick="App.closeModal()">بند</button></div>
+      <div class="muted" style="margin-top:4px">بلوٹوتھ پرنٹر نہ جڑے تو «📤 شیئر» سے پرنٹر کی اپنی ایپ چنیں۔ کمپیوٹر سے جڑا پرنٹر ہو تو «عام پرنٹ»۔</div>`);
+  }
+  async function thermalBT(){
+    if(!shareCv) return;
+    try{ toast('⏳ پرنٹر سے جڑ رہا ہے…'); await AB_RECEIPT.printBluetooth(shareCv.cv); toast('✅ رسید پرنٹر کو چلی گئی'); }
+    catch(e){
+      const m = e && e.message;
+      toast(m === 'nobt' ? '⚠️ اس ڈیوائس پر بلوٹوتھ پرنٹ نہیں — «شیئر» سے پرنٹر ایپ چنیں' : m === 'nochar' ? '⚠️ یہ پرنٹر سیدھا نہیں جڑتا — «شیئر» سے اس کی ایپ چنیں' : (e && e.name === 'NotFoundError') ? 'پرنٹر نہیں چنا گیا' : '⚠️ پرنٹر سے رابطہ نہیں ہو سکا — پرنٹر چالو کر کے دوبارہ');
+    }
+  }
+  function thermalPrint(){ if(shareCv && !AB_RECEIPT.printThermal(shareCv.cv, shareCv.thermal || rcptMM())) toast('⚠️ پرنٹ والا صفحہ نہیں کھل سکا'); }
   let shareCv = null;
   async function shareSend(){
     if(!shareCv) return;
@@ -1092,7 +1128,7 @@
     pman(id, v){ if(String(v).trim() === '') delete cur.manual[id]; else cur.manual[id] = toPaisa(v); renderResult(); },
     addLine(){ const last = cur.lines[cur.lines.length - 1] || {}; cur.lines.push(Object.assign(blankLine(), { item: last.item || '', basis: last.basis || 'nag' })); render(); },
     delLine(i){ cur.lines.splice(i, 1); render(); },
-    saveParchi, printParchi, printBuyers, delParchi, restoreParchi, shareParchi, shareSend, shareChat, shareSave,
+    saveParchi, printParchi, printBuyers, delParchi, restoreParchi, shareParchi, shareSend, shareChat, shareSave, thermal, thermalBT, thermalPrint,
     setListDate(d){ listDate = d; render(); }, setRozDate(d){ rozDate = d; render(); }, toggleLock,
     psearch(v, type){ partySearch = v; const pos = v.length; render(); const i = document.querySelector('#view .f input'); if(i){ i.focus(); i.setSelectionRange(pos, pos); } },
     partyForm, saveParty, printLedger, cashHint, saveCash, delCash,
