@@ -8,8 +8,8 @@
    ===================================================================== */
 (function(){
   'use strict';
-  const APP_VERSION = 'AB2410SA012';
-  const UPDATE_NOTE = 'سبسکرپشن: 7 دن مفت، کوڈ سے چالو، نئے فون پر موبائل نمبر سے خود بحال';
+  const APP_VERSION = 'AB2410SA013';
+  const UPDATE_NOTE = 'ڈویلپر پینل: اپنی مرضی کے دنوں (1 سے 3650) کا سبسکرپشن کوڈ';
   const C = window.ABCalc;
   const { fmt, toPaisa, toGrams, int, calcParchi, lineAmount, KINDS, SIDES, TEMPLATES, rateText } = C;
 

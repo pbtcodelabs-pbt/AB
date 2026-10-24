@@ -205,11 +205,12 @@
       $('dvGo').onclick = devLogin;
       return;
     }
-    const plans = PLANS.map(x => `<option value="${x[0]}">${x[1]}</option>`).join('') + '<option value="7">سات دن (تحفہ)</option>';
+    const plans = '<option value="c">اپنی مرضی کے دن</option>' + PLANS.map(x => `<option value="${x[0]}">${x[1]}</option>`).join('');
     H.modal(`<h3>🛠️ ڈویلپر پینل — نیا کوڈ</h3>
       <div class="f"><label>گاہک کا موبائل نمبر</label><input id="dvPh" inputmode="tel" placeholder="03001234567"></div>
       <div class="f"><label>آڑھت / گاہک کا نام</label><input id="dvN"></div>
-      <div class="f"><label>مدت</label><select id="dvD">${plans}</select></div>
+      <div class="grid2"><div class="f"><label>مدت</label><select id="dvD" onchange="document.getElementById('dvCw').style.display=this.value==='c'?'':'none'">${plans}</select></div>
+        <div class="f" id="dvCw"><label>کتنے دن؟ (1 سے 3650)</label><input id="dvC" type="number" inputmode="numeric" min="1" max="3650" placeholder="مثلاً 15"></div></div>
       <div id="dvInfo" class="muted"></div>
       <div class="row" style="justify-content:center;margin-top:8px"><button class="btn light" id="dvChk">🔍 نمبر دیکھیں</button><button class="btn" id="dvMake">🎁 کوڈ بنائیں</button><button class="btn gray" onclick="App.closeModal()">بند</button></div>
       <div id="dvOut"></div>`);
@@ -238,8 +239,10 @@
   }
   function rnd(n) { const abc = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; const a = new Uint32Array(n); crypto.getRandomValues(a); return [...a].map(x => abc[x % abc.length]).join(''); }
   async function devMake() {
-    const raw = $('dvPh').value, p = normPhone(raw), name = $('dvN').value.trim(), days = +$('dvD').value;
+    const raw = $('dvPh').value, p = normPhone(raw), name = $('dvN').value.trim();
+    const days = $('dvD').value === 'c' ? Math.trunc(+$('dvC').value) : +$('dvD').value;
     if (!okPhone(p)) { toast('⚠️ درست نمبر لکھیں'); return; }
+    if ($('dvD').value === 'c' && !(days >= 1 && days <= 3650)) { toast('⚠️ دن لکھیں — 1 سے 3650 تک'); return; }
     const btn = $('dvMake'); btn.disabled = true;
     try {
       const s = await devFs(`subs/${p}`);
@@ -254,7 +257,7 @@
       ] }) });
       const msg = 'آڑھت بک — آپ کا سبسکرپشن کوڈ:\n' + code + '\n' + (days ? urDay(exp) + ' تک' : 'ہمیشہ کے لیے')
         + '\nایپ کھولیں ← سیٹنگ ← سبسکرپشن ← کوڈ لکھ کر «چالو کریں»';
-      $('dvOut').innerHTML = `<div class="okBox"><div>✅ کوڈ بن گیا — ${esc(showPhone(p))} • ${days ? esc(urDay(exp)) + ' تک' : 'ہمیشہ کے لیے'}</div><div class="joinCode num">${code}</div>
+      $('dvOut').innerHTML = `<div class="okBox"><div>✅ کوڈ بن گیا — ${esc(showPhone(p))} • ${days ? days + ' دن • ' : ''}${days ? esc(urDay(exp)) + ' تک' : 'ہمیشہ کے لیے'}</div><div class="joinCode num">${code}</div>
         <div class="row" style="justify-content:center"><a class="btn sm" target="_blank" href="https://wa.me/${p}?text=${encodeURIComponent(msg)}">💬 گاہک کو واٹس ایپ</a></div></div>`;
     } catch (e) { toast(e.message === 'denied' ? '❌ اجازت نہیں — فائربیس کے اصول دیکھیں' : '⚠️ کوڈ نہیں بن سکا، دوبارہ کوشش کریں'); }
     finally { btn.disabled = false; }
