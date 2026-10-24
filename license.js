@@ -186,6 +186,7 @@
       + 'آڑھت: ' + (s.shop || '') + '\n'
       + 'مالک: ' + (s.owner || '') + '\n'
       + 'موبائل: ' + showPhone(phone()) + '\n'
+      + 'ڈیوائسز: ' + (days === -1 ? allowed() + 1 : allowed()) + '\n'
       + 'پتہ: ' + (s.address || '');
     window.open('https://wa.me/' + DEV_WA + '?text=' + encodeURIComponent(msg), '_blank');
   }
@@ -228,6 +229,7 @@
     }
     const plans = '<option value="c">اپنی مرضی کے دن</option>' + PLANS.map(x => `<option value="${x[0]}">${x[1]}</option>`).join('') + '<option value="0">ہمیشہ کے لیے</option>';
     H.modal(`<div class="dvp"><h3>🛠️ ڈویلپر پینل — نیا کوڈ</h3>
+      <div class="f"><label>📋 گاہک کا واٹس ایپ والا پیغام یہاں پیسٹ کریں — نمبر، نام، مدت اور ڈیوائسز خود بھر جائیں گے</label><textarea id="dvPaste" rows="2" placeholder="پورا پیغام پیسٹ کریں"></textarea></div>
       <div class="grid2"><div class="f"><label>گاہک کا موبائل نمبر</label><input id="dvPh" inputmode="tel" placeholder="03001234567"></div>
         <div class="f"><label>آڑھت / گاہک کا نام</label><input id="dvN"></div>
         <div class="f"><label>مدت</label><select id="dvD" onchange="document.getElementById('dvCw').style.visibility=this.value==='c'?'visible':'hidden'">${plans}</select></div>
@@ -239,6 +241,7 @@
       <details><summary>📊 فائربیس کا استعمال (مفت پیکج)</summary><div id="uBox" class="uBox"></div></details></div>`);
     if (window.AB_USAGE) AB_USAGE.render('uBox');
     $('dvChk').onclick = devCheck; $('dvMake').onclick = devMake;
+    $('dvPaste').oninput = devPaste;
   }
   async function devLogin() {
     const email = $('dvE').value.trim(), password = $('dvP').value;
@@ -251,6 +254,22 @@
       dev = { idToken: j.idToken, until: Date.now() + 50 * 60000 };   // پاس ورڈ کہیں محفوظ نہیں؛ ایک گھنٹے سے کم
       devOpen();
     } catch (e) { toast('⚠️ انٹرنیٹ نہیں ہے'); }
+  }
+  // ---------- گاہک کا درخواست والا پیغام پیسٹ: «موبائل: … / آڑھت: … / مدت: … / ڈیوائسز: …» خود خانوں میں ----------
+  function devPaste() {
+    const t = en($('dvPaste').value);
+    const line = k => { const m = new RegExp(k + '\\s*[:：]\\s*(.+)').exec(t); return m ? m[1].trim() : ''; };
+    let ph = line('موبائل');
+    if (!ph) { const m = /(\+?92|0)3\d{2}[\s-]?\d{7}/.exec(t); ph = m ? m[0] : ''; }
+    if (ph) $('dvPh').value = ph.replace(/[^\d+]/g, '');
+    const nm = line('آڑھت') || line('مالک'); if (nm) $('dvN').value = nm;
+    const md = line('مدت');
+    const pl = PLANS.find(x => md.indexOf(x[1]) === 0);
+    if (pl) { $('dvD').value = String(pl[0]); $('dvCw').style.visibility = 'hidden'; }
+    const dv = parseInt(line('ڈیوائسز'), 10); if (dv >= 1 && dv <= 50) $('dvDev').value = String(dv);
+    const out = $('dvInfo');
+    out.innerHTML = ph ? `✅ پیغام سے بھرا: ${esc(ph)}${nm ? ' • ' + esc(nm) : ''}${pl ? ' • ' + pl[1] : ''}${dv ? ' • ' + dv + ' ڈیوائسز' : ''}` : '⚠️ پیغام میں موبائل نمبر نہیں ملا';
+    if (ph) devCheck();
   }
   async function devCheck() {
     const p = normPhone($('dvPh').value); const out = $('dvInfo');
