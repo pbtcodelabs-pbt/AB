@@ -8,8 +8,8 @@
    ===================================================================== */
 (function(){
   'use strict';
-  const APP_VERSION = 'AB2410SA013';
-  const UPDATE_NOTE = 'ڈویلپر پینل: اپنی مرضی کے دنوں (1 سے 3650) کا سبسکرپشن کوڈ';
+  const APP_VERSION = 'AB2410SA014';
+  const UPDATE_NOTE = 'سبسکرپشن: 14 دن مفت؛ چھ مہینے 15,000 اور ایک سال 25,000 روپے';
   const C = window.ABCalc;
   const { fmt, toPaisa, toGrams, int, calcParchi, lineAmount, KINDS, SIDES, TEMPLATES, rateText } = C;
 
@@ -297,7 +297,7 @@
     DB.settings = Object.assign(DB.settings, { shop, owner, phone, address: $('rAddr').value.trim(), registered: true, createdAt: Date.now(), nextParchiNo: 1 });
     DB.charges = (DB.charges || []).map(c => Object.assign(c, { deleted: Date.now() })).concat(TEMPLATES[$('rTpl').value].list().map(c => Object.assign({ id: uid() }, c)));
     put('settings'); put('charges'); logIt('آڑھت رجسٹر: ' + shop);
-    go('home'); toast('✅ خوش آمدید — 7 دن مفت آزمائش شروع'); if(window.AB_LIC) AB_LIC.check(false);
+    go('home'); toast('✅ خوش آمدید — 14 دن مفت آزمائش شروع'); if(window.AB_LIC) AB_LIC.check(false);
   }
   let pinBuf = '';
   function viewPinGate(){
