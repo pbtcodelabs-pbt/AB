@@ -8,8 +8,8 @@
    ===================================================================== */
 (function(){
   'use strict';
-  const APP_VERSION = 'AB2410SA021';
-  const UPDATE_NOTE = 'پرچی اور خریدار کا بل تصویر بن کر واٹس ایپ پر — پہلے ایپ میں دیکھیں، پھر بھیجیں';
+  const APP_VERSION = 'AB2410SA022';
+  const UPDATE_NOTE = '🔍 تلاش: پرچی نمبر، گاڑی، بلٹی، زمیندار، خریدار، جنس، فون یا رقم — اوپر 🔍 دبائیں';
   const C = window.ABCalc;
   // ---------- اردو / عربی کی بورڈ کے ہندسے (۰۱۲… / ٠١٢…) لکھتے ہی 0-9 میں — ورنہ رقم، نمبر اور کوڈ نہیں پہچانے جاتے ----------
   document.addEventListener('input', e => {
@@ -125,7 +125,7 @@
   const STAFF_SCREENS = [['parchi', 'نئی پرچی'], ['parchis', 'پرچیاں'], ['zamindar', 'زمیندار'], ['buyer', 'خریدار'], ['cash', 'وصولی / ادائیگی'], ['roznamcha', 'روزنامچہ']];
   function canSee(sc){
     const m = me(); if(!m || m.role === 'owner') return true;
-    if(sc === 'home') return true;
+    if(sc === 'home' || sc === 'search') return true;   // تلاش سب کے لیے؛ نتیجے اجازت کے حساب سے
     if(sc === 'party') return m.screens.includes('zamindar') || m.screens.includes('buyer');
     return m.screens.includes(sc);
   }
@@ -236,7 +236,7 @@
   //   نیویگیشن
   // =====================================================================
   const NAV = [
-    ['home', '🏠', 'ہوم'], ['parchi', '📝', 'نئی پرچی'], ['parchis', '📚', 'پرچیاں'],
+    ['home', '🏠', 'ہوم'], ['search', '🔍', 'تلاش'], ['parchi', '📝', 'نئی پرچی'], ['parchis', '📚', 'پرچیاں'],
     ['zamindar', '🧑‍🌾', 'زمیندار'], ['buyer', '🧑‍💼', 'خریدار'], ['cash', '💵', 'وصولی / ادائیگی'],
     ['roznamcha', '📖', 'روزنامچہ'], ['charges', '⚙️', 'خرچے اور کمیشن'], ['backup', '💾', 'بیک اپ'], ['settings', '🛠️', 'سیٹنگ']
   ];
@@ -691,6 +691,52 @@
   // =====================================================================
   //   وصولی / ادائیگی
   // =====================================================================
+  // =====================================================================
+  //   🔍 تلاش — پرچی نمبر، گاڑی، بلٹی، زمیندار، خریدار، جنس، فون، رقم؛ کئی الفاظ کسی بھی ترتیب میں
+  // =====================================================================
+  let sQuery = '';
+  const norm = s => C.en ? C.en(s) : String(s == null ? '' : s);
+  function sWords(q){ return norm(q).toLowerCase().replace(/[،,]/g, ' ').split(/\s+/).filter(Boolean); }
+  function sHit(hay, words){ const h = norm(hay).toLowerCase(); const hn = h.replace(/[\s\-]/g, ''); return words.every(w => h.indexOf(w) >= 0 || hn.indexOf(w.replace(/-/g, '')) >= 0); }
+  function searchResults(q){
+    const words = sWords(q); if(!words.length) return '<div class="muted">پرچی نمبر، گاڑی نمبر، بلٹی، زمیندار یا خریدار کا نام، جنس، فون نمبر یا رقم لکھیں۔ کئی الفاظ بھی لکھ سکتے ہیں، جیسے «اکرم آم»۔</div>';
+    const out = [];
+    if(canSee('parchis') || canSee('parchi')){
+      const exact = words.length === 1 && /^\d+$/.test(words[0]) ? +words[0] : 0;
+      const ps = liveParchis().filter(p => {
+        const hay = ['نمبر ' + p.no, p.no, p.zamindar, p.place, p.vehicle, p.bilty, p.note, urDate(p.date), p.date, p.by, (p.totals && inRs(p.totals.gross)) || '']
+          .concat(p.lines.map(l => l.item + ' ' + l.buyer)).join(' | ');
+        return (exact && p.no === exact) || sHit(hay, words);
+      }).sort((a, b) => (exact && b.no === exact) - (exact && a.no === exact) || (b.date || '').localeCompare(a.date || '') || b.no - a.no).slice(0, 60);
+      if(ps.length) out.push(`<div class="card"><h3>📚 پرچیاں (${ps.length})</h3><div class="list">${ps.map(p => { const t = p.totals || {};
+        const buyers = [...new Set(p.lines.map(l => l.buyer).filter(Boolean))].join('، '), items = [...new Set(p.lines.map(l => l.item).filter(Boolean))].join('، ');
+        return `<div class="it" onclick="App.go('parchi','${p.id}')"><div><b>نمبر <span class="num">${p.no}</span> — ${esc(p.zamindar)}</b>
+          <div class="muted">${esc(urDate(p.date))}${p.vehicle ? ' • گاڑی ' + esc(p.vehicle) : ''}${p.bilty ? ' • بلٹی ' + esc(p.bilty) : ''} • ${esc(items)} • خریدار: ${esc(buyers)}</div></div>
+          <span class="num">${fmt(t.gross || 0)}</span></div>`; }).join('')}</div></div>`);
+    }
+    if(canSee('party')){
+      const pt = DB.parties.filter(p => !p.deleted && canSee(p.type) && sHit([p.name, p.phone, p.place, PT[p.type]].join(' | '), words)).slice(0, 60);
+      if(pt.length) out.push(`<div class="card"><h3>👥 کھاتے (${pt.length})</h3><div class="list">${pt.map(p => { const b = ledger(p.id).bal;
+        return `<div class="it" onclick="App.go('party','${p.id}')"><div><b>${p.type === 'zamindar' ? '🧑‍🌾' : '🧑‍💼'} ${esc(p.name)}</b> <span class="muted">${PT[p.type]} ${p.place ? '• ' + esc(p.place) : ''} ${p.phone ? '• ' + esc(p.phone) : ''}</span>
+          <div class="muted">${balText(p.type, b)}</div></div><span class="num">${fmt(Math.abs(b))}</span></div>`; }).join('')}</div></div>`);
+    }
+    if(canSee('cash')){
+      const cs = liveCash().filter(c => { const p = party(c.partyId);
+        return sHit([p ? p.name : '', c.note, c.method, inRs(c.amount), urDate(c.date), c.date, c.kind === 'pay' ? 'ادائیگی' : 'وصولی', c.by].join(' | '), words); })
+        .sort((a, b) => (b.date || '').localeCompare(a.date || '') || b.at - a.at).slice(0, 60);
+      if(cs.length) out.push(`<div class="card"><h3>💵 وصولی / ادائیگی (${cs.length})</h3><div class="list">${cs.map(c => { const p = party(c.partyId);
+        return `<div class="it" onclick="${p ? `App.go('party','${p.id}')` : ''}"><div>${c.kind === 'pay' ? '💸 ادائیگی' : '💵 وصولی'} — <b>${esc(p ? p.name : '')}</b>
+          <div class="muted">${esc(urDate(c.date))} ${c.method ? '• ' + esc(c.method) : ''} ${c.note ? '• ' + esc(c.note) : ''}</div></div><span class="num ${c.kind === 'pay' ? 'amt-out' : 'amt-in'}">${fmt(c.amount)}</span></div>`; }).join('')}</div></div>`);
+    }
+    return out.join('') || '<div class="card"><div class="muted">کچھ نہیں ملا — لکھائی بدل کر دیکھیں</div></div>';
+  }
+  VIEWS.search = function(){
+    return `<div class="pageTitle">🔍 تلاش</div>
+      <div class="card"><div class="f"><input id="sQ" value="${esc(sQuery)}" placeholder="🔍 پرچی نمبر، گاڑی، نام، جنس، فون یا رقم" oninput="App.searchQ(this.value)" autocomplete="off"></div></div>
+      <div id="sRes">${searchResults(sQuery)}</div>`;
+  };
+  AFTER.search = function(){ const i = $('sQ'); if(i){ i.focus(); try{ i.setSelectionRange(i.value.length, i.value.length); }catch(e){} } };
+
   VIEWS.cash = function(a){
     const [kind0, pid] = String(a || 'receive:').split(':');
     const kind = kind0 === 'pay' ? 'pay' : 'receive';
@@ -1037,6 +1083,7 @@
   // =====================================================================
   window.App = {
     go, menu, register, pinKey, closeModal, staffForm,
+    searchQ(v){ sQuery = v; const r = $('sRes'); if(r) r.innerHTML = searchResults(v); },
     logout(){ curUser = null; pinBuf = ''; menu(false); render(); },
     setTheme(k){ try{ localStorage.setItem('ab_theme', k); }catch(e){} applyTheme(k); render(); }, verTap(){ if(window.AB_LIC && AB_LIC.tap()) return; toast('ورژن ' + APP_VERSION); },
     newParchi(){ cur = blankParchi(); render(); },
