@@ -29,8 +29,9 @@
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(st)); } catch (e) {} };
 
   // ---------- موبائل نمبر کی پکی شکل: 03001234567 → 923001234567 ----------
+  const en = v => String(v == null ? '' : v).replace(/[\u0660-\u0669]/g, d => String(d.charCodeAt(0) - 0x660)).replace(/[\u06F0-\u06F9]/g, d => String(d.charCodeAt(0) - 0x6F0));
   function normPhone(raw) {
-    const s = String(raw || '').trim();
+    const s = en(raw).trim();
     let d = s.replace(/\D/g, '');
     if (!d) return '';
     if (s.indexOf('+') === 0) return d;
@@ -103,7 +104,7 @@
 
   // ---------- کوڈ سے چالو کرنا ----------
   async function activate(code) {
-    code = String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    code = en(code).toUpperCase().replace(/[^A-Z0-9]/g, '');
     if (code.length < 8) { toast('⚠️ کوڈ پورا لکھیں'); return false; }
     const p = phone();
     if (!okPhone(p)) { toast('⚠️ پہلے مالک کا موبائل نمبر لکھیں'); return false; }
@@ -216,25 +217,26 @@
   function devOpen() {
     const H = host();
     if (!dev || Date.now() > dev.until) {
-      H.modal(`<h3>🛠️ ڈویلپر پینل</h3><div class="muted">صرف ڈویلپر کے لیے</div>
-        <div class="f"><label>ای میل</label><input id="dvE" value="${DEV_EMAIL}" style="direction:ltr"></div>
-        <div class="f"><label>پاس ورڈ</label><input id="dvP" type="password" style="direction:ltr"></div>
-        <div class="row" style="justify-content:center;margin-top:8px"><button class="btn" id="dvGo">🔓 کھولیں</button><button class="btn gray" onclick="App.closeModal()">بند</button></div>
-        <div id="uBox" class="uBox"></div>`);
+      H.modal(`<div class="dvp"><h3>🛠️ ڈویلپر پینل</h3>
+        <div class="grid2"><div class="f"><label>ای میل</label><input id="dvE" value="${DEV_EMAIL}" style="direction:ltr"></div>
+        <div class="f"><label>پاس ورڈ</label><input id="dvP" type="password" style="direction:ltr"></div></div>
+        <div class="row" style="justify-content:center;margin-top:6px"><button class="btn" id="dvGo">🔓 کھولیں</button><button class="btn gray" onclick="App.closeModal()">بند</button></div>
+        <details><summary>📊 فائربیس کا استعمال (مفت پیکج)</summary><div id="uBox" class="uBox"></div></details></div>`);
       $('dvGo').onclick = devLogin;
       if (window.AB_USAGE) AB_USAGE.render('uBox');
       return;
     }
     const plans = '<option value="c">اپنی مرضی کے دن</option>' + PLANS.map(x => `<option value="${x[0]}">${x[1]}</option>`).join('') + '<option value="0">ہمیشہ کے لیے</option>';
-    H.modal(`<h3>🛠️ ڈویلپر پینل — نیا کوڈ</h3>
-      <div class="f"><label>گاہک کا موبائل نمبر</label><input id="dvPh" inputmode="tel" placeholder="03001234567"></div>
-      <div class="f"><label>آڑھت / گاہک کا نام</label><input id="dvN"></div>
-      <div class="grid2"><div class="f"><label>مدت</label><select id="dvD" onchange="document.getElementById('dvCw').style.display=this.value==='c'?'':'none'">${plans}</select></div>
-        <div class="f" id="dvCw"><label>کتنے دن؟ (1 سے 3650)</label><input id="dvC" type="number" inputmode="numeric" min="1" max="3650" placeholder="مثلاً 15"></div></div>
-      <div class="f"><label>کتنی ڈیوائسز؟ (3 شامل؛ ہر زیادہ ڈیوائس 5,000 سالانہ)</label><input id="dvDev" type="number" inputmode="numeric" min="1" max="50" value="3"></div>
+    H.modal(`<div class="dvp"><h3>🛠️ ڈویلپر پینل — نیا کوڈ</h3>
+      <div class="grid2"><div class="f"><label>گاہک کا موبائل نمبر</label><input id="dvPh" inputmode="tel" placeholder="03001234567"></div>
+        <div class="f"><label>آڑھت / گاہک کا نام</label><input id="dvN"></div>
+        <div class="f"><label>مدت</label><select id="dvD" onchange="document.getElementById('dvCw').style.visibility=this.value==='c'?'visible':'hidden'">${plans}</select></div>
+        <div class="f" id="dvCw"><label>کتنے دن؟</label><input id="dvC" inputmode="numeric" placeholder="1 سے 3650"></div>
+        <div class="f" style="grid-column:1/-1"><label>کتنی ڈیوائسز؟ (3 شامل؛ ہر زیادہ ڈیوائس 5,000 سالانہ)</label><input id="dvDev" inputmode="numeric" value="3"></div></div>
       <div id="dvInfo" class="muted"></div>
-      <div class="row" style="justify-content:center;margin-top:8px"><button class="btn light" id="dvChk">🔍 نمبر دیکھیں</button><button class="btn" id="dvMake">🎁 کوڈ بنائیں</button><button class="btn gray" onclick="App.closeModal()">بند</button></div>
-      <div id="dvOut"></div><div id="uBox" class="uBox"></div>`);
+      <div class="row" style="justify-content:center;margin-top:6px"><button class="btn light" id="dvChk">🔍 نمبر دیکھیں</button><button class="btn" id="dvMake">🎁 کوڈ بنائیں</button><button class="btn gray" onclick="App.closeModal()">بند</button></div>
+      <div id="dvOut"></div>
+      <details><summary>📊 فائربیس کا استعمال (مفت پیکج)</summary><div id="uBox" class="uBox"></div></details></div>`);
     if (window.AB_USAGE) AB_USAGE.render('uBox');
     $('dvChk').onclick = devCheck; $('dvMake').onclick = devMake;
   }
@@ -263,10 +265,10 @@
   function rnd(n) { const abc = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; const a = new Uint32Array(n); crypto.getRandomValues(a); return [...a].map(x => abc[x % abc.length]).join(''); }
   async function devMake() {
     const raw = $('dvPh').value, p = normPhone(raw), name = $('dvN').value.trim();
-    const days = $('dvD').value === 'c' ? Math.trunc(+$('dvC').value) : +$('dvD').value;
+    const days = $('dvD').value === 'c' ? Math.trunc(+en($('dvC').value)) : +$('dvD').value;
     if (!okPhone(p)) { toast('⚠️ درست نمبر لکھیں'); return; }
     if ($('dvD').value === 'c' && !(days >= 1 && days <= 3650)) { toast('⚠️ دن لکھیں — 1 سے 3650 تک'); return; }
-    const devs = Math.trunc(+$('dvDev').value);
+    const devs = Math.trunc(+en($('dvDev').value));
     if (!(devs >= 1 && devs <= 50)) { toast('⚠️ ڈیوائسز لکھیں — 1 سے 50 تک'); return; }
     const btn = $('dvMake'); btn.disabled = true;
     try {

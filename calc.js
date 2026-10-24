@@ -52,9 +52,11 @@
   };
 
   // ---------- رقم: پیسوں میں ----------
-  function toPaisa(v){ const n = parseFloat(String(v == null ? '' : v).replace(/,/g, '')); return isFinite(n) ? Math.round(n * 100) : 0; }
-  function toGrams(v){ const n = parseFloat(String(v == null ? '' : v).replace(/,/g, '')); return isFinite(n) ? Math.round(n * 1000) : 0; }
-  function int(v){ const n = parseInt(String(v == null ? '' : v).replace(/,/g, ''), 10); return isFinite(n) ? n : 0; }
+  // اردو / عربی ہندسے → 0-9
+  function en(v){ return String(v == null ? '' : v).replace(/[\u0660-\u0669]/g, d => String(d.charCodeAt(0) - 0x660)).replace(/[\u06F0-\u06F9]/g, d => String(d.charCodeAt(0) - 0x6F0)); }
+  function toPaisa(v){ const n = parseFloat(en(v).replace(/[,،٬]/g, '')); return isFinite(n) ? Math.round(n * 100) : 0; }
+  function toGrams(v){ const n = parseFloat(en(v).replace(/[,،٬]/g, '')); return isFinite(n) ? Math.round(n * 1000) : 0; }
+  function int(v){ const n = parseInt(en(v).replace(/[,،٬]/g, ''), 10); return isFinite(n) ? n : 0; }
   // آدھے سے اوپر اوپر — منفی پر بھی یکساں
   function rdiv(num, den){ const s = num < 0 ? -1 : 1; return s * Math.floor((Math.abs(num) * 2 + den) / (2 * den)); }
   function fmt(p){
