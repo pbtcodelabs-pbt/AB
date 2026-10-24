@@ -8,8 +8,8 @@
    ===================================================================== */
 (function(){
   'use strict';
-  const APP_VERSION = 'AB2410SA023';
-  const UPDATE_NOTE = '🧾 تھرمل رسید (58 / 80 ملی میٹر): بلوٹوتھ پرنٹر، عام پرنٹ یا شیئر — اردو صاف';
+  const APP_VERSION = 'AB2410SA024';
+  const UPDATE_NOTE = '📊 رپورٹیں: خلاصہ، زمیندار وار، خریدار وار، جنس وار، خرچے و کمیشن، مہینہ وار کمائی — پرنٹ اور تصویر';
   const C = window.ABCalc;
   // ---------- اردو / عربی کی بورڈ کے ہندسے (۰۱۲… / ٠١٢…) لکھتے ہی 0-9 میں — ورنہ رقم، نمبر اور کوڈ نہیں پہچانے جاتے ----------
   document.addEventListener('input', e => {
@@ -238,7 +238,7 @@
   const NAV = [
     ['home', '🏠', 'ہوم'], ['search', '🔍', 'تلاش'], ['parchi', '📝', 'نئی پرچی'], ['parchis', '📚', 'پرچیاں'],
     ['zamindar', '🧑‍🌾', 'زمیندار'], ['buyer', '🧑‍💼', 'خریدار'], ['cash', '💵', 'وصولی / ادائیگی'],
-    ['roznamcha', '📖', 'روزنامچہ'], ['charges', '⚙️', 'خرچے اور کمیشن'], ['backup', '💾', 'بیک اپ'], ['settings', '🛠️', 'سیٹنگ']
+    ['roznamcha', '📖', 'روزنامچہ'], ['reports', '📊', 'رپورٹیں'], ['charges', '⚙️', 'خرچے اور کمیشن'], ['backup', '💾', 'بیک اپ'], ['settings', '🛠️', 'سیٹنگ']
   ];
   let screen = 'home', arg = null;
   function renderSide(){
@@ -339,7 +339,7 @@
   const AFTER = {};
   VIEWS.home = function(){
     const t = totalsFor(today());
-    const tiles = [['parchis', '📚', 'پرچیاں'], ['zamindar', '🧑‍🌾', 'زمیندار'], ['buyer', '🧑‍💼', 'خریدار'], ['cash', '💵', 'وصولی / ادائیگی'], ['roznamcha', '📖', 'روزنامچہ'], ['charges', '⚙️', 'خرچے اور کمیشن'], ['backup', '💾', 'بیک اپ'], ['settings', '🛠️', 'سیٹنگ']];
+    const tiles = [['parchis', '📚', 'پرچیاں'], ['zamindar', '🧑‍🌾', 'زمیندار'], ['buyer', '🧑‍💼', 'خریدار'], ['cash', '💵', 'وصولی / ادائیگی'], ['roznamcha', '📖', 'روزنامچہ'], ['reports', '📊', 'رپورٹیں'], ['charges', '⚙️', 'خرچے اور کمیشن'], ['backup', '💾', 'بیک اپ'], ['settings', '🛠️', 'سیٹنگ']];
     return `<div class="pageTitle">🏠 ${esc(urDate(today(), true))}</div>${window.AB_LIC ? AB_LIC.strip() : ''}${backupBanner()}
       <div class="stats">
         <div class="stat"><div class="l">آج کی بکری (${t.n} پرچی، ${t.nag} نگ)</div><div class="n">${fmt(t.gross)}</div></div>
@@ -821,6 +821,118 @@
   //   روزنامچہ
   // =====================================================================
   let rozDate = '';
+  // =====================================================================
+  //   📊 رپورٹیں (صرف مالک) — تاریخ چنیں؛ خلاصہ، زمیندار وار، خریدار وار، جنس وار، خرچے و کمیشن، مہینہ وار
+  // =====================================================================
+  const RP = { from: '', to: '', tab: 'sum', preset: 'month' };
+  const isoOf = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  function rpPreset(k){
+    const n = new Date(), y = n.getFullYear(), m = n.getMonth(), d = n.getDate();
+    const R = {
+      today: [isoOf(n), isoOf(n)],
+      yday: [isoOf(new Date(y, m, d - 1)), isoOf(new Date(y, m, d - 1))],
+      week: [isoOf(new Date(y, m, d - 6)), isoOf(n)],
+      month: [isoOf(new Date(y, m, 1)), isoOf(n)],
+      last: [isoOf(new Date(y, m - 1, 1)), isoOf(new Date(y, m, 0))],
+      year: [isoOf(new Date(y, 0, 1)), isoOf(n)],
+      all: ['', '']
+    }[k];
+    if(R){ RP.from = R[0]; RP.to = R[1]; RP.preset = k; }
+  }
+  rpPreset('month');
+  const inRange = date => (!RP.from || date >= RP.from) && (!RP.to || date <= RP.to);
+  function rpData(){
+    const ps = liveParchis().filter(p => inRange(p.date));
+    return ps.map(p => ({ p, r: calcParchi(p, p.chargesSnap || chargesList()) }));
+  }
+  const kg = g => (Math.round(int(g) / 100) / 10).toLocaleString('en-US');
+  // ہر رپورٹ: { title, cols:[[نام, عدد؟]], rows:[[…]], total:[…] }
+  function rpBuild(tab){
+    const D = rpData();
+    const cash = liveCash().filter(c => inRange(c.date));
+    if(tab === 'sum'){
+      let gross = 0, net = 0, income = 0, nag = 0, zded = 0, bextra = 0, pass = 0;
+      D.forEach(({ r }) => { gross += r.gross; net += r.net; income += r.income; nag += r.nag; zded += r.zTotal; bextra += r.buyers.reduce((s, b) => s + b.total - b.goods, 0);
+        r.zCharges.concat(...r.buyers.map(b => b.charges)).forEach(x => { if(!x.income) pass += x.amount; }); });
+      const rec = cash.filter(c => c.kind !== 'pay').reduce((s, c) => s + c.amount, 0), pay = cash.filter(c => c.kind === 'pay').reduce((s, c) => s + c.amount, 0);
+      return { title: 'خلاصہ', cols: [['تفصیل', 0], ['رقم / تعداد', 1]], rows: [
+        ['پرچیاں', D.length], ['کل نگ', nag], ['کل بکری (روپے)', fmt(gross)], ['زمینداروں سے کٹوتی', fmt(zded)], ['زمینداروں کو صاف رقم', fmt(net)],
+        ['خریداروں پر خرچے', fmt(bextra)], ['آگے ادا ہونے والے خرچے', fmt(pass)], ['💰 آڑھتی کی کمائی', fmt(income)],
+        ['خریداروں سے وصولی', fmt(rec)], ['زمینداروں کو ادائیگی', fmt(pay)]], total: null };
+    }
+    if(tab === 'zam' || tab === 'buy'){
+      const type = tab === 'zam' ? 'zamindar' : 'buyer', M = {};
+      const row = (id, name) => M[id || name] = M[id || name] || { id, name, n: 0, nag: 0, a: 0, b: 0, c: 0, cash: 0 };
+      D.forEach(({ p, r }) => {
+        if(type === 'zamindar'){ const x = row(p.zamindarId, p.zamindar); x.n++; x.nag += r.nag; x.a += r.gross; x.b += r.zTotal; x.c += r.net; }
+        else r.buyers.forEach(b => { const x = row(b.id, b.name); x.n++; x.nag += b.nag; x.a += b.goods; x.b += b.total - b.goods; x.c += b.total; });
+      });
+      cash.forEach(c => { const pt = party(c.partyId); if(!pt || pt.type !== type) return; if((type === 'zamindar') !== (c.kind === 'pay')) return; row(pt.id, pt.name).cash += c.amount; });
+      const list = Object.values(M).sort((a, b) => b.c - a.c);
+      const T = list.reduce((t, x) => { t.n += x.n; t.nag += x.nag; t.a += x.a; t.b += x.b; t.c += x.c; t.cash += x.cash; return t; }, { n: 0, nag: 0, a: 0, b: 0, c: 0, cash: 0 });
+      const bal = x => x.id ? ledger(x.id).bal : 0;
+      if(type === 'zamindar') return { title: 'زمیندار وار', cols: [['زمیندار', 0], ['پرچیاں', 1], ['نگ', 1], ['بکری', 1], ['کٹوتی', 1], ['صاف رقم', 1], ['ادائیگی', 1], ['کل بقایا', 1]],
+        rows: list.map(x => [x.name, x.n, x.nag, fmt(x.a), fmt(x.b), fmt(x.c), fmt(x.cash), fmt(bal(x))]), total: ['کل', T.n, T.nag, fmt(T.a), fmt(T.b), fmt(T.c), fmt(T.cash), ''] };
+      return { title: 'خریدار وار', cols: [['خریدار', 0], ['پرچیاں', 1], ['نگ', 1], ['مال', 1], ['خرچے', 1], ['کل', 1], ['وصولی', 1], ['کل بقایا', 1]],
+        rows: list.map(x => [x.name, x.n, x.nag, fmt(x.a), fmt(x.b), fmt(x.c), fmt(x.cash), fmt(bal(x))]), total: ['کل', T.n, T.nag, fmt(T.a), fmt(T.b), fmt(T.c), fmt(T.cash), ''] };
+    }
+    if(tab === 'item'){
+      const M = {};
+      D.forEach(({ r }) => r.lines.forEach(l => { const k = String(l.item || '').trim() || 'بغیر نام'; const x = M[k] = M[k] || { name: k, nag: 0, g: 0, a: 0, n: 0 }; x.nag += int(l.nag); x.g += int(l.grams); x.a += lineAmount(l); x.n++; }));
+      const list = Object.values(M).sort((a, b) => b.a - a.a);
+      const T = list.reduce((t, x) => { t.nag += x.nag; t.g += x.g; t.a += x.a; return t; }, { nag: 0, g: 0, a: 0 });
+      return { title: 'جنس وار', cols: [['جنس', 0], ['نگ', 1], ['وزن (کلو)', 1], ['بکری', 1], ['اوسط فی نگ', 1]],
+        rows: list.map(x => [x.name, x.nag, x.g ? kg(x.g) : '—', fmt(x.a), x.nag ? fmt(Math.round(x.a / x.nag)) : '—']), total: ['کل', T.nag, T.g ? kg(T.g) : '—', fmt(T.a), ''] };
+    }
+    if(tab === 'chg'){
+      const M = {};
+      D.forEach(({ r }) => {
+        r.zCharges.forEach(x => { const m = M[x.name] = M[x.name] || { name: x.name, z: 0, b: 0, income: x.income }; m.z += x.amount; });
+        r.buyers.forEach(b => b.charges.forEach(x => { const m = M[x.name] = M[x.name] || { name: x.name, z: 0, b: 0, income: x.income }; m.b += x.amount; }));
+      });
+      const list = Object.values(M).filter(x => x.z || x.b).sort((a, b) => (b.z + b.b) - (a.z + a.b));
+      const T = list.reduce((t, x) => { t.z += x.z; t.b += x.b; if(x.income) t.i += x.z + x.b; return t; }, { z: 0, b: 0, i: 0 });
+      return { title: 'خرچے اور کمیشن', cols: [['خرچہ', 0], ['زمیندار سے', 1], ['خریدار سے', 1], ['کل', 1], ['قسم', 0]],
+        rows: list.map(x => [x.name, fmt(x.z), fmt(x.b), fmt(x.z + x.b), x.income ? 'آمدن' : 'آگے ادا']), total: ['کل', fmt(T.z), fmt(T.b), fmt(T.z + T.b), 'آمدن ' + fmt(T.i)] };
+    }
+    if(tab === 'mon'){
+      const M = {}, n = new Date();
+      for(let i = 11; i >= 0; i--){ const d = new Date(n.getFullYear(), n.getMonth() - i, 1); const k = isoOf(d).slice(0, 7); M[k] = { k, n: 0, nag: 0, a: 0, i: 0 }; }
+      liveParchis().forEach(p => { const k = (p.date || '').slice(0, 7); if(!M[k]) return; const r = calcParchi(p, p.chargesSnap || chargesList()); M[k].n++; M[k].nag += r.nag; M[k].a += r.gross; M[k].i += r.income; });
+      const list = Object.values(M).reverse();
+      const T = list.reduce((t, x) => { t.n += x.n; t.nag += x.nag; t.a += x.a; t.i += x.i; return t; }, { n: 0, nag: 0, a: 0, i: 0 });
+      return { title: 'مہینہ وار کمائی (پچھلے 12 مہینے)', cols: [['مہینہ', 0], ['پرچیاں', 1], ['نگ', 1], ['بکری', 1], ['کمائی', 1]],
+        rows: list.map(x => [MONTHS[+x.k.slice(5) - 1] + ' ' + x.k.slice(0, 4), x.n, x.nag, fmt(x.a), fmt(x.i)]), total: ['کل', T.n, T.nag, fmt(T.a), fmt(T.i)], noRange: true };
+    }
+  }
+  const RP_TABS = [['sum', '📋 خلاصہ'], ['zam', '🧑‍🌾 زمیندار وار'], ['buy', '🧑‍💼 خریدار وار'], ['item', '🧺 جنس وار'], ['chg', '⚙️ خرچے و کمیشن'], ['mon', '📅 مہینہ وار']];
+  const RP_PRE = [['today', 'آج'], ['yday', 'کل'], ['week', '7 دن'], ['month', 'یہ مہینہ'], ['last', 'پچھلا مہینہ'], ['year', 'یہ سال'], ['all', 'سب']];
+  function rpRange(){ return RP.from || RP.to ? (urDate(RP.from) || 'شروع') + ' سے ' + (urDate(RP.to) || 'آج') + ' تک' : 'شروع سے اب تک'; }
+  function rpTable(rep){
+    return `<div class="tscroll"><table class="t rpt"><tr>${rep.cols.map(c => `<th class="${c[1] ? 'v' : ''}">${c[0]}</th>`).join('')}</tr>
+      ${rep.rows.map(r => `<tr>${r.map((v, i) => `<td class="${rep.cols[i][1] ? 'v' : ''}">${esc(v)}</td>`).join('')}</tr>`).join('') || `<tr><td colspan="${rep.cols.length}" class="muted">اس مدت میں کچھ نہیں</td></tr>`}
+      ${rep.total ? `<tr class="tot">${rep.total.map((v, i) => `<td class="${rep.cols[i][1] ? 'v' : ''}">${esc(v)}</td>`).join('')}</tr>` : ''}</table></div>`;
+  }
+  VIEWS.reports = function(){
+    const rep = rpBuild(RP.tab);
+    return `<div class="pageTitle">📊 رپورٹیں</div>
+      <div class="card"><div class="cdChips">${RP_PRE.map(p => `<button class="${RP.preset === p[0] ? 'on' : ''}" onclick="App.rpSet('preset','${p[0]}')">${p[1]}</button>`).join('')}</div>
+        <div class="grid2"><div class="f"><label>سے</label><input type="date" value="${esc(RP.from)}" onchange="App.rpSet('from',this.value)"></div><div class="f"><label>تک</label><input type="date" value="${esc(RP.to)}" onchange="App.rpSet('to',this.value)"></div></div></div>
+      <div class="rpTabs">${RP_TABS.map(t => `<button class="${RP.tab === t[0] ? 'on' : ''}" onclick="App.rpSet('tab','${t[0]}')">${t[1]}</button>`).join('')}</div>
+      <div class="card"><h3>${rep.title}</h3><div class="muted">${rep.noRange ? 'تاریخ سے آزاد' : rpRange()}</div>${rpTable(rep)}
+        <div class="row" style="margin-top:8px"><button class="btn light" onclick="App.rpPrint()">🖨️ پرنٹ</button><button class="btn wa" onclick="App.rpShare()">📤 تصویر شیئر</button></div></div>`;
+  };
+  function rpPrint(){ const rep = rpBuild(RP.tab); printDoc('رپورٹ — ' + rep.title, `<h2 style="text-align:center;margin:4px 0">📊 ${esc(rep.title)}</h2><div style="text-align:center">${esc(rep.noRange ? '' : rpRange())}</div><div class="card">${rpTable(rep)}</div>`); }
+  async function rpShare(){
+    const rep = rpBuild(RP.tab);
+    const cols = rep.cols.map((c, i) => ({ t: c[0], w: i === 0 ? 2.6 : 1.4, num: c[1] }));
+    const rows = rep.rows.concat(rep.total ? [rep.total] : []);
+    const cv = await AB_RECEIPT.draw({ shop: shopName(), sub: shopSub(), title: '📊 ' + rep.title, meta: [['مدت', rep.noRange ? 'پچھلے 12 مہینے' : rpRange()]], cols, rows, lines: [], foot: 'آڑھت بک • ' + urDate(today()) });
+    shareCv = { cv, file: 'report-' + RP.tab + '.png' };
+    modal(`<h3>📊 ${esc(rep.title)}</h3><img src="${cv.toDataURL('image/png')}" style="width:100%;border-radius:10px;border:1px solid var(--l3)" alt="">
+      <div class="row" style="justify-content:center;margin-top:8px"><button class="btn wa" onclick="App.shareSend()">📤 بھیجیں</button><button class="btn light" onclick="App.shareSave()">⬇️ محفوظ کریں</button><button class="btn gray" onclick="App.closeModal()">بند</button></div>`);
+  }
+
   VIEWS.roznamcha = function(){
     const d = rozDate || today();
     const ps = liveParchis().filter(p => p.date === d);
@@ -1119,6 +1231,7 @@
   // =====================================================================
   window.App = {
     go, menu, register, pinKey, closeModal, staffForm,
+    rpSet(k, v){ if(k === 'preset') rpPreset(v); else { RP[k] = v; if(k !== 'tab') RP.preset = ''; } render(); }, rpPrint, rpShare,
     searchQ(v){ sQuery = v; const r = $('sRes'); if(r) r.innerHTML = searchResults(v); },
     logout(){ curUser = null; pinBuf = ''; menu(false); render(); },
     setTheme(k){ try{ localStorage.setItem('ab_theme', k); }catch(e){} applyTheme(k); render(); }, verTap(){ if(window.AB_LIC && AB_LIC.tap()) return; toast('ورژن ' + APP_VERSION); },
