@@ -237,6 +237,7 @@
     // مالک کی بیک اپ فائل میں: نئے آلے پر بیک اپ لگا کر خود جڑ کر دوبارہ مالک
     ownerPack: () => (meta.on && meta.role === 'owner' && meta.ownerKey) ? { code: joinCode(), ownerKey: meta.ownerKey } : null,
     on: () => !!meta.on, role: () => meta.role || '', uid: () => meta.uid || '', code: joinCode,
-    start() { if (meta.on) sync(false); }
+    start() { if (meta.on) sync(false); },
+    fs, base: BASE   // سبسکرپشن (license.js) اسی گمنام شناخت سے پڑھتی ہے
   };
 })();

@@ -214,6 +214,12 @@ html[data-theme="white"] .themes button{border-color:#d6d3d1;}
 .dstatus.busy{background:#fffbeb; color:#92400e; border:1.5px solid #fcd34d;}
 #topbar .dchip.ok{background:rgba(34,197,94,.25);} #topbar .dchip.warn{background:rgba(251,191,36,.35);}
 .bkBanner{background:#fffbeb; border:2px solid #f59e0b; color:#78350f; border-radius:14px; padding:6px 10px; margin-bottom:10px; box-shadow:0 4px 12px rgba(0,0,0,.2);}
+.licStrip{display:flex; align-items:center; justify-content:space-between; gap:8px; border-radius:14px; padding:6px 10px; margin-bottom:10px; cursor:pointer; box-shadow:0 4px 12px rgba(0,0,0,.2); border:2px solid;}
+.licStrip.trial{background:#eff6ff; border-color:#60a5fa; color:#1e3a8a;}
+.licStrip.warn{background:#fffbeb; border-color:#f59e0b; color:#78350f;}
+.licStrip.off{background:#fef2f2; border-color:#ef4444; color:#7f1d1d;}
+.licState{font-size:17px; margin:4px 0 6px;}
+.licPlans{display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:6px;}
 .okBox{background:#fffbeb; border:1.5px solid #f59e0b; color:#78350f; border-radius:12px; padding:6px 10px; margin:8px 0; font-size:15px;}
 .joinCode{font-size:17px; letter-spacing:.5px; direction:ltr; text-align:center; background:var(--l0); border:2px dashed var(--l3); border-radius:12px; padding:6px; margin:6px 0; color:var(--c4); word-break:break-all;}
 @media print{ body{background:#fff;} #topbar,#side,#sideShade{display:none !important;} }
@@ -328,6 +334,7 @@ html[data-theme="white"] .themes button{border-color:#d6d3d1;}
 <script src="drive.js"></script>
 <script src="cloud-config.js"></script>
 <script src="cloud.js"></script>
+<script src="license.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
