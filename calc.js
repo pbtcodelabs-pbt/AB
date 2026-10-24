@@ -122,7 +122,7 @@
     return { lines, gross, zCharges, zTotal, net: gross - zTotal, buyers, buyersTotal, income, nag: lines.reduce((s, l) => s + int(l.nag), 0), check };
   }
 
-  const API = { KINDS, SIDES, TEMPLATES, toPaisa, toGrams, int, rdiv, fmt, rateText, lineAmount, itemRate, chargeOn, calcParchi };
+  const API = { KINDS, SIDES, TEMPLATES, en, toPaisa, toGrams, int, rdiv, fmt, rateText, lineAmount, itemRate, chargeOn, calcParchi };
   if(typeof module !== 'undefined' && module.exports){ module.exports = API; }
   root.ABCalc = API;
 })(typeof window !== 'undefined' ? window : globalThis);
