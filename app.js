@@ -8,8 +8,8 @@
    ===================================================================== */
 (function(){
   'use strict';
-  const APP_VERSION = 'AB2410SA008';
-  const UPDATE_NOTE = 'گوگل ڈرائیو پر فولڈر BKAR Backup اور فائلیں BKAR… نام سے';
+  const APP_VERSION = 'AB2410SA009';
+  const UPDATE_NOTE = 'کئی آلات کا ڈیٹا ایک: مالک کلاؤڈ چالو کرے، ملازم کوڈ سے جڑیں (آڑھت بک کا اپنا فائربیس)';
   const C = window.ABCalc;
   const { fmt, toPaisa, toGrams, int, calcParchi, lineAmount, KINDS, SIDES, TEMPLATES, rateText } = C;
 
@@ -228,7 +228,8 @@
           <div class="f" style="grid-column:1/-1"><label>آپ کی آڑھت کس منڈی کی ہے؟ (خرچوں کا تیار سانچہ)</label><select id="rTpl">${Object.keys(TEMPLATES).map(k => `<option value="${k}">${TEMPLATES[k].label}</option>`).join('')}</select></div>
         </div>
         <div class="gm">کمیشن اور خرچے بعد میں «خرچے اور کمیشن» میں اپنی مرضی سے بدل سکتے ہیں۔</div>
-        <button class="btn gold wide" onclick="App.register()">✅ شروع کریں</button></div></div>`;
+        <button class="btn gold wide" onclick="App.register()">✅ شروع کریں</button>
+        ${window.AB_CLOUD ? '<button class="btn light wide" style="margin-top:8px" onclick="App.cloudJoinForm()">📲 ملازم ہیں یا دوسرا آلہ؟ پہلے سے موجود آڑھت سے جڑیں</button>' : ''}</div></div>`;
   }
   function register(){
     const shop = $('rShop').value.trim(), owner = $('rOwner').value.trim(), phone = $('rPhone').value.trim();
@@ -320,6 +321,46 @@
       </div></div>`;
   };
   AFTER.parchi = function(){ renderResult(); };
+  AFTER.settings = function(){ if(window.AB_CLOUD){ AB_CLOUD.render(); if(AB_CLOUD.on() && AB_CLOUD.role() === 'owner') loadMembers(); } };
+  function cloudCard(){
+    const C = window.AB_CLOUD;
+    if(!C) return '';
+    if(!C.on()) return `<div class="card"><h3>☁️ کئی آلات — لیپ ٹاپ اور ملازمین کے موبائل</h3>
+      <div class="muted">کلاؤڈ چالو کرنے سے آپ کے سب آلات (لیپ ٹاپ، موبائل، ملازمین کے فون) کا ریکارڈ ایک ہو جائے گا۔ ہر آلہ انٹرنیٹ کے بغیر بھی کام کرتا رہے گا، نیٹ آتے ہی سب مل جائیں گے۔</div>
+      <div class="row" style="margin-top:8px"><button class="btn gold" onclick="App.cloudEnable()">👑 میں مالک ہوں — کلاؤڈ چالو کریں</button>
+      <button class="btn light" onclick="App.cloudJoinForm()">📲 میں ملازم ہوں — آڑھت سے جڑیں</button></div></div>`;
+    const owner = C.role() === 'owner';
+    return `<div class="card"><h3>☁️ کئی آلات — کلاؤڈ</h3><div id="cloudStatus" class="dstatus"></div>
+      ${owner ? `<div class="muted">ملازم یا اپنے دوسرے آلے کو جوڑنے کے لیے یہ کوڈ دیں۔ وہ اپنی آڑھت بک میں «آڑھت سے جڑیں» دبا کر یہی کوڈ لکھے:</div>
+        <div class="joinCode num">${esc(C.code())}</div>
+        <div class="row"><button class="btn light sm" onclick="App.cloudCopy()">📋 کوڈ کاپی کریں</button><button class="btn light sm" onclick="App.cloudShare()">💬 واٹس ایپ پر بھیجیں</button>
+        <button class="btn sm" onclick="AB_CLOUD.sync(true)">🔄 ابھی ملائیں</button></div>
+        <h3 style="margin-top:10px">📱 جڑے ہوئے آلات</h3><div id="cloudMembers" class="list"><div class="muted">…</div></div>`
+      : `<div class="muted">یہ آلہ آڑھت سے ملازم کے طور پر جڑا ہے۔</div><div class="row" style="margin-top:6px"><button class="btn sm" onclick="AB_CLOUD.sync(true)">🔄 ابھی ملائیں</button></div>`}</div>`;
+  }
+  async function loadMembers(){
+    const box = $('cloudMembers'); if(!box) return;
+    try{
+      const ms = await AB_CLOUD.members();
+      box.innerHTML = ms.map(m => `<div class="it" style="cursor:default"><div>${m.role === 'owner' ? '👑' : '📱'} ${esc(m.name || '')} <span class="muted">${m.uid === AB_CLOUD.uid() ? '(یہ آلہ)' : ''}</span></div>
+        ${m.role !== 'owner' ? `<button class="btn gray sm" onclick="App.cloudRemove('${m.uid}','${esc(m.name || '')}')">ہٹائیں</button>` : ''}</div>`).join('') || '<div class="muted">کوئی نہیں</div>';
+    }catch(e){ box.innerHTML = '<div class="muted">فہرست نہیں آ سکی — انٹرنیٹ دیکھیں</div>'; }
+  }
+  function cloudJoinForm(){
+    modal(`<h3>📲 آڑھت سے جڑیں</h3><div style="text-align:right">
+      <div class="muted">مالک کے آلے میں سیٹنگ ← «کئی آلات» میں جوڑنے کا کوڈ لکھا ہے، وہی یہاں لکھیں۔</div>
+      <div class="f"><label>جوڑنے کا کوڈ</label><input id="cjCode" dir="ltr" style="text-align:center;font-family:Tahoma,Arial" placeholder="AB…-12345678"></div>
+      <div class="f"><label>اپنا نام</label><input id="cjName" placeholder="مثلاً منشی اسلم"></div></div>
+      <div class="row" style="justify-content:center;margin-top:10px"><button class="btn" id="cjOk">✅ جڑیں</button><button class="btn gray" onclick="App.closeModal()">منسوخ</button></div>`);
+    $('cjOk').onclick = async () => {
+      const code = $('cjCode').value, name = $('cjName').value.trim();
+      if(!AB_CLOUD.parseCode(code)){ toast('⚠️ کوڈ درست نہیں'); return; }
+      if(DB.settings.registered && liveParchis().length && !(await ask('اس آلے کا موجودہ ریکارڈ بھی آڑھت کے کلاؤڈ میں مل جائے گا۔ جاری رکھیں؟'))) return;
+      closeModal();
+      const wasRegistered = !!DB.settings.registered; // نیا آلہ ہو تو جڑنے کے بعد سیدھا ہوم
+      if(await AB_CLOUD.join(code, name)){ unlocked = true; logIt('آڑھت سے جڑا: ' + (name || 'ملازم')); go(wasRegistered ? 'settings' : 'home'); }
+    };
+  }
   AFTER.backup = function(){ if(window.AB_DRIVE) AB_DRIVE.render(); };
   function lineHtml(l, i){
     return `<div class="line"><span class="no">${i + 1}</span><div class="lineGrid">
@@ -379,7 +420,8 @@
       DB.parchis[DB.parchis.indexOf(old)] = snap;
       logIt('پرچی ' + snap.no + ' بدلی: صاف رقم ' + fmt(old.totals ? old.totals.net : 0) + ' ← ' + fmt(snap.totals.net), snap.id);
     } else {
-      snap.no = DB.settings.nextParchiNo || 1; DB.settings.nextParchiNo = snap.no + 1; put('settings');
+      // نمبر: سب آلات سے آئی پرچیوں میں سب سے بڑا + 1 (کلاؤڈ میں دوسرے آلے کی پرچی کے نمبر سے نہ ٹکرائے)
+      snap.no = Math.max(DB.settings.nextParchiNo || 1, DB.parchis.reduce((m, p) => Math.max(m, p.no || 0), 0) + 1); DB.settings.nextParchiNo = snap.no + 1; put('settings');
       DB.parchis.push(snap);
       logIt('نئی پرچی ' + snap.no + ': ' + snap.zamindar + ' — بکری ' + fmt(snap.totals.gross), snap.id);
     }
@@ -673,7 +715,37 @@
     rdr.onload = async () => { let b; try{ b = JSON.parse(rdr.result); }catch(e){ toast('❌ یہ درست بیک اپ فائل نہیں'); return; } applyBackup(b); };
     rdr.readAsText(f);
   }
-  window.AB_HOST = { snapshot, apply: applyBackup, toast, version: APP_VERSION, fileName: backupFileName, count: () => liveParchis().length };
+  window.AB_HOST = { snapshot, apply: applyBackup, toast, version: APP_VERSION, fileName: backupFileName, count: () => liveParchis().length,
+    settings: () => DB.settings,
+    setCloud(c){ DB.settings.cloud = c; put('settings'); },
+    // کلاؤڈ کو بھیجنے والے ریکارڈ: [{c, k, u, d, rec}]
+    records(){ const out = []; SYNCED.forEach(n => recs(n).forEach(x => { if(x.v && x.v.upd) out.push({ c: n, k: x.__k, u: x.v.upd, d: x.v.dev, rec: x.v }); })); return out; },
+    // دوسرے آلات سے آئے ریکارڈ: جس کا upd بعد کا وہ جیتے؛ آنے والے پر دوبارہ مہر نہ لگے
+    mergeRemote(list){
+      const changed = new Set();
+      list.forEach(({ c, k, u, rec }) => {
+        if(!SYNCED.includes(c)) return;
+        let cur = null;
+        if(c === 'settings') cur = DB.settings;
+        else if(c === 'locks') cur = DB.locks[k];
+        else { if(!Array.isArray(DB[c])) DB[c] = []; cur = DB[c].find(r => r.id === k); }
+        if(cur && (cur.upd || 0) >= u) return;
+        if(c === 'settings'){ const keep = { cloud: DB.settings.cloud }; DB.settings = Object.assign({}, rec, keep.cloud ? keep : {}); }
+        else if(c === 'locks') DB.locks[k] = rec;
+        else { const i = DB[c].findIndex(r => r.id === k); if(i >= 0) DB[c][i] = rec; else DB[c].push(rec); }
+        if(!seen[c]) seen[c] = new Map();
+        seen[c].set(k, sig(c === 'settings' ? DB.settings : rec));
+        changed.add(c);
+      });
+      if(!changed.size) return 0;
+      changed.forEach(c => { try{ localStorage.setItem('ab_' + c, JSON.stringify(DB[c])); }catch(e){} });
+      safeCopy();
+      // لکھتے ہوئے فارم کو نہ مٹائیں — صرف دیکھنے والی اسکرینیں تازہ
+      if(['home', 'parchis', 'zamindar', 'buyer', 'party', 'roznamcha', 'settings'].includes(screen) && !$('modal').classList.contains('open')) render();
+      else if(!DB.settings.registered) render();
+      return changed.size;
+    }
+  };
   // ---------- آج بیک اپ ہوا یا نہیں ----------
   function backedUpToday(){
     const t = today();
@@ -697,6 +769,7 @@
     const s = DB.settings;
     const lg = DB.log.slice(-40).reverse();
     return `<div class="pageTitle">🛠️ سیٹنگ</div>
+      ${cloudCard()}
       <div class="card"><h3>🏪 آڑھت کی معلومات</h3><div class="grid2 wideable">
         <div class="f"><label>آڑھت / دکان کا نام</label><input id="sShop" value="${esc(s.shop)}"></div>
         <div class="f"><label>مالک کا نام</label><input id="sOwner" value="${esc(s.owner)}"></div>
@@ -768,6 +841,11 @@
     async chRemove(id){ if(!(await ask('یہ خرچہ فہرست سے ہٹا دیں؟ (محفوظ پرچیاں نہیں بدلیں گی)'))) return; const c = chargesAll().find(x => x.id === id); if(c) c.deleted = Date.now(); put('charges'); logIt('خرچہ ہٹایا: ' + (c ? c.name : '')); editCh = null; render(); },
     async chTemplate(k){ if(!(await ask(TEMPLATES[k].label + ' کا سانچہ لگ جائے گا اور موجودہ فہرست بدل جائے گی۔'))) return; const now = Date.now(); chargesAll().forEach(c => { if(!c.deleted) c.deleted = now; }); DB.charges = chargesAll().concat(TEMPLATES[k].list().map(c => Object.assign({ id: uid() }, c))); put('charges'); logIt('سانچہ لگا: ' + TEMPLATES[k].label); render(); toast('✅ سانچہ لگ گیا'); },
     exportBackup, importBackup, saveSettings, setPin, removePin,
+    cloudJoinForm,
+    async cloudEnable(){ if(!(await ask('آڑھت کا ریکارڈ آپ کے اپنے کلاؤڈ (آڑھت بک) پر جائے گا اور جڑے ہوئے آلات میں مل جائے گا۔ کلاؤڈ چالو کریں؟', 'چالو کریں'))) return; if(await AB_CLOUD.enableOwner()){ logIt('کلاؤڈ چالو'); render(); } },
+    cloudCopy(){ const c = AB_CLOUD.code(); try{ navigator.clipboard.writeText(c).then(() => toast('📋 کوڈ کاپی ہو گیا')); }catch(e){ toast(c); } },
+    cloudShare(){ const msg = 'آڑھت بک — «' + shopName() + '» سے جڑنے کا کوڈ:\n' + AB_CLOUD.code() + '\nآڑھت بک کھولیں ← سیٹنگ ← آڑھت سے جڑیں'; window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank'); },
+    async cloudRemove(uid, name){ if(!(await ask('«' + esc(name) + '» کو آڑھت سے ہٹا دیں؟ اس آلے پر نیا ریکارڈ کلاؤڈ میں نہیں جائے گا۔'))) return; try{ await AB_CLOUD.removeMember(uid); logIt('آلہ ہٹایا: ' + name); loadMembers(); toast('✅ ہٹا دیا'); }catch(e){ toast('⚠️ نہیں ہٹا سکا — انٹرنیٹ دیکھیں'); } },
     async driveOff(){ if(!(await ask('ڈرائیو سے خودکار بیک اپ بند کریں؟ ڈرائیو پر پہلے سے محفوظ فائلیں رہیں گی۔'))) return; AB_DRIVE.disconnect(); render(); }
   };
 
@@ -784,5 +862,6 @@
     if(DB.settings.registered) safeCopy();
     showUpdated();
     registerSW();
+    if(window.AB_CLOUD) AB_CLOUD.start();
   })();
 })();
