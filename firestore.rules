@@ -1,0 +1,47 @@
+rules_version = '2';
+// 📒 آڑھت بک — فائربیس کے حفاظتی اصول
+// ہر آڑھت کا ڈیٹا shops/<کوڈ>/… میں؛ صرف اسی آڑھت کے جڑے آلات (members) پڑھ/لکھ سکیں۔
+// آڑھت کا کوڈ لمبا اور بے ترتیب ہوتا ہے؛ آڑھتوں کی فہرست کوئی نہیں دیکھ سکتا۔
+service cloud.firestore {
+  match /databases/{db}/documents {
+    function signedIn() { return request.auth != null; }
+    function shop(id) { return get(/databases/$(db)/documents/shops/$(id)).data; }
+    function isOwner(id) { return signedIn() && shop(id).owner == request.auth.uid; }
+    function isMember(id) { return signedIn() && exists(/databases/$(db)/documents/shops/$(id)/members/$(request.auth.uid)); }
+
+    match /shops/{shopId} {
+      // نیا آڑھت: بنانے والا ہی مالک
+      allow create: if signedIn() && request.resource.data.owner == request.auth.uid;
+      allow get, update: if isMember(shopId);
+      allow list, delete: if false;
+
+      // جڑے آلات: مالک خود، یا ملازم جو آڑھت کا جوڑنے والا کوڈ جانتا ہو
+      match /members/{uid} {
+        allow read: if isMember(shopId);
+        allow create: if signedIn() && uid == request.auth.uid && (
+          shop(shopId).owner == request.auth.uid ||
+          request.resource.data.key == get(/databases/$(db)/documents/shops/$(shopId)/secret/join).data.key);
+        allow update, delete: if isOwner(shopId);
+      }
+      // جوڑنے والا کوڈ صرف مالک دیکھے/بدلے
+      match /secret/{doc} {
+        allow read, write: if isOwner(shopId);
+      }
+      // ریکارڈ (پرچیاں، کھاتے، وصولی، خرچے…) — ہر ریکارڈ الگ دستاویز
+      match /records/{rid} {
+        allow read, write: if isMember(shopId);
+      }
+    }
+
+    // ایکٹیویشن کوڈ: ایپ صرف پڑھ سکے؛ لکھنا ڈویلپر کا کام (بعد میں)
+    match /licenses/{code} {
+      allow get: if signedIn();
+      allow list, write: if false;
+    }
+
+    // باقی سب بند
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
