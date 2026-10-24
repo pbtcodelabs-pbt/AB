@@ -47,10 +47,29 @@ service cloud.firestore {
       }
     }
 
-    // ایکٹیویشن کوڈ: ایپ صرف پڑھ سکے؛ لکھنا ڈویلپر کا کام (بعد میں)
+    // ---------- سبسکرپشن (license.js) — لکھنا صرف ڈویلپر (ای میل/پاس ورڈ والی شناخت) ----------
+    function isDev() {
+      return signedIn() && request.auth.token.email == 'piarybhai@gmail.com' &&
+        request.auth.token.firebase.sign_in_provider == 'password';
+    }
+    // مفت آزمائش کی شروع کی تاریخ — موبائل نمبر پر ایک بار؛ دوبارہ انسٹال سے نئی نہیں ہوتی
+    match /trials/{phone} {
+      allow get: if signedIn();
+      allow create: if signedIn() && request.resource.data.keys().hasOnly(['at']) &&
+        request.resource.data.at is timestamp &&
+        request.resource.data.at > request.time - duration.value(10, 'm') &&
+        request.resource.data.at < request.time + duration.value(10, 'm');
+      allow update, delete, list: if isDev();
+    }
+    // موبائل نمبر کی سبسکرپشن کب تک (نیا فون / دوبارہ انسٹال پر بحالی)
+    match /subs/{phone} {
+      allow get: if signedIn();
+      allow list, write: if isDev();
+    }
+    // ایکٹیویشن کوڈ: ایپ صرف کوڈ جان کر پڑھ سکے
     match /licenses/{code} {
       allow get: if signedIn();
-      allow list, write: if false;
+      allow list, write: if isDev();
     }
 
     // باقی سب بند

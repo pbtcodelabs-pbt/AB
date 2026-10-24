@@ -8,8 +8,8 @@
    ===================================================================== */
 (function(){
   'use strict';
-  const APP_VERSION = 'AB2410SA011';
-  const UPDATE_NOTE = 'نیا فون یا دوبارہ انسٹال: مالک کے خفیہ کوڈ یا مالک کی بیک اپ سے دوبارہ مالک بنیں';
+  const APP_VERSION = 'AB2410SA012';
+  const UPDATE_NOTE = 'سبسکرپشن: 7 دن مفت، کوڈ سے چالو، نئے فون پر موبائل نمبر سے خود بحال';
   const C = window.ABCalc;
   const { fmt, toPaisa, toGrams, int, calcParchi, lineAmount, KINDS, SIDES, TEMPLATES, rateText } = C;
 
@@ -293,10 +293,11 @@
   function register(){
     const shop = $('rShop').value.trim(), owner = $('rOwner').value.trim(), phone = $('rPhone').value.trim();
     if(!shop){ toast('⚠️ آڑھت کا نام لکھیں'); return; }
+    if(window.AB_LIC && !/^\d{11,15}$/.test(AB_LIC.normPhone(phone))){ toast('⚠️ مالک کا موبائل نمبر لکھیں — سبسکرپشن اسی نمبر پر ہوگی'); return; }
     DB.settings = Object.assign(DB.settings, { shop, owner, phone, address: $('rAddr').value.trim(), registered: true, createdAt: Date.now(), nextParchiNo: 1 });
     DB.charges = (DB.charges || []).map(c => Object.assign(c, { deleted: Date.now() })).concat(TEMPLATES[$('rTpl').value].list().map(c => Object.assign({ id: uid() }, c)));
     put('settings'); put('charges'); logIt('آڑھت رجسٹر: ' + shop);
-    go('home'); toast('✅ خوش آمدید — آڑھت بک تیار ہے');
+    go('home'); toast('✅ خوش آمدید — 7 دن مفت آزمائش شروع'); if(window.AB_LIC) AB_LIC.check(false);
   }
   let pinBuf = '';
   function viewPinGate(){
@@ -331,7 +332,7 @@
   VIEWS.home = function(){
     const t = totalsFor(today());
     const tiles = [['parchis', '📚', 'پرچیاں'], ['zamindar', '🧑‍🌾', 'زمیندار'], ['buyer', '🧑‍💼', 'خریدار'], ['cash', '💵', 'وصولی / ادائیگی'], ['roznamcha', '📖', 'روزنامچہ'], ['charges', '⚙️', 'خرچے اور کمیشن'], ['backup', '💾', 'بیک اپ'], ['settings', '🛠️', 'سیٹنگ']];
-    return `<div class="pageTitle">🏠 ${esc(urDate(today(), true))}</div>${backupBanner()}
+    return `<div class="pageTitle">🏠 ${esc(urDate(today(), true))}</div>${window.AB_LIC ? AB_LIC.strip() : ''}${backupBanner()}
       <div class="stats">
         <div class="stat"><div class="l">آج کی بکری (${t.n} پرچی، ${t.nag} نگ)</div><div class="n">${fmt(t.gross)}</div></div>
         ${isStaff() ? '' : `<div class="stat g"><div class="l">آج کی کمائی</div><div class="n">${fmt(t.income)}</div></div>`}
@@ -459,6 +460,7 @@
     cur.lines.forEach((l, i) => { const a = $('la' + i); if(a) a.innerHTML = 'رقم: ' + rs(lineAmount(l)) + ' روپے'; });
   }
   async function saveParchi(){
+    if(window.AB_LIC && !AB_LIC.canWrite()) return;
     const r = calcParchi(cur, parchiCharges());
     if(!String(cur.zamindar || '').trim()){ toast('⚠️ زمیندار کا نام لکھیں'); return; }
     if(!r.lines.length){ toast('⚠️ کم از کم ایک بکری لکھیں'); return; }
@@ -633,6 +635,7 @@
   AFTER.cash = function(){ const t = String(arg || '').startsWith('pay') ? 'zamindar' : 'buyer'; cashHint(t); };
   function cashHint(type){ const el = $('cHint'); if(!el) return; const p = findParty(type, $('cP').value); el.innerHTML = p ? (balText(type, ledger(p.id).bal) + ': ' + rs(Math.abs(ledger(p.id).bal)) + ' روپے') : ''; }
   async function saveCash(kind){
+    if(window.AB_LIC && !AB_LIC.canWrite()) return;
     const type = kind === 'pay' ? 'zamindar' : 'buyer';
     const name = $('cP').value.trim(), amount = toPaisa($('cA').value), date = $('cD').value || today();
     if(!name){ toast('⚠️ ' + PT[type] + ' کا نام لکھیں'); return; }
@@ -792,6 +795,9 @@
   }
   window.AB_HOST = { snapshot, apply: applyBackup, toast, version: APP_VERSION, fileName: backupFileName, count: () => liveParchis().length,
     settings: () => DB.settings,
+    modal, closeModal,
+    setPhone(v){ DB.settings.phone = v; put('settings'); logIt('مالک کا موبائل نمبر: ' + v); },
+    refreshHome(){ if(screen === 'home' && DB.settings.registered && me()) render(); },
     setCloud(c){ DB.settings.cloud = c; put('settings'); },
     // کلاؤڈ کو بھیجنے والے ریکارڈ: [{c, k, u, d, rec}]
     records(){ const out = []; SYNCED.forEach(n => recs(n).forEach(x => { if(x.v && x.v.upd) out.push({ c: n, k: x.__k, u: x.v.upd, d: x.v.dev, rec: x.v }); })); return out; },
@@ -845,6 +851,7 @@
     const lg = DB.log.slice(-40).reverse();
     return `<div class="pageTitle">🛠️ سیٹنگ</div>
       ${cloudCard()}
+      ${window.AB_LIC ? AB_LIC.card() : ''}
       <div class="card"><h3>🏪 آڑھت کی معلومات</h3><div class="grid2 wideable">
         <div class="f"><label>آڑھت / دکان کا نام</label><input id="sShop" value="${esc(s.shop)}"></div>
         <div class="f"><label>مالک کا نام</label><input id="sOwner" value="${esc(s.owner)}"></div>
@@ -861,7 +868,7 @@
   };
   function saveSettings(){
     Object.assign(DB.settings, { shop: $('sShop').value.trim() || DB.settings.shop, owner: $('sOwner').value.trim(), phone: $('sPhone').value.trim(), address: $('sAddr').value.trim() });
-    put('settings'); logIt('آڑھت کی معلومات بدلیں'); render(); toast('✅ محفوظ');
+    put('settings'); logIt('آڑھت کی معلومات بدلیں'); render(); toast('✅ محفوظ'); if(window.AB_LIC) AB_LIC.check(false);
   }
   // پن ایک دوسرے کے آگے والے حصے نہ ہوں (1234 اور 12345 ساتھ نہیں — ورنہ چار ہندسوں پر ہی پہلا کھل جائے)
   function pinClash(pin, exceptId){
@@ -951,7 +958,7 @@
   window.App = {
     go, menu, register, pinKey, closeModal, staffForm,
     logout(){ curUser = null; pinBuf = ''; menu(false); render(); },
-    setTheme(k){ try{ localStorage.setItem('ab_theme', k); }catch(e){} applyTheme(k); render(); }, verTap(){ toast('ورژن ' + APP_VERSION); },
+    setTheme(k){ try{ localStorage.setItem('ab_theme', k); }catch(e){} applyTheme(k); render(); }, verTap(){ if(window.AB_LIC && AB_LIC.tap()) return; toast('ورژن ' + APP_VERSION); },
     newParchi(){ cur = blankParchi(); render(); },
     pset(k, v){ cur[k] = v; if(k === 'zamindar' || k === 'place' || k === 'vehicle') renderResult(); if(k === 'date') render(); },
     lset(i, k, v){ const l = cur.lines[i]; if(!l) return; if(k === 'rate') l.rate = toPaisa(v); else if(k === 'grams') l.grams = toGrams(v); else if(k === 'nag') l.nag = String(v).replace(/[^\d]/g, ''); else l[k] = v; if(k === 'buyer') delete l.buyerId; renderResult(); },
@@ -996,5 +1003,6 @@
     showUpdated();
     registerSW();
     if(window.AB_CLOUD) AB_CLOUD.start();
+    if(window.AB_LIC) AB_LIC.start();
   })();
 })();
