@@ -192,9 +192,11 @@
   }
   async function devFs(path, opt = {}) {
     const r = await fetch(`${BASE}/${path}`, Object.assign({}, opt, { headers: { Authorization: 'Bearer ' + dev.idToken, 'Content-Type': 'application/json' } }));
+    const j = r.ok ? await r.json() : null;
+    if (window.AB_USAGE) window.AB_USAGE.track(opt.method || 'GET', path, opt.body, j);
     if (r.status === 404) return null;
     if (!r.ok) throw new Error(r.status === 403 ? 'denied' : 'http ' + r.status);
-    return r.json();
+    return j;
   }
   function devOpen() {
     const H = host();
@@ -202,8 +204,10 @@
       H.modal(`<h3>🛠️ ڈویلپر پینل</h3><div class="muted">صرف ڈویلپر کے لیے</div>
         <div class="f"><label>ای میل</label><input id="dvE" value="${DEV_EMAIL}" style="direction:ltr"></div>
         <div class="f"><label>پاس ورڈ</label><input id="dvP" type="password" style="direction:ltr"></div>
-        <div class="row" style="justify-content:center;margin-top:8px"><button class="btn" id="dvGo">🔓 کھولیں</button><button class="btn gray" onclick="App.closeModal()">بند</button></div>`);
+        <div class="row" style="justify-content:center;margin-top:8px"><button class="btn" id="dvGo">🔓 کھولیں</button><button class="btn gray" onclick="App.closeModal()">بند</button></div>
+        <div id="uBox" class="uBox"></div>`);
       $('dvGo').onclick = devLogin;
+      if (window.AB_USAGE) AB_USAGE.render('uBox');
       return;
     }
     const plans = '<option value="c">اپنی مرضی کے دن</option>' + PLANS.map(x => `<option value="${x[0]}">${x[1]}</option>`).join('') + '<option value="0">ہمیشہ کے لیے</option>';
@@ -214,7 +218,8 @@
         <div class="f" id="dvCw"><label>کتنے دن؟ (1 سے 3650)</label><input id="dvC" type="number" inputmode="numeric" min="1" max="3650" placeholder="مثلاً 15"></div></div>
       <div id="dvInfo" class="muted"></div>
       <div class="row" style="justify-content:center;margin-top:8px"><button class="btn light" id="dvChk">🔍 نمبر دیکھیں</button><button class="btn" id="dvMake">🎁 کوڈ بنائیں</button><button class="btn gray" onclick="App.closeModal()">بند</button></div>
-      <div id="dvOut"></div>`);
+      <div id="dvOut"></div><div id="uBox" class="uBox"></div>`);
+    if (window.AB_USAGE) AB_USAGE.render('uBox');
     $('dvChk').onclick = devCheck; $('dvMake').onclick = devMake;
   }
   async function devLogin() {

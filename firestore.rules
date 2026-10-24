@@ -66,6 +66,12 @@ service cloud.firestore {
       allow get: if signedIn();
       allow list, write: if isDev();
     }
+    // فائربیس کے استعمال کا میٹر (usage.js): ہر آلہ اپنی گنتی جمع کرے (صرف r/w/d ہندسے)، فہرست دیکھ سکے
+    match /usage/{day} {
+      allow get, list: if signedIn();
+      allow create, update: if signedIn() && request.resource.data.keys().hasOnly(['r', 'w', 'd']);
+      allow delete: if isDev();
+    }
     // ایکٹیویشن کوڈ: ایپ صرف کوڈ جان کر پڑھ سکے
     match /licenses/{code} {
       allow get: if signedIn();

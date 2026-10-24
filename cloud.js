@@ -48,11 +48,15 @@
     const r = await fetch(path.startsWith('http') ? path : `${BASE}/${path}`, Object.assign({}, opt, {
       headers: Object.assign({ Authorization: 'Bearer ' + t, 'Content-Type': 'application/json' }, opt.headers || {})
     }));
-    if (r.status === 403) throw new Error('denied');
-    if (r.status === 404) throw new Error('notfound');
+    if (r.status === 403) { count(opt, path, null); throw new Error('denied'); }
+    if (r.status === 404) { count(opt, path, null); throw new Error('notfound'); }
     if (!r.ok) throw new Error('http ' + r.status);
-    return r.json();
+    const j = await r.json();
+    count(opt, path, j);
+    return j;
   }
+  // استعمال کا میٹر (usage.js): ہر درخواست گنیں
+  function count(opt, path, j) { if (!opt._noCount && window.AB_USAGE) window.AB_USAGE.track(opt.method || 'GET', path, opt.body, j); }
   const S = v => ({ stringValue: String(v) });
   const I = v => ({ integerValue: String(Math.trunc(v)) });
   const docName = p => `projects/${CFG.projectId}/databases/(default)/documents/${p}`;
@@ -140,6 +144,7 @@
   // ---------- ملانا: پہلے لینا، پھر بھیجنا ----------
   async function sync(loud) {
     if (!meta.on || !meta.shopId) return false;
+    lastTry = Date.now();
     if (!navigator.onLine) { if (loud) toast('انٹرنیٹ نہیں ہے — آن لائن ہو کر دوبارہ'); return false; }
     try {
       await pull();
@@ -169,6 +174,7 @@
         if (rec) list.push({ c: f.c.stringValue, k: f.k.stringValue, u, rec });
         pushed[f.c.stringValue + '__' + f.k.stringValue] = Math.max(pushed[f.c.stringValue + '__' + f.k.stringValue] || 0, u);
       });
+      if (list.some(x => x.u > (meta.lastPull || 0))) lastAct = Date.now();   // دوسرے آلے سے نیا ڈیٹا: تیز رفتار پر
       host().mergeRemote(list);
       savePushed();
       const moved = maxU > (meta.lastPull || 0);
@@ -208,13 +214,20 @@
   }
 
   // ---------- خودکار ----------
+  // ---------- سرور سے پوچھنا کم سے کم: کام ہو رہا ہو تو ہر 30 سیکنڈ، ورنہ ہر 5 منٹ؛ ایپ پیچھے ہو تو بالکل نہیں ----------
+  let lastAct = Date.now(), lastTry = 0;
   window.addEventListener('ab-data-changed', () => {
+    lastAct = Date.now();
     if (!meta.on) return;
     clearTimeout(pushTimer);
     pushTimer = setTimeout(() => { if (navigator.onLine) sync(false); }, 2500);
   });
   window.addEventListener('online', () => { if (meta.on) sync(false); });
-  setInterval(() => { if (meta.on && navigator.onLine && document.visibilityState === 'visible') sync(false); }, 30000);
+  setInterval(() => {
+    if (!meta.on || !navigator.onLine || document.visibilityState !== 'visible' || busy) return;
+    const gap = Date.now() - lastAct < 3 * 60000 ? 30000 : 5 * 60000;
+    if (Date.now() - lastTry >= gap) sync(false);
+  }, 15000);
   document.addEventListener('visibilitychange', () => { if (meta.on && document.visibilityState === 'visible' && navigator.onLine) sync(false); });
 
   // ---------- حالت ----------
