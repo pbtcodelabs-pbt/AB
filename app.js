@@ -8,8 +8,8 @@
    ===================================================================== */
 (function(){
   'use strict';
-  const APP_VERSION = 'AB2410SA009';
-  const UPDATE_NOTE = 'کئی آلات کا ڈیٹا ایک: مالک کلاؤڈ چالو کرے، ملازم کوڈ سے جڑیں (آڑھت بک کا اپنا فائربیس)';
+  const APP_VERSION = 'AB2410SA010';
+  const UPDATE_NOTE = 'ملازمین: ہر ایک کا اپنا پن اور اجازت والی اسکرینیں؛ ہر اندراج پر لکھنے والے کا نام';
   const C = window.ABCalc;
   const { fmt, toPaisa, toGrams, int, calcParchi, lineAmount, KINDS, SIDES, TEMPLATES, rateText } = C;
 
@@ -23,6 +23,7 @@
     DB.settings = rd('ab_settings', {}); DB.charges = rd('ab_charges', null); DB.parties = rd('ab_parties', []);
     DB.parchis = rd('ab_parchis', []); DB.cash = rd('ab_cash', []); DB.log = rd('ab_log', []); DB.locks = rd('ab_locks', {});
     Object.keys(DB.locks).forEach(d => { if(typeof DB.locks[d] !== 'object') DB.locks[d] = { on: !!DB.locks[d] }; }); // پرانی شکل
+    if(DB.settings.pin){ DB.settings.pinH = pinHash(DB.settings.pin); delete DB.settings.pin; try{ localStorage.setItem('ab_settings', JSON.stringify(DB.settings)); }catch(e){} } // پرانا سادہ پن → خفیہ شکل
     SYNCED.forEach(n => { seen[n] = new Map(); recs(n).forEach(r => seen[n].set(r.__k, sig(r.v))); });
   }
   // ---------- 🔄 کئی فون / کمپیوٹر کا ڈیٹا ملانے کی تیاری: ہر ریکارڈ پر «کب بدلا (upd)، کس آلے سے (dev)» کی مہر ----------
@@ -75,9 +76,63 @@
   }
   try{ navigator.storage && navigator.storage.persist && navigator.storage.persist(); }catch(e){}
 
-  // ---------- تبدیلیوں کا ریکارڈ ----------
+  // ---------- 🔐 پن خفیہ شکل میں (SHA-256) — sync سے ملازم کے آلے پر جائیں تو بھی کوئی پن پڑھ نہ سکے ----------
+  function sha256(str){
+    const K = [0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+    const bytes = unescape(encodeURIComponent(str)).split('').map(c => c.charCodeAt(0));
+    const l = bytes.length * 8; bytes.push(0x80); while((bytes.length % 64) !== 56) bytes.push(0);
+    for(let i = 7; i >= 0; i--) bytes.push(i >= 4 ? 0 : (l >>> (i * 8)) & 0xff);
+    let H = [0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+    const r = (x, n) => (x >>> n) | (x << (32 - n));
+    for(let o = 0; o < bytes.length; o += 64){
+      const w = new Array(64);
+      for(let i = 0; i < 16; i++) w[i] = (bytes[o + 4 * i] << 24) | (bytes[o + 4 * i + 1] << 16) | (bytes[o + 4 * i + 2] << 8) | bytes[o + 4 * i + 3];
+      for(let i = 16; i < 64; i++){ const s0 = r(w[i - 15], 7) ^ r(w[i - 15], 18) ^ (w[i - 15] >>> 3), s1 = r(w[i - 2], 17) ^ r(w[i - 2], 19) ^ (w[i - 2] >>> 10); w[i] = (w[i - 16] + s0 + w[i - 7] + s1) | 0; }
+      let [a, b, c, d, e, f2, g, h] = H;
+      for(let i = 0; i < 64; i++){
+        const t1 = (h + (r(e, 6) ^ r(e, 11) ^ r(e, 25)) + ((e & f2) ^ (~e & g)) + K[i] + w[i]) | 0;
+        const t2 = ((r(a, 2) ^ r(a, 13) ^ r(a, 22)) + ((a & b) ^ (a & c) ^ (b & c))) | 0;
+        h = g; g = f2; f2 = e; e = (d + t1) | 0; d = c; c = b; b = a; a = (t1 + t2) | 0;
+      }
+      H = H.map((x, i) => (x + [a, b, c, d, e, f2, g, h][i]) | 0);
+    }
+    return H.map(x => (x >>> 0).toString(16).padStart(8, '0')).join('');
+  }
+  function pinSalt(){ if(!DB.settings.salt){ DB.settings.salt = Math.random().toString(36).slice(2) + Date.now().toString(36); } return DB.settings.salt; }
+  function pinHash(pin){ return sha256('AB-PIN:' + pinSalt() + ':' + String(pin)); }
+  function hasOwnerPin(){ return !!DB.settings.pinH; }
+  function checkOwner(pin){ return hasOwnerPin() && pinHash(pin) === DB.settings.pinH; }
+  function staffUsers(){ return (DB.settings.users || []).filter(u => !u.deleted); }
+  function needsLogin(){ return hasOwnerPin() || staffUsers().length > 0; }
+  // ---------- اس وقت کون استعمال کر رہا ہے ----------
+  let curUser = null; // { role: 'owner' } یا { role: 'staff', id }
+  function ownerUser(){ return { role: 'owner' }; }
+  function me(){
+    if(!curUser) return needsLogin() ? null : { role: 'owner', name: DB.settings.owner || 'مالک' };
+    if(curUser.role === 'owner') return { role: 'owner', name: DB.settings.owner || 'مالک' };
+    const u = staffUsers().find(x => x.id === curUser.id);
+    return u ? { role: 'staff', id: u.id, name: u.name, screens: u.screens || [] } : null; // ملازم ہٹا دیا گیا ہو تو باہر
+  }
+  const isStaff = () => { const m = me(); return !!(m && m.role === 'staff'); };
+  const STAFF_SCREENS = [['parchi', 'نئی پرچی'], ['parchis', 'پرچیاں'], ['zamindar', 'زمیندار'], ['buyer', 'خریدار'], ['cash', 'وصولی / ادائیگی'], ['roznamcha', 'روزنامچہ']];
+  function canSee(sc){
+    const m = me(); if(!m || m.role === 'owner') return true;
+    if(sc === 'home') return true;
+    if(sc === 'party') return m.screens.includes('zamindar') || m.screens.includes('buyer');
+    return m.screens.includes(sc);
+  }
+  // ملازم کے لیے: حذف/پرانی چیز بدلنے پر مالک کا پن
+  async function ownerOk(msg){
+    if(!isStaff()) return true;
+    if(!hasOwnerPin()){ toast('⚠️ یہ کام صرف مالک کر سکتا ہے'); return false; }
+    return pinPrompt(msg || 'یہ کام صرف مالک کر سکتا ہے — مالک کا پن لکھیں');
+  }
+
+  // ---------- تبدیلیوں کا ریکارڈ (کس نے کیا، ساتھ) ----------
   function logIt(what, ref){
-    DB.log.push({ at: Date.now(), what, ref: ref || '' });
+    const m = me();
+    if(m && m.role === 'staff') what = '👤 ' + m.name + ': ' + what;
+    DB.log.push({ at: Date.now(), what, ref: ref || '', by: m ? m.name : '' });
     if(DB.log.length > 3000) DB.log = DB.log.slice(-3000);
     put('log');
   }
@@ -155,7 +210,7 @@
   function isLocked(date){ return !!(DB.locks[date] && DB.locks[date].on); }
   async function unlockFor(date){
     if(!isLocked(date)) return true;
-    if(!DB.settings.pin){ toast('⚠️ یہ دن بند ہے — پہلے سیٹنگ میں مالک کا پن لگائیں'); return false; }
+    if(!hasOwnerPin()){ toast('⚠️ یہ دن بند ہے — پہلے سیٹنگ میں مالک کا پن لگائیں'); return false; }
     const ok = await pinPrompt('یہ دن (' + urDate(date) + ') بند ہے۔ تبدیلی کے لیے مالک کا پن لکھیں');
     return ok;
   }
@@ -164,7 +219,7 @@
       modal(`<h3>🔒 مالک کا پن</h3><div class="muted">${esc(msg)}</div><div class="f" style="margin:10px 0"><input id="mPin" type="password" inputmode="numeric" maxlength="8" style="text-align:center;font-size:24px"></div>
         <div class="row" style="justify-content:center"><button class="btn" id="mOk">ٹھیک ہے</button><button class="btn gray" id="mNo">منسوخ</button></div>`);
       setTimeout(() => $('mPin') && $('mPin').focus(), 50);
-      $('mOk').onclick = () => { const v = $('mPin').value; closeModal(); if(v === DB.settings.pin) res(true); else { toast('❌ پن غلط ہے'); res(false); } };
+      $('mOk').onclick = () => { const v = $('mPin').value; closeModal(); if(checkOwner(v)) res(true); else { toast('❌ پن غلط ہے'); res(false); } };
       $('mNo').onclick = () => { closeModal(); res(false); };
     });
   }
@@ -179,9 +234,13 @@
   ];
   let screen = 'home', arg = null;
   function renderSide(){
-    $('side').innerHTML = `<div class="brand">📒 آڑھت بک</div>` + NAV.map(n => `<button class="nav ${screen === n[0] ? 'on' : ''}" onclick="App.go('${n[0]}')"><span class="e">${n[1]}</span>${n[2]}</button>`).join('');
+    const m = me();
+    $('side').innerHTML = `<div class="brand">📒 آڑھت بک</div>` + (m && needsLogin() ? `<div class="who">${m.role === 'owner' ? '👑' : '👤'} ${esc(m.name)}</div>` : '')
+      + (m ? NAV.filter(n => canSee(n[0])).map(n => `<button class="nav ${screen === n[0] ? 'on' : ''}" onclick="App.go('${n[0]}')"><span class="e">${n[1]}</span>${n[2]}</button>`).join('') : '')
+      + (m && needsLogin() ? `<button class="nav" onclick="App.logout()"><span class="e">🔒</span>تالا / صارف بدلیں</button>` : '');
   }
   function go(s, a, fromPop){
+    if(!canSee(s)){ toast('🔒 یہ حصہ آپ کے لیے نہیں — مالک سے اجازت لیں'); return; }
     if(s === 'parchi' && a === undefined && cur && cur.no) cur = null; // محفوظ پرچی کے بعد نئی؛ ادھوری پرچی محفوظ رہے
     screen = s; arg = a == null ? null : a; menu(false);
     if(!fromPop){ try{ history.pushState({ s, a: arg }, ''); }catch(e){} }
@@ -194,13 +253,13 @@
     $('ttl').textContent = shopName();
     const v = $('view');
     if(!DB.settings.registered){ v.innerHTML = viewRegister(); return; }
-    if(DB.settings.pin && !unlocked){ v.innerHTML = viewPinGate(); return; }
+    if(!me()){ curUser = null; v.innerHTML = viewPinGate(); renderSide(); return; }
+    if(!canSee(screen)){ screen = 'home'; arg = null; }
     const fn = VIEWS[screen] || VIEWS.home;
     v.innerHTML = fn(arg);
     if(AFTER[screen]) AFTER[screen](arg);
     if(window.AB_DRIVE) AB_DRIVE.render();
   }
-  let unlocked = false;
 
   // =====================================================================
   //   رجسٹریشن اور تالا
@@ -242,17 +301,19 @@
   let pinBuf = '';
   function viewPinGate(){
     return `<div class="gate">${themePicker()}<div class="gt" style="text-align:center">🔒 پن لکھیں</div>
-      <div class="card"><div class="pinDots">${[...Array(String(DB.settings.pin || '').length || 4).keys()].map(i => `<i class="${pinBuf.length > i ? 'f' : ''}"></i>`).join('')}</div>
+      <div class="card"><div class="muted" style="text-align:center">مالک یا ملازم — اپنا پن لکھیں</div><div class="pinDots">${[...Array(Math.max(4, pinBuf.length)).keys()].map(i => `<i class="${pinBuf.length > i ? 'f' : ''}"></i>`).join('')}</div>
       <div class="pinPad">${[1,2,3,4,5,6,7,8,9,'⌫',0,'✓'].map(k => `<button onclick="App.pinKey('${k}')">${k}</button>`).join('')}</div></div></div>`;
   }
   function pinKey(k){
-    const pin = String(DB.settings.pin || '');
     if(k === '⌫') pinBuf = pinBuf.slice(0, -1);
     else if(k !== '✓' && pinBuf.length < 8) pinBuf += k;
-    if(pinBuf.length >= pin.length || k === '✓'){
-      if(pinBuf === pin){ unlocked = true; pinBuf = ''; render(); return; }
-      if(pinBuf.length){ toast('❌ پن غلط ہے'); pinBuf = ''; }
+    if(pinBuf.length >= 4){
+      const h = pinHash(pinBuf);
+      if(hasOwnerPin() && h === DB.settings.pinH){ curUser = ownerUser(); pinBuf = ''; logIt('مالک نے ایپ کھولی'); render(); return; }
+      const u = staffUsers().find(x => x.pinH === h);
+      if(u){ curUser = { role: 'staff', id: u.id }; pinBuf = ''; logIt('ایپ کھولی'); if(!canSee(screen)) screen = 'home'; render(); return; }
     }
+    if(k === '✓' || pinBuf.length >= 8){ if(pinBuf.length) toast('❌ پن غلط ہے'); pinBuf = ''; }
     render();
   }
 
@@ -273,12 +334,12 @@
     return `<div class="pageTitle">🏠 ${esc(urDate(today(), true))}</div>${backupBanner()}
       <div class="stats">
         <div class="stat"><div class="l">آج کی بکری (${t.n} پرچی، ${t.nag} نگ)</div><div class="n">${fmt(t.gross)}</div></div>
-        <div class="stat g"><div class="l">آج کی کمائی</div><div class="n">${fmt(t.income)}</div></div>
+        ${isStaff() ? '' : `<div class="stat g"><div class="l">آج کی کمائی</div><div class="n">${fmt(t.income)}</div></div>`}
         <div class="stat y"><div class="l">زمینداروں کو دینے ہیں</div><div class="n">${fmt(balancesSum('zamindar'))}</div></div>
         <div class="stat"><div class="l">خریداروں سے لینے ہیں</div><div class="n">${fmt(balancesSum('buyer'))}</div></div>
       </div>
-      <div class="tiles"><button class="tile big" onclick="App.go('parchi')"><span class="e">📝</span>نئی پرچی (گاڑی کی آمد)</button>
-        ${tiles.map(x => `<button class="tile" onclick="App.go('${x[0]}')"><span class="e">${x[1]}</span>${x[2]}</button>`).join('')}</div>`;
+      <div class="tiles">${canSee('parchi') ? `<button class="tile big" onclick="App.go('parchi')"><span class="e">📝</span>نئی پرچی (گاڑی کی آمد)</button>` : ''}
+        ${tiles.filter(x => canSee(x[0])).map(x => `<button class="tile" onclick="App.go('${x[0]}')"><span class="e">${x[1]}</span>${x[2]}</button>`).join('')}</div>`;
   };
 
   // =====================================================================
@@ -358,7 +419,7 @@
       if(DB.settings.registered && liveParchis().length && !(await ask('اس آلے کا موجودہ ریکارڈ بھی آڑھت کے کلاؤڈ میں مل جائے گا۔ جاری رکھیں؟'))) return;
       closeModal();
       const wasRegistered = !!DB.settings.registered; // نیا آلہ ہو تو جڑنے کے بعد سیدھا ہوم
-      if(await AB_CLOUD.join(code, name)){ unlocked = true; logIt('آڑھت سے جڑا: ' + (name || 'ملازم')); go(wasRegistered ? 'settings' : 'home'); }
+      if(await AB_CLOUD.join(code, name)){ curUser = null; logIt('آڑھت سے جڑا: ' + (name || 'ملازم')); go(wasRegistered ? 'settings' : 'home'); }
     };
   }
   AFTER.backup = function(){ if(window.AB_DRIVE) AB_DRIVE.render(); };
@@ -404,6 +465,7 @@
     if(r.lines.some(l => l.basis === 'maund' && !int(l.grams))){ toast('⚠️ فی من ریٹ والی بکری کا وزن لکھیں'); return; }
     if(!r.check){ toast('⚠️ حساب کا جوڑ نہیں مل رہا'); return; }
     const old = DB.parchis.find(p => p.id === cur.id);
+    if(old && !(await ownerOk('محفوظ پرچی بدلنا صرف مالک کا کام ہے — مالک کا پن لکھیں'))) return;
     if(old && !(await unlockFor(old.date))) return;
     if(!(await unlockFor(cur.date))) return;
     // کھاتے جوڑیں (نیا نام ہو تو نیا کھاتہ)
@@ -421,6 +483,7 @@
       logIt('پرچی ' + snap.no + ' بدلی: صاف رقم ' + fmt(old.totals ? old.totals.net : 0) + ' ← ' + fmt(snap.totals.net), snap.id);
     } else {
       // نمبر: سب آلات سے آئی پرچیوں میں سب سے بڑا + 1 (کلاؤڈ میں دوسرے آلے کی پرچی کے نمبر سے نہ ٹکرائے)
+      snap.by = (me() || {}).name || '';
       snap.no = Math.max(DB.settings.nextParchiNo || 1, DB.parchis.reduce((m, p) => Math.max(m, p.no || 0), 0) + 1); DB.settings.nextParchiNo = snap.no + 1; put('settings');
       DB.parchis.push(snap);
       logIt('نئی پرچی ' + snap.no + ': ' + snap.zamindar + ' — بکری ' + fmt(snap.totals.gross), snap.id);
@@ -464,7 +527,7 @@
     let g = 0, inc = 0;
     const rows = live.map(p => { const t = p.totals || {}; g += t.gross || 0; inc += t.income || 0;
       return `<div class="it" onclick="App.go('parchi','${p.id}')"><div><b>نمبر <span class="num">${p.no}</span> — ${esc(p.zamindar)}</b> ${isLocked(p.date) ? '🔒' : ''}
-        <div class="muted">${esc(urDate(p.date))} ${p.vehicle ? '• گاڑی ' + esc(p.vehicle) : ''} • بکری ${rs(t.gross || 0)} • صاف ${rs(t.net || 0)}</div></div>
+        <div class="muted">${esc(urDate(p.date))} ${p.vehicle ? '• گاڑی ' + esc(p.vehicle) : ''} • بکری ${rs(t.gross || 0)} • صاف ${rs(t.net || 0)}${p.by ? ' • 👤 ' + esc(p.by) : ''}</div></div>
         <button class="btn gray sm" onclick="event.stopPropagation();App.delParchi('${p.id}')">🗑️</button></div>`; }).join('');
     return `<div class="pageTitle">📚 پرچیاں<span class="sp"></span><button class="btn gold sm" onclick="App.go('parchi')">📝 نئی پرچی</button></div>
       <div class="card"><div class="row"><div class="f" style="flex:1;min-width:160px"><label>تاریخ سے چنیں (خالی = سب)</label><input type="date" value="${esc(listDate)}" onchange="App.setListDate(this.value)"></div>
@@ -476,11 +539,12 @@
   };
   async function delParchi(id){
     const p = DB.parchis.find(x => x.id === id); if(!p) return;
+    if(!(await ownerOk())) return;
     if(!(await unlockFor(p.date))) return;
     if(!(await ask('پرچی نمبر ' + p.no + ' (' + esc(p.zamindar) + ') ردی کی ٹوکری میں چلی جائے گی اور کھاتوں سے نکل جائے گی۔ بعد میں واپس لائی جا سکتی ہے۔'))) return;
     p.deleted = Date.now(); put('parchis'); logIt('پرچی ' + p.no + ' ردی میں', p.id); render(); toast('🗑️ ردی کی ٹوکری میں');
   }
-  function restoreParchi(id){ const p = DB.parchis.find(x => x.id === id); if(!p) return; delete p.deleted; put('parchis'); logIt('پرچی ' + p.no + ' واپس', p.id); render(); toast('✅ پرچی واپس آ گئی'); }
+  async function restoreParchi(id){ const p = DB.parchis.find(x => x.id === id); if(!p) return; if(!(await ownerOk())) return; delete p.deleted; put('parchis'); logIt('پرچی ' + p.no + ' واپس', p.id); render(); toast('✅ پرچی واپس آ گئی'); }
 
   // =====================================================================
   //   زمیندار / خریدار
@@ -561,7 +625,7 @@
         </div><div id="cHint" class="muted" style="margin:6px 0"></div>
         <button class="btn wide" onclick="App.saveCash('${kind}')">💾 ${kind === 'pay' ? 'ادائیگی' : 'وصولی'} محفوظ کریں</button></div>
       <div class="card"><h3>🕘 حالیہ اندراج</h3><div class="list">${recent.map(c => { const p = party(c.partyId);
-        return `<div class="it"><div>${c.kind === 'pay' ? '💸 ادائیگی' : '💵 وصولی'} — <b>${esc(p ? p.name : '')}</b> <span class="muted">${esc(urDate(c.date))} • ${esc(c.method || '')} ${c.note ? '• ' + esc(c.note) : ''}</span></div>
+        return `<div class="it"><div>${c.kind === 'pay' ? '💸 ادائیگی' : '💵 وصولی'} — <b>${esc(p ? p.name : '')}</b> <span class="muted">${esc(urDate(c.date))} • ${esc(c.method || '')} ${c.note ? '• ' + esc(c.note) : ''}${c.by ? ' • 👤 ' + esc(c.by) : ''}</span></div>
           <div class="row"><span class="a ${c.kind === 'pay' ? 'amt-out' : 'amt-in'}">${fmt(c.amount)}</span><button class="btn gray sm" onclick="App.delCash('${c.id}')">🗑️</button></div></div>`; }).join('') || '<div class="muted">کوئی اندراج نہیں</div>'}</div></div>`;
   };
   AFTER.cash = function(){ const t = String(arg || '').startsWith('pay') ? 'zamindar' : 'buyer'; cashHint(t); };
@@ -574,12 +638,13 @@
     if(!(await unlockFor(date))) return;
     let p = findParty(type, name);
     if(!p){ if(!(await ask('«' + esc(name) + '» نام کا کوئی ' + PT[type] + ' نہیں۔ نیا کھاتہ بنا دیں؟', 'نیا کھاتہ بنائیں'))) return; p = ensureParty(type, name); }
-    const c = { id: uid(), kind, partyId: p.id, amount, date, method: $('cM').value, note: $('cN').value.trim(), at: Date.now() };
+    const c = { id: uid(), kind, partyId: p.id, amount, date, method: $('cM').value, note: $('cN').value.trim(), at: Date.now(), by: (me() || {}).name || '' };
     DB.cash.push(c); put('cash'); logIt((kind === 'pay' ? 'ادائیگی ' : 'وصولی ') + p.name + ': ' + fmt(amount), c.id);
     toast('✅ ' + (kind === 'pay' ? 'ادائیگی' : 'وصولی') + ' محفوظ — ' + fmt(amount) + ' روپے'); render();
   }
   async function delCash(id){
     const c = DB.cash.find(x => x.id === id); if(!c) return;
+    if(!(await ownerOk())) return;
     if(!(await unlockFor(c.date))) return;
     if(!(await ask('یہ اندراج (' + fmt(c.amount) + ' روپے) ہٹا دیں؟ کھاتے سے نکل جائے گا۔'))) return;
     c.deleted = Date.now(); put('cash'); logIt('اندراج ہٹایا: ' + fmt(c.amount), c.id); render();
@@ -613,7 +678,7 @@
   async function toggleLock(d){
     if(isLocked(d)){ if(!(await unlockFor(d))) return; DB.locks[d] = { on: false }; put('locks'); logIt('دن کھولا: ' + d); toast('🔓 دن کھل گیا'); }
     else {
-      if(!DB.settings.pin){ toast('⚠️ دن بند کرنے کے لیے پہلے سیٹنگ میں مالک کا پن لگائیں'); go('settings'); return; }
+      if(!hasOwnerPin()){ toast('⚠️ دن بند کرنے کے لیے پہلے سیٹنگ میں مالک کا پن لگائیں'); go('settings'); return; }
       if(!(await ask(urDate(d) + ' بند کر دیں؟ اس کے بعد اس دن کی پرچی یا وصولی صرف مالک کے پن سے بدلے گی۔'))) return;
       DB.locks[d] = { on: true, at: Date.now() }; put('locks'); logIt('دن بند: ' + d); toast('🔒 دن بند ہو گیا');
     }
@@ -693,7 +758,7 @@
     if(!(await ask('بیک اپ: «' + esc(st.shop || '') + '» — ' + esc(b.at ? b.at.slice(0, 10) : '') + ' — ' + np + ' پرچیاں۔ موجودہ ریکارڈ اس سے بدل جائے گا۔ جاری رکھیں؟', 'واپس لائیں'))) return false;
     try{ const db = await idb(); const tx = db.transaction('kv', 'readwrite'); const s = tx.objectStore('kv'); KEYS.forEach(k => { const v = localStorage.getItem(k); if(v != null) s.put(v, 'before_import_' + k); }); }catch(e){}
     KEYS.forEach(k => { if(b.data[k] != null) localStorage.setItem(k, b.data[k]); else localStorage.removeItem(k); });
-    loadAll(); safeCopy(); logIt('بیک اپ واپس لایا گیا (' + (b.at || '') + ')'); unlocked = true; go('home'); toast('✅ بیک اپ واپس آ گیا');
+    loadAll(); safeCopy(); logIt('بیک اپ واپس لایا گیا (' + (b.at || '') + ')'); curUser = ownerUser(); go('home'); toast('✅ بیک اپ واپس آ گیا');
     return true;
   }
   function backupFileName(d){
@@ -777,9 +842,10 @@
         <div class="f"><label>منڈی کا پتہ</label><input id="sAddr" value="${esc(s.address)}"></div></div>
         <button class="btn" style="margin-top:8px" onclick="App.saveSettings()">💾 محفوظ</button></div>
       <div class="card"><h3>🎨 رنگ</h3><div class="themesCard">${themePicker()}</div><div class="muted">رنگ صرف اس آلے پر بدلتا ہے؛ ریکارڈ پر کوئی اثر نہیں۔</div></div>
-      <div class="card"><h3>🔒 مالک کا پن</h3><div class="muted">پن لگانے سے ایپ کھلتے وقت پن پوچھے گی، اور بند دن کی تبدیلی بھی صرف اسی سے ہوگی۔ ${s.pin ? '✅ پن لگا ہوا ہے' : '❌ ابھی پن نہیں لگا'}</div>
+      <div class="card"><h3>🔒 مالک کا پن</h3><div class="muted">پن لگانے سے ایپ کھلتے وقت پن پوچھے گی، اور بند دن کی تبدیلی بھی صرف اسی سے ہوگی۔ ${hasOwnerPin() ? '✅ پن لگا ہوا ہے' : '❌ ابھی پن نہیں لگا'}</div>
         <div class="row" style="margin-top:6px"><div class="f" style="flex:1"><input id="sPin" type="password" inputmode="numeric" maxlength="8" placeholder="نیا پن (4 سے 8 ہندسے)"></div>
-        <button class="btn" onclick="App.setPin()">💾 پن لگائیں</button>${s.pin ? '<button class="btn gray" onclick="App.removePin()">ہٹائیں</button>' : ''}</div></div>
+        <button class="btn" onclick="App.setPin()">💾 پن لگائیں</button>${hasOwnerPin() ? '<button class="btn gray" onclick="App.removePin()">ہٹائیں</button>' : ''}</div></div>
+      ${staffCard()}
       <div class="card"><h3>📜 تبدیلیوں کا ریکارڈ (آخری 40)</h3><div class="list">${lg.map(x => `<div class="it" style="cursor:default"><div>${esc(x.what)}</div><div class="muted">${esc(urDate(new Date(x.at).toISOString().slice(0, 10)))} ${urTime(x.at)}</div></div>`).join('') || '<div class="muted">کچھ نہیں</div>'}</div></div>
       <div class="card plain"><div class="muted">ورژن: <span class="num">${APP_VERSION}</span></div></div>`;
   };
@@ -787,13 +853,63 @@
     Object.assign(DB.settings, { shop: $('sShop').value.trim() || DB.settings.shop, owner: $('sOwner').value.trim(), phone: $('sPhone').value.trim(), address: $('sAddr').value.trim() });
     put('settings'); logIt('آڑھت کی معلومات بدلیں'); render(); toast('✅ محفوظ');
   }
+  // پن ایک دوسرے کے آگے والے حصے نہ ہوں (1234 اور 12345 ساتھ نہیں — ورنہ چار ہندسوں پر ہی پہلا کھل جائے)
+  function pinClash(pin, exceptId){
+    const hs = []; for(let n = 4; n <= 8; n++) if(pin.length >= n) hs.push(pinHash(pin.slice(0, n)));
+    const others = staffUsers().filter(u => u.id !== exceptId).map(u => u.pinH).concat(exceptId === 'owner' ? [] : (hasOwnerPin() ? [DB.settings.pinH] : []));
+    if(others.some(h => hs.includes(h))) return true;
+    // دوسرے کا پن اس کے آگے والا حصہ ہو — صرف لمبائی 4 سے 8 تک کے حصے جانچے جا سکتے ہیں
+    return staffUsers().filter(u => u.id !== exceptId).some(u => (u.pinPfx || []).includes(pinHash(pin))) || (exceptId !== 'owner' && (DB.settings.pinPfx || []).includes(pinHash(pin)));
+  }
+  function prefixes(pin){ const a = []; for(let n = 4; n < pin.length; n++) a.push(pinHash(pin.slice(0, n))); return a; }
   async function setPin(){
     const v = $('sPin').value.trim();
     if(!/^\d{4,8}$/.test(v)){ toast('⚠️ پن 4 سے 8 ہندسوں کا ہو'); return; }
-    if(DB.settings.pin && !(await pinPrompt('پرانا پن لکھیں'))) return;
-    DB.settings.pin = v; unlocked = true; put('settings'); logIt('پن بدلا'); render(); toast('✅ پن لگ گیا — یاد رکھیں');
+    if(hasOwnerPin() && !(await pinPrompt('پرانا پن لکھیں'))) return;
+    if(pinClash(v, 'owner')){ toast('⚠️ یہ پن کسی ملازم کے پن سے ملتا ہے — کوئی اور چنیں'); return; }
+    DB.settings.pinH = pinHash(v); DB.settings.pinPfx = prefixes(v); curUser = ownerUser(); put('settings'); logIt('مالک کا پن بدلا'); render(); toast('✅ پن لگ گیا — یاد رکھیں');
   }
-  async function removePin(){ if(!(await pinPrompt('پن ہٹانے کے لیے موجودہ پن لکھیں'))) return; delete DB.settings.pin; put('settings'); logIt('پن ہٹایا'); render(); }
+  async function removePin(){
+    if(staffUsers().length){ toast('⚠️ پہلے سب ملازمین ہٹائیں، پھر مالک کا پن ہٹ سکتا ہے'); return; }
+    if(!(await pinPrompt('پن ہٹانے کے لیے موجودہ پن لکھیں'))) return; delete DB.settings.pinH; delete DB.settings.pinPfx; put('settings'); logIt('مالک کا پن ہٹایا'); render();
+  }
+  // ---------- 👥 ملازمین اور اجازتیں ----------
+  function staffCard(){
+    const us = staffUsers();
+    return `<div class="card"><h3>👥 ملازمین اور اجازتیں</h3>
+      <div class="muted">ہر ملازم کا اپنا پن؛ آپ طے کریں وہ کون سی اسکرینیں دیکھ سکے۔ خرچے، بیک اپ اور سیٹنگ صرف مالک کے لیے۔ ملازم حذف کرے یا محفوظ پرچی بدلے تو مالک کا پن مانگا جائے گا۔ ہر اندراج پر لکھنے والے کا نام آتا ہے۔</div>
+      ${hasOwnerPin() ? `<div class="list" style="margin:6px 0">${us.map(u => `<div class="it" onclick="App.staffForm('${u.id}')"><div>👤 <b>${esc(u.name)}</b><div class="muted">${STAFF_SCREENS.filter(x => (u.screens || []).includes(x[0])).map(x => x[1]).join('، ') || 'کوئی اسکرین نہیں'}</div></div><span class="muted">✏️</span></div>`).join('') || '<div class="muted">ابھی کوئی ملازم نہیں</div>'}</div>
+        <button class="btn gold" onclick="App.staffForm('')">➕ نیا ملازم</button>`
+      : `<div class="warn">پہلے اوپر مالک کا پن لگائیں، پھر ملازم بنا سکتے ہیں۔</div>`}</div>`;
+  }
+  function staffForm(id){
+    const u = id ? staffUsers().find(x => x.id === id) : { name: '', screens: ['parchi', 'parchis', 'cash'] };
+    if(!u) return;
+    modal(`<h3>${id ? 'ملازم بدلیں' : 'نیا ملازم'}</h3><div style="text-align:right">
+      <div class="f"><label>نام</label><input id="sfN" value="${esc(u.name)}" placeholder="مثلاً منشی اسلم"></div>
+      <div class="f"><label>${id ? 'نیا پن (خالی چھوڑیں تو پرانا رہے گا)' : 'پن (4 سے 8 ہندسے)'}</label><input id="sfP" type="password" inputmode="numeric" maxlength="8"></div>
+      <div class="muted" style="margin-top:6px">یہ ملازم کیا دیکھ سکے:</div>
+      ${STAFF_SCREENS.map(x => `<label style="display:flex;gap:8px;align-items:center;font-size:17px"><input type="checkbox" class="sfS" value="${x[0]}" ${(u.screens || []).includes(x[0]) ? 'checked' : ''} style="width:22px;height:22px"> ${x[1]}</label>`).join('')}</div>
+      <div class="row" style="justify-content:center;margin-top:10px"><button class="btn" id="sfOk">💾 محفوظ</button>${id ? '<button class="btn gray" id="sfDel">🗑️ ہٹائیں</button>' : ''}<button class="btn gray" onclick="App.closeModal()">منسوخ</button></div>`);
+    $('sfOk').onclick = () => {
+      const name = $('sfN').value.trim(), pin = $('sfP').value.trim(), screens = [...document.querySelectorAll('.sfS:checked')].map(x => x.value);
+      if(!name){ toast('⚠️ نام لکھیں'); return; }
+      if(!id && !pin){ toast('⚠️ پن لکھیں'); return; }
+      if(pin && !/^\d{4,8}$/.test(pin)){ toast('⚠️ پن 4 سے 8 ہندسوں کا ہو'); return; }
+      if(pin && pinClash(pin, id || '__new')){ toast('⚠️ یہ پن کسی اور سے ملتا ہے — کوئی اور چنیں'); return; }
+      if(!DB.settings.users) DB.settings.users = [];
+      let x = id ? DB.settings.users.find(y => y.id === id) : null;
+      if(!x){ x = { id: uid(), createdAt: Date.now() }; DB.settings.users.push(x); }
+      Object.assign(x, { name, screens });
+      if(pin){ x.pinH = pinHash(pin); x.pinPfx = prefixes(pin); }
+      put('settings'); logIt((id ? 'ملازم بدلا: ' : 'نیا ملازم: ') + name); closeModal(); render(); toast('✅ محفوظ — ملازم اپنے پن سے ایپ کھولے');
+    };
+    if(id) $('sfDel').onclick = async () => {
+      closeModal();
+      if(!(await ask('«' + esc(u.name) + '» کو ہٹا دیں؟ اس کا پن کام نہیں کرے گا؛ اس کے لکھے اندراج ویسے ہی رہیں گے۔'))) return;
+      const x = DB.settings.users.find(y => y.id === id); x.deleted = Date.now(); put('settings'); logIt('ملازم ہٹایا: ' + u.name); render();
+    };
+  }
 
   // =====================================================================
   //   اپڈیٹ
@@ -823,7 +939,8 @@
   //   عوامی بٹن
   // =====================================================================
   window.App = {
-    go, menu, register, pinKey, closeModal,
+    go, menu, register, pinKey, closeModal, staffForm,
+    logout(){ curUser = null; pinBuf = ''; menu(false); render(); },
     setTheme(k){ try{ localStorage.setItem('ab_theme', k); }catch(e){} applyTheme(k); render(); }, verTap(){ toast('ورژن ' + APP_VERSION); },
     newParchi(){ cur = blankParchi(); render(); },
     pset(k, v){ cur[k] = v; if(k === 'zamindar' || k === 'place' || k === 'vehicle') renderResult(); if(k === 'date') render(); },
