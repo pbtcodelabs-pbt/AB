@@ -152,7 +152,7 @@
       ensureOwnerKey().catch(() => {});
       if (Date.now() - (meta.devAt || 0) > 6 * 3600e3) refreshDevices().catch(() => {});
       meta.lastSync = Date.now(); lastErr = ''; saveMeta(); render();
-      if (loud) toast('✅ سب آلات کا ڈیٹا مل گیا');
+      if (loud) toast('✅ سب ڈیوائسز کا ڈیٹا مل گیا');
       return true;
     } catch (e) { handleErr(e, loud); return false; }
   }
@@ -213,7 +213,7 @@
   function handleErr(e, loud) {
     console.warn('cloud', e);
     const m = e.message || '';
-    lastErr = m === 'denied' ? 'اجازت نہیں — کوڈ غلط ہے یا اس آلے کو آڑھت سے ہٹا دیا گیا' :
+    lastErr = m === 'denied' ? 'اجازت نہیں — کوڈ غلط ہے یا اس ڈیوائس کو آڑھت سے ہٹا دیا گیا' :
       m === 'auth' ? 'کلاؤڈ سے شناخت نہیں ہو سکی، انٹرنیٹ دیکھیں' :
       /Failed to fetch|NetworkError|network/i.test(m) ? 'انٹرنیٹ نہیں ہے' :
       'کلاؤڈ سے رابطہ نہیں ہو سکا، دوبارہ کوشش کریں';
@@ -240,7 +240,7 @@
 
   // ---------- حالت ----------
   function state() {
-    if (!meta.on) return { cls: 'off', txt: 'کلاؤڈ بند — ریکارڈ صرف اس آلے میں (اور گوگل ڈرائیو پر اگر جڑی ہو)' };
+    if (!meta.on) return { cls: 'off', txt: 'کلاؤڈ بند — ریکارڈ صرف اس ڈیوائس میں (اور گوگل ڈرائیو پر اگر جڑی ہو)' };
     if (busy) return { cls: 'busy', txt: '⏳ کلاؤڈ سے مل رہا ہے…' };
     if (lastErr) return { cls: 'warn', txt: '⚠️ ' + lastErr };
     const t = meta.lastSync ? new Date(meta.lastSync) : null;

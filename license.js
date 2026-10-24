@@ -130,10 +130,10 @@
   }
   function canWrite() {
     if (overLimit()) {
-      toast('⛔ آلات کی حد پوری — اس آلے پر نیا اندراج بند');
-      host().modal(`<h3>📱 آلات کی حد پوری</h3><div class="licState">آپ کی سبسکرپشن میں <span class="num">${allowed()}</span> آلات شامل ہیں؛ یہ آلہ ان کے بعد جڑا ہے۔</div>
-        <div class="muted">مالک سیٹنگ ← «جڑے ہوئے آلات» سے کوئی پرانا آلہ ہٹا دیں، یا ڈویلپر سے مزید آلہ لیں (ہر زیادہ آلہ <span class="num">5,000</span> روپے سالانہ)۔ ریکارڈ دیکھا جا سکتا ہے۔</div>
-        <div class="row" style="justify-content:center;margin-top:8px"><button class="btn" onclick="AB_LIC.request(-1)">💬 مزید آلہ — ڈویلپر سے بات</button><button class="btn gray" onclick="App.closeModal()">بند</button></div>`);
+      toast('⛔ ڈیوائسز کی حد پوری — اس ڈیوائس پر نیا اندراج بند');
+      host().modal(`<h3>📱 ڈیوائسز کی حد پوری</h3><div class="licState">آپ کی سبسکرپشن میں <span class="num">${allowed()}</span> ڈیوائسز شامل ہیں؛ یہ ڈیوائس ان کے بعد جڑی ہے۔</div>
+        <div class="muted">مالک سیٹنگ ← «جڑی ہوئی ڈیوائسز» سے کوئی پرانی ڈیوائس ہٹا دیں، یا ڈویلپر سے مزید ڈیوائس لیں (ہر زیادہ ڈیوائس <span class="num">5,000</span> روپے سالانہ)۔ ریکارڈ دیکھا جا سکتا ہے۔</div>
+        <div class="row" style="justify-content:center;margin-top:8px"><button class="btn" onclick="AB_LIC.request(-1)">💬 مزید ڈیوائس — ڈویلپر سے بات</button><button class="btn gray" onclick="App.closeModal()">بند</button></div>`);
       return false;
     }
     if (status().ok) return true;
@@ -153,7 +153,7 @@
   function card() {
     const p = phone();
     return `<div class="card"><h3>📜 سبسکرپشن</h3><div class="licState">${statusText()}</div>
-      <div class="muted">شامل آلات: <span class="num">${allowed()}</span> (ایک فون پر کئی ملازم اپنے پن سے = ایک آلہ)</div>
+      <div class="muted">شامل ڈیوائسز: <span class="num">${allowed()}</span> (ایک فون پر کئی ملازم اپنے پن سے = ایک ڈیوائس)</div>
       <div class="muted">مالک کا موبائل نمبر: <span class="num">${esc(showPhone(p) || '—')}</span> — سبسکرپشن اسی نمبر پر ہے؛ نیا فون ہو یا ایپ دوبارہ لگے تو «بحال کریں» سے خود واپس آ جاتی ہے۔</div>
       <div class="row" style="margin-top:6px"><button class="btn" onclick="AB_LIC.open()">📜 سبسکرپشن لیں / کوڈ لکھیں</button><button class="btn light" onclick="AB_LIC.check(true)">🔄 بحال کریں</button></div></div>`;
   }
@@ -180,7 +180,7 @@
   function request(days) {
     if (!takePhone()) return;
     const s = host().settings(); const plan = PLANS.find(x => x[0] === days);
-    const msg = (days === -1 ? 'السلام علیکم — آڑھت بک میں مزید آلہ چاہیے (ابھی ' + allowed() + ' آلات)\n' : 'السلام علیکم — آڑھت بک کی سبسکرپشن چاہیے\n')
+    const msg = (days === -1 ? 'السلام علیکم — آڑھت بک میں مزید ڈیوائس چاہیے (ابھی ' + allowed() + ' ڈیوائسز)\n' : 'السلام علیکم — آڑھت بک کی سبسکرپشن چاہیے\n')
       + 'مدت: ' + (plan ? plan[1] + ' — ' + rsTxt(plan[2]) + ' روپے' : '') + '\n'
       + 'آڑھت: ' + (s.shop || '') + '\n'
       + 'مالک: ' + (s.owner || '') + '\n'
@@ -231,7 +231,7 @@
       <div class="f"><label>آڑھت / گاہک کا نام</label><input id="dvN"></div>
       <div class="grid2"><div class="f"><label>مدت</label><select id="dvD" onchange="document.getElementById('dvCw').style.display=this.value==='c'?'':'none'">${plans}</select></div>
         <div class="f" id="dvCw"><label>کتنے دن؟ (1 سے 3650)</label><input id="dvC" type="number" inputmode="numeric" min="1" max="3650" placeholder="مثلاً 15"></div></div>
-      <div class="f"><label>کتنے آلات؟ (3 شامل؛ ہر زیادہ آلہ 5,000 سالانہ)</label><input id="dvDev" type="number" inputmode="numeric" min="1" max="50" value="3"></div>
+      <div class="f"><label>کتنی ڈیوائسز؟ (3 شامل؛ ہر زیادہ ڈیوائس 5,000 سالانہ)</label><input id="dvDev" type="number" inputmode="numeric" min="1" max="50" value="3"></div>
       <div id="dvInfo" class="muted"></div>
       <div class="row" style="justify-content:center;margin-top:8px"><button class="btn light" id="dvChk">🔍 نمبر دیکھیں</button><button class="btn" id="dvMake">🎁 کوڈ بنائیں</button><button class="btn gray" onclick="App.closeModal()">بند</button></div>
       <div id="dvOut"></div><div id="uBox" class="uBox"></div>`);
@@ -256,7 +256,7 @@
     try {
       const s = await devFs(`subs/${p}`), t = await devFs(`trials/${p}`);
       const e = s ? fv(s.fields.exp) : 0, ta = t ? fv(t.fields.at) : 0, dv = s ? fv(s.fields.dev) || BASE_DEVICES : 0;
-      out.innerHTML = `آزمائش شروع: ${ta ? urDay(ta) : 'کبھی نہیں'} • سبسکرپشن: ${e ? (e >= FOREVER - DAY ? 'ہمیشہ کے لیے' : urDay(e) + ' تک' + (e < Date.now() ? ' (ختم)' : '')) + ' • آلات: ' + dv : 'نہیں'}`;
+      out.innerHTML = `آزمائش شروع: ${ta ? urDay(ta) : 'کبھی نہیں'} • سبسکرپشن: ${e ? (e >= FOREVER - DAY ? 'ہمیشہ کے لیے' : urDay(e) + ' تک' + (e < Date.now() ? ' (ختم)' : '')) + ' • ڈیوائسز: ' + dv : 'نہیں'}`;
       if (dv) $('dvDev').value = dv;
     } catch (e) { toast(e.message === 'denied' ? '❌ اجازت نہیں — فائربیس کے اصول دیکھیں' : '⚠️ سرور سے رابطہ نہیں ہو سکا'); }
   }
@@ -267,7 +267,7 @@
     if (!okPhone(p)) { toast('⚠️ درست نمبر لکھیں'); return; }
     if ($('dvD').value === 'c' && !(days >= 1 && days <= 3650)) { toast('⚠️ دن لکھیں — 1 سے 3650 تک'); return; }
     const devs = Math.trunc(+$('dvDev').value);
-    if (!(devs >= 1 && devs <= 50)) { toast('⚠️ آلات لکھیں — 1 سے 50 تک'); return; }
+    if (!(devs >= 1 && devs <= 50)) { toast('⚠️ ڈیوائسز لکھیں — 1 سے 50 تک'); return; }
     const btn = $('dvMake'); btn.disabled = true;
     try {
       const s = await devFs(`subs/${p}`);
@@ -282,7 +282,7 @@
       ] }) });
       const msg = 'آڑھت بک — آپ کا سبسکرپشن کوڈ:\n' + code + '\n' + (days ? urDay(exp) + ' تک' : 'ہمیشہ کے لیے')
         + '\nایپ کھولیں ← سیٹنگ ← سبسکرپشن ← کوڈ لکھ کر «چالو کریں»';
-      $('dvOut').innerHTML = `<div class="okBox"><div>✅ کوڈ بن گیا — ${esc(showPhone(p))} • ${devs} آلات • ${days ? days + ' دن • ' : ''}${days ? esc(urDay(exp)) + ' تک' : 'ہمیشہ کے لیے'}</div><div class="joinCode num">${code}</div>
+      $('dvOut').innerHTML = `<div class="okBox"><div>✅ کوڈ بن گیا — ${esc(showPhone(p))} • ${devs} ڈیوائسز • ${days ? days + ' دن • ' : ''}${days ? esc(urDay(exp)) + ' تک' : 'ہمیشہ کے لیے'}</div><div class="joinCode num">${code}</div>
         <div class="row" style="justify-content:center"><a class="btn sm" target="_blank" href="https://wa.me/${p}?text=${encodeURIComponent(msg)}">💬 گاہک کو واٹس ایپ</a></div></div>`;
     } catch (e) { toast(e.message === 'denied' ? '❌ اجازت نہیں — فائربیس کے اصول دیکھیں' : '⚠️ کوڈ نہیں بن سکا، دوبارہ کوشش کریں'); }
     finally { btn.disabled = false; }

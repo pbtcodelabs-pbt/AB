@@ -8,8 +8,8 @@
    ===================================================================== */
 (function(){
   'use strict';
-  const APP_VERSION = 'AB2410SA016';
-  const UPDATE_NOTE = 'آلات کی حد: سبسکرپشن میں 3 آلات؛ زیادہ آلے پر نیا اندراج بند، ڈویلپر پینل میں آلات کی تعداد';
+  const APP_VERSION = 'AB2410SA017';
+  const UPDATE_NOTE = 'ہر جگہ «آلہ / آلات» کی جگہ «ڈیوائس / ڈیوائسز»';
   const C = window.ABCalc;
   const { fmt, toPaisa, toGrams, int, calcParchi, lineAmount, KINDS, SIDES, TEMPLATES, rateText } = C;
 
@@ -288,7 +288,7 @@
         </div>
         <div class="gm">کمیشن اور خرچے بعد میں «خرچے اور کمیشن» میں اپنی مرضی سے بدل سکتے ہیں۔</div>
         <button class="btn gold wide" onclick="App.register()">✅ شروع کریں</button>
-        ${window.AB_CLOUD ? '<button class="btn light wide" style="margin-top:8px" onclick="App.cloudJoinForm()">📲 ملازم ہیں یا دوسرا آلہ؟ پہلے سے موجود آڑھت سے جڑیں</button>' : ''}</div></div>`;
+        ${window.AB_CLOUD ? '<button class="btn light wide" style="margin-top:8px" onclick="App.cloudJoinForm()">📲 ملازم ہیں یا دوسری ڈیوائس؟ پہلے سے موجود آڑھت سے جڑیں</button>' : ''}</div></div>`;
   }
   function register(){
     const shop = $('rShop').value.trim(), owner = $('rOwner').value.trim(), phone = $('rPhone').value.trim();
@@ -387,40 +387,40 @@
   function cloudCard(){
     const C = window.AB_CLOUD;
     if(!C) return '';
-    if(!C.on()) return `<div class="card"><h3>☁️ کئی آلات — لیپ ٹاپ اور ملازمین کے موبائل</h3>
-      <div class="muted">کلاؤڈ چالو کرنے سے آپ کے سب آلات (لیپ ٹاپ، موبائل، ملازمین کے فون) کا ریکارڈ ایک ہو جائے گا۔ ہر آلہ انٹرنیٹ کے بغیر بھی کام کرتا رہے گا، نیٹ آتے ہی سب مل جائیں گے۔</div>
+    if(!C.on()) return `<div class="card"><h3>☁️ کئی ڈیوائسز — لیپ ٹاپ اور ملازمین کے موبائل</h3>
+      <div class="muted">کلاؤڈ چالو کرنے سے آپ کی سب ڈیوائسز (لیپ ٹاپ، موبائل، ملازمین کے فون) کا ریکارڈ ایک ہو جائے گا۔ ہر ڈیوائس انٹرنیٹ کے بغیر بھی کام کرتی رہے گی، نیٹ آتے ہی سب مل جائیں گے۔</div>
       <div class="row" style="margin-top:8px"><button class="btn gold" onclick="App.cloudEnable()">👑 میں مالک ہوں — کلاؤڈ چالو کریں</button>
       <button class="btn light" onclick="App.cloudJoinForm()">📲 میں ملازم ہوں — آڑھت سے جڑیں</button></div></div>`;
     const owner = C.role() === 'owner';
-    return `<div class="card"><h3>☁️ کئی آلات — کلاؤڈ</h3><div id="cloudStatus" class="dstatus"></div>
-      ${owner ? `<div class="muted">ملازم یا اپنے دوسرے آلے کو جوڑنے کے لیے یہ کوڈ دیں۔ وہ اپنی آڑھت بک میں «آڑھت سے جڑیں» دبا کر یہی کوڈ لکھے:</div>
+    return `<div class="card"><h3>☁️ کئی ڈیوائسز — کلاؤڈ</h3><div id="cloudStatus" class="dstatus"></div>
+      ${owner ? `<div class="muted">ملازم یا اپنی دوسری ڈیوائس کو جوڑنے کے لیے یہ کوڈ دیں۔ وہ اپنی آڑھت بک میں «آڑھت سے جڑیں» دبا کر یہی کوڈ لکھے:</div>
         <div class="joinCode num">${esc(C.code())}</div>
         <div class="row"><button class="btn light sm" onclick="App.cloudCopy()">📋 کوڈ کاپی کریں</button><button class="btn light sm" onclick="App.cloudShare()">💬 واٹس ایپ پر بھیجیں</button>
         <button class="btn sm" onclick="AB_CLOUD.sync(true)">🔄 ابھی ملائیں</button></div>
         ${C.ownerKey() ? `<div class="okBox"><div><b>🔑 مالک کا خفیہ کوڈ</b> — یہ کسی کو نہ دیں؛ کاغذ پر لکھ کر سنبھال لیں۔ فون بدلے یا ایپ دوبارہ انسٹال ہو تو اسی سے آپ دوبارہ مالک بنیں گے (مالک کی بیک اپ فائل میں بھی یہ خود ہوتا ہے)۔</div><div class="joinCode num">${esc(C.ownerKey())}</div></div>` : ''}
-        <h3 style="margin-top:10px">📱 جڑے ہوئے آلات</h3><div id="cloudMembers" class="list"><div class="muted">…</div></div>`
-      : `<div class="muted">یہ آلہ آڑھت سے ملازم کے طور پر جڑا ہے۔</div><div class="row" style="margin-top:6px"><button class="btn sm" onclick="AB_CLOUD.sync(true)">🔄 ابھی ملائیں</button>
-        <button class="btn light sm" onclick="App.claimForm()">👑 میں مالک ہوں (نیا آلہ)</button></div>`}</div>`;
+        <h3 style="margin-top:10px">📱 جڑی ہوئی ڈیوائسز</h3><div id="cloudMembers" class="list"><div class="muted">…</div></div>`
+      : `<div class="muted">یہ ڈیوائس آڑھت سے ملازم کے طور پر جڑی ہے۔</div><div class="row" style="margin-top:6px"><button class="btn sm" onclick="AB_CLOUD.sync(true)">🔄 ابھی ملائیں</button>
+        <button class="btn light sm" onclick="App.claimForm()">👑 میں مالک ہوں (نئی ڈیوائس)</button></div>`}</div>`;
   }
   async function loadMembers(){
     const box = $('cloudMembers'); if(!box) return;
     try{
       const ms = await AB_CLOUD.refreshDevices();
       const lim = window.AB_LIC ? AB_LIC.allowed() : 99;
-      box.innerHTML = `<div class="muted" style="margin-bottom:4px">📱 جڑے آلات: <span class="num">${ms.length}</span> / <span class="num">${lim}</span>${ms.length > lim ? ' — ⛔ حد سے زیادہ آلات پر نیا اندراج بند؛ کوئی آلہ ہٹائیں یا مزید آلہ لیں' : ''}</div>` + ms.map((m, i) => `<div class="it" style="cursor:default"><div>${m.role === 'owner' ? '👑' : '📱'} ${esc(m.name || '')} <span class="muted">${m.uid === AB_CLOUD.uid() ? '(یہ آلہ)' : ''}${i >= lim ? ' ⛔ حد سے زیادہ' : ''}</span></div>
+      box.innerHTML = `<div class="muted" style="margin-bottom:4px">📱 جڑی ڈیوائسز: <span class="num">${ms.length}</span> / <span class="num">${lim}</span>${ms.length > lim ? ' — ⛔ حد سے زیادہ ڈیوائسز پر نیا اندراج بند؛ کوئی ڈیوائس ہٹائیں یا مزید ڈیوائس لیں' : ''}</div>` + ms.map((m, i) => `<div class="it" style="cursor:default"><div>${m.role === 'owner' ? '👑' : '📱'} ${esc(m.name || '')} <span class="muted">${m.uid === AB_CLOUD.uid() ? '(یہ ڈیوائس)' : ''}${i >= lim ? ' ⛔ حد سے زیادہ' : ''}</span></div>
         ${m.role !== 'owner' ? `<button class="btn gray sm" onclick="App.cloudRemove('${m.uid}','${esc(m.name || '')}')">ہٹائیں</button>` : ''}</div>`).join('') || '<div class="muted">کوئی نہیں</div>';
     }catch(e){ box.innerHTML = '<div class="muted">فہرست نہیں آ سکی — انٹرنیٹ دیکھیں</div>'; }
   }
   function cloudJoinForm(){
     modal(`<h3>📲 آڑھت سے جڑیں</h3><div style="text-align:right">
-      <div class="muted">مالک کے آلے میں سیٹنگ ← «کئی آلات» میں جوڑنے کا کوڈ لکھا ہے، وہی یہاں لکھیں۔</div>
+      <div class="muted">مالک کی ڈیوائس میں سیٹنگ ← «کئی ڈیوائسز» میں جوڑنے کا کوڈ لکھا ہے، وہی یہاں لکھیں۔</div>
       <div class="f"><label>جوڑنے کا کوڈ</label><input id="cjCode" dir="ltr" style="text-align:center;font-family:Tahoma,Arial" placeholder="AB…-12345678"></div>
       <div class="f"><label>اپنا نام</label><input id="cjName" placeholder="مثلاً منشی اسلم"></div></div>
       <div class="row" style="justify-content:center;margin-top:10px"><button class="btn" id="cjOk">✅ جڑیں</button><button class="btn gray" onclick="App.closeModal()">منسوخ</button></div>`);
     $('cjOk').onclick = async () => {
       const code = $('cjCode').value, name = $('cjName').value.trim();
       if(!AB_CLOUD.parseCode(code)){ toast('⚠️ کوڈ درست نہیں'); return; }
-      if(DB.settings.registered && liveParchis().length && !(await ask('اس آلے کا موجودہ ریکارڈ بھی آڑھت کے کلاؤڈ میں مل جائے گا۔ جاری رکھیں؟'))) return;
+      if(DB.settings.registered && liveParchis().length && !(await ask('اس ڈیوائس کا موجودہ ریکارڈ بھی آڑھت کے کلاؤڈ میں مل جائے گا۔ جاری رکھیں؟'))) return;
       closeModal();
       const wasRegistered = !!DB.settings.registered; // نیا آلہ ہو تو جڑنے کے بعد سیدھا ہوم
       if(await AB_CLOUD.join(code, name)){ curUser = null; logIt('آڑھت سے جڑا: ' + (name || 'ملازم')); go(wasRegistered ? 'settings' : 'home'); }
@@ -769,8 +769,8 @@
     loadAll(); safeCopy(); logIt('بیک اپ واپس لایا گیا (' + (b.at || '') + ')'); curUser = ownerUser(); go('home'); toast('✅ بیک اپ واپس آ گیا');
     // مالک کی بیک اپ اور یہ آلہ کلاؤڈ سے نہیں جڑا: جڑ کر دوبارہ مالک بنیں
     if(b.cloudOwner && window.AB_CLOUD && !AB_CLOUD.on() && navigator.onLine){
-      if(await ask('یہ بیک اپ کلاؤڈ والی آڑھت کے مالک کا ہے۔ یہ آلہ آڑھت سے جوڑ کر دوبارہ مالک بنا دیں؟', 'جوڑیں اور مالک بنیں')){
-        if(await AB_CLOUD.join(b.cloudOwner.code, DB.settings.owner || 'مالک') && await AB_CLOUD.claimOwner(b.cloudOwner.ownerKey)){ curUser = ownerUser(); logIt('نئے آلے پر دوبارہ مالک بنے'); render(); }
+      if(await ask('یہ بیک اپ کلاؤڈ والی آڑھت کے مالک کا ہے۔ یہ ڈیوائس آڑھت سے جوڑ کر دوبارہ مالک بنا دیں؟', 'جوڑیں اور مالک بنیں')){
+        if(await AB_CLOUD.join(b.cloudOwner.code, DB.settings.owner || 'مالک') && await AB_CLOUD.claimOwner(b.cloudOwner.ownerKey)){ curUser = ownerUser(); logIt('نئی ڈیوائس پر دوبارہ مالک بنے'); render(); }
       }
     }
     return true;
@@ -859,7 +859,7 @@
         <div class="f"><label>موبائل نمبر</label><input id="sPhone" inputmode="tel" value="${esc(s.phone)}"></div>
         <div class="f"><label>منڈی کا پتہ</label><input id="sAddr" value="${esc(s.address)}"></div></div>
         <button class="btn" style="margin-top:8px" onclick="App.saveSettings()">💾 محفوظ</button></div>
-      <div class="card"><h3>🎨 رنگ</h3><div class="themesCard">${themePicker()}</div><div class="muted">رنگ صرف اس آلے پر بدلتا ہے؛ ریکارڈ پر کوئی اثر نہیں۔</div></div>
+      <div class="card"><h3>🎨 رنگ</h3><div class="themesCard">${themePicker()}</div><div class="muted">رنگ صرف اس ڈیوائس پر بدلتا ہے؛ ریکارڈ پر کوئی اثر نہیں۔</div></div>
       <div class="card"><h3>🔒 مالک کا پن</h3><div class="muted">پن لگانے سے ایپ کھلتے وقت پن پوچھے گی، اور بند دن کی تبدیلی بھی صرف اسی سے ہوگی۔ ${hasOwnerPin() ? '✅ پن لگا ہوا ہے' : '❌ ابھی پن نہیں لگا'}</div>
         <div class="row" style="margin-top:6px"><div class="f" style="flex:1"><input id="sPin" type="password" inputmode="numeric" maxlength="8" placeholder="نیا پن (4 سے 8 ہندسے)"></div>
         <button class="btn" onclick="App.setPin()">💾 پن لگائیں</button>${hasOwnerPin() ? '<button class="btn gray" onclick="App.removePin()">ہٹائیں</button>' : ''}</div></div>
@@ -978,15 +978,15 @@
     exportBackup, importBackup, saveSettings, setPin, removePin,
     cloudJoinForm,
     claimForm(){
-      modal(`<h3>👑 دوبارہ مالک بنیں</h3><div style="text-align:right"><div class="muted">مالک کے پرانے آلے کی سیٹنگ میں لکھا «مالک کا خفیہ کوڈ» یہاں لکھیں۔</div>
+      modal(`<h3>👑 دوبارہ مالک بنیں</h3><div style="text-align:right"><div class="muted">مالک کی پرانی ڈیوائس کی سیٹنگ میں لکھا «مالک کا خفیہ کوڈ» یہاں لکھیں۔</div>
         <div class="f"><label>مالک کا خفیہ کوڈ</label><input id="ckK" dir="ltr" style="text-align:center;font-family:Tahoma,Arial;text-transform:uppercase"></div></div>
         <div class="row" style="justify-content:center;margin-top:10px"><button class="btn" id="ckOk">✅ مالک بنیں</button><button class="btn gray" onclick="App.closeModal()">منسوخ</button></div>`);
-      $('ckOk').onclick = async () => { const k = $('ckK').value; closeModal(); if(await AB_CLOUD.claimOwner(k)){ curUser = ownerUser(); logIt('اس آلے پر دوبارہ مالک بنے'); render(); } };
+      $('ckOk').onclick = async () => { const k = $('ckK').value; closeModal(); if(await AB_CLOUD.claimOwner(k)){ curUser = ownerUser(); logIt('اس ڈیوائس پر دوبارہ مالک بنے'); render(); } };
     },
-    async cloudEnable(){ if(!(await ask('آڑھت کا ریکارڈ آپ کے اپنے کلاؤڈ (آڑھت بک) پر جائے گا اور جڑے ہوئے آلات میں مل جائے گا۔ کلاؤڈ چالو کریں؟', 'چالو کریں'))) return; if(await AB_CLOUD.enableOwner()){ logIt('کلاؤڈ چالو'); render(); } },
+    async cloudEnable(){ if(!(await ask('آڑھت کا ریکارڈ آپ کے اپنے کلاؤڈ (آڑھت بک) پر جائے گا اور جڑی ہوئی ڈیوائسز میں مل جائے گا۔ کلاؤڈ چالو کریں؟', 'چالو کریں'))) return; if(await AB_CLOUD.enableOwner()){ logIt('کلاؤڈ چالو'); render(); } },
     cloudCopy(){ const c = AB_CLOUD.code(); try{ navigator.clipboard.writeText(c).then(() => toast('📋 کوڈ کاپی ہو گیا')); }catch(e){ toast(c); } },
     cloudShare(){ const msg = 'آڑھت بک — «' + shopName() + '» سے جڑنے کا کوڈ:\n' + AB_CLOUD.code() + '\nآڑھت بک کھولیں ← سیٹنگ ← آڑھت سے جڑیں'; window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank'); },
-    async cloudRemove(uid, name){ if(!(await ask('«' + esc(name) + '» کو آڑھت سے ہٹا دیں؟ اس آلے پر نیا ریکارڈ کلاؤڈ میں نہیں جائے گا۔'))) return; try{ await AB_CLOUD.removeMember(uid); logIt('آلہ ہٹایا: ' + name); loadMembers(); toast('✅ ہٹا دیا'); }catch(e){ toast('⚠️ نہیں ہٹا سکا — انٹرنیٹ دیکھیں'); } },
+    async cloudRemove(uid, name){ if(!(await ask('«' + esc(name) + '» کو آڑھت سے ہٹا دیں؟ اس ڈیوائس پر نیا ریکارڈ کلاؤڈ میں نہیں جائے گا۔'))) return; try{ await AB_CLOUD.removeMember(uid); logIt('ڈیوائس ہٹائی: ' + name); loadMembers(); toast('✅ ہٹا دیا'); }catch(e){ toast('⚠️ نہیں ہٹا سکا — انٹرنیٹ دیکھیں'); } },
     async driveOff(){ if(!(await ask('ڈرائیو سے خودکار بیک اپ بند کریں؟ ڈرائیو پر پہلے سے محفوظ فائلیں رہیں گی۔'))) return; AB_DRIVE.disconnect(); render(); }
   };
 
