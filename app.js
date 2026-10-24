@@ -8,8 +8,8 @@
    ===================================================================== */
 (function(){
   'use strict';
-  const APP_VERSION = 'AB2410SA010';
-  const UPDATE_NOTE = 'ملازمین: ہر ایک کا اپنا پن اور اجازت والی اسکرینیں؛ ہر اندراج پر لکھنے والے کا نام';
+  const APP_VERSION = 'AB2410SA011';
+  const UPDATE_NOTE = 'نیا فون یا دوبارہ انسٹال: مالک کے خفیہ کوڈ یا مالک کی بیک اپ سے دوبارہ مالک بنیں';
   const C = window.ABCalc;
   const { fmt, toPaisa, toGrams, int, calcParchi, lineAmount, KINDS, SIDES, TEMPLATES, rateText } = C;
 
@@ -396,8 +396,10 @@
         <div class="joinCode num">${esc(C.code())}</div>
         <div class="row"><button class="btn light sm" onclick="App.cloudCopy()">📋 کوڈ کاپی کریں</button><button class="btn light sm" onclick="App.cloudShare()">💬 واٹس ایپ پر بھیجیں</button>
         <button class="btn sm" onclick="AB_CLOUD.sync(true)">🔄 ابھی ملائیں</button></div>
+        ${C.ownerKey() ? `<div class="okBox"><div><b>🔑 مالک کا خفیہ کوڈ</b> — یہ کسی کو نہ دیں؛ کاغذ پر لکھ کر سنبھال لیں۔ فون بدلے یا ایپ دوبارہ انسٹال ہو تو اسی سے آپ دوبارہ مالک بنیں گے (مالک کی بیک اپ فائل میں بھی یہ خود ہوتا ہے)۔</div><div class="joinCode num">${esc(C.ownerKey())}</div></div>` : ''}
         <h3 style="margin-top:10px">📱 جڑے ہوئے آلات</h3><div id="cloudMembers" class="list"><div class="muted">…</div></div>`
-      : `<div class="muted">یہ آلہ آڑھت سے ملازم کے طور پر جڑا ہے۔</div><div class="row" style="margin-top:6px"><button class="btn sm" onclick="AB_CLOUD.sync(true)">🔄 ابھی ملائیں</button></div>`}</div>`;
+      : `<div class="muted">یہ آلہ آڑھت سے ملازم کے طور پر جڑا ہے۔</div><div class="row" style="margin-top:6px"><button class="btn sm" onclick="AB_CLOUD.sync(true)">🔄 ابھی ملائیں</button>
+        <button class="btn light sm" onclick="App.claimForm()">👑 میں مالک ہوں (نیا آلہ)</button></div>`}</div>`;
   }
   async function loadMembers(){
     const box = $('cloudMembers'); if(!box) return;
@@ -748,6 +750,8 @@
   function snapshot(){
     const data = { appKind: 'AB', app: 'آڑھت بک', version: APP_VERSION, at: new Date().toISOString(), data: {} };
     KEYS.forEach(k => { data.data[k] = localStorage.getItem(k); });
+    // مالک کی بیک اپ: نئے آلے پر لگا کر کلاؤڈ سے جڑ کر خود دوبارہ مالک (ملازم کی بیک اپ میں نہیں)
+    try{ const op = window.AB_CLOUD && AB_CLOUD.ownerPack(); if(op) data.cloudOwner = op; }catch(e){}
     return data;
   }
   // ---------- بیک اپ واپس لانا (فائل یا ڈرائیو) — صرف آڑھت بک کی فائل؛ پہلے موجودہ ریکارڈ کی حفاظتی کاپی ----------
@@ -759,6 +763,12 @@
     try{ const db = await idb(); const tx = db.transaction('kv', 'readwrite'); const s = tx.objectStore('kv'); KEYS.forEach(k => { const v = localStorage.getItem(k); if(v != null) s.put(v, 'before_import_' + k); }); }catch(e){}
     KEYS.forEach(k => { if(b.data[k] != null) localStorage.setItem(k, b.data[k]); else localStorage.removeItem(k); });
     loadAll(); safeCopy(); logIt('بیک اپ واپس لایا گیا (' + (b.at || '') + ')'); curUser = ownerUser(); go('home'); toast('✅ بیک اپ واپس آ گیا');
+    // مالک کی بیک اپ اور یہ آلہ کلاؤڈ سے نہیں جڑا: جڑ کر دوبارہ مالک بنیں
+    if(b.cloudOwner && window.AB_CLOUD && !AB_CLOUD.on() && navigator.onLine){
+      if(await ask('یہ بیک اپ کلاؤڈ والی آڑھت کے مالک کا ہے۔ یہ آلہ آڑھت سے جوڑ کر دوبارہ مالک بنا دیں؟', 'جوڑیں اور مالک بنیں')){
+        if(await AB_CLOUD.join(b.cloudOwner.code, DB.settings.owner || 'مالک') && await AB_CLOUD.claimOwner(b.cloudOwner.ownerKey)){ curUser = ownerUser(); logIt('نئے آلے پر دوبارہ مالک بنے'); render(); }
+      }
+    }
     return true;
   }
   function backupFileName(d){
@@ -959,6 +969,12 @@
     async chTemplate(k){ if(!(await ask(TEMPLATES[k].label + ' کا سانچہ لگ جائے گا اور موجودہ فہرست بدل جائے گی۔'))) return; const now = Date.now(); chargesAll().forEach(c => { if(!c.deleted) c.deleted = now; }); DB.charges = chargesAll().concat(TEMPLATES[k].list().map(c => Object.assign({ id: uid() }, c))); put('charges'); logIt('سانچہ لگا: ' + TEMPLATES[k].label); render(); toast('✅ سانچہ لگ گیا'); },
     exportBackup, importBackup, saveSettings, setPin, removePin,
     cloudJoinForm,
+    claimForm(){
+      modal(`<h3>👑 دوبارہ مالک بنیں</h3><div style="text-align:right"><div class="muted">مالک کے پرانے آلے کی سیٹنگ میں لکھا «مالک کا خفیہ کوڈ» یہاں لکھیں۔</div>
+        <div class="f"><label>مالک کا خفیہ کوڈ</label><input id="ckK" dir="ltr" style="text-align:center;font-family:Tahoma,Arial;text-transform:uppercase"></div></div>
+        <div class="row" style="justify-content:center;margin-top:10px"><button class="btn" id="ckOk">✅ مالک بنیں</button><button class="btn gray" onclick="App.closeModal()">منسوخ</button></div>`);
+      $('ckOk').onclick = async () => { const k = $('ckK').value; closeModal(); if(await AB_CLOUD.claimOwner(k)){ curUser = ownerUser(); logIt('اس آلے پر دوبارہ مالک بنے'); render(); } };
+    },
     async cloudEnable(){ if(!(await ask('آڑھت کا ریکارڈ آپ کے اپنے کلاؤڈ (آڑھت بک) پر جائے گا اور جڑے ہوئے آلات میں مل جائے گا۔ کلاؤڈ چالو کریں؟', 'چالو کریں'))) return; if(await AB_CLOUD.enableOwner()){ logIt('کلاؤڈ چالو'); render(); } },
     cloudCopy(){ const c = AB_CLOUD.code(); try{ navigator.clipboard.writeText(c).then(() => toast('📋 کوڈ کاپی ہو گیا')); }catch(e){ toast(c); } },
     cloudShare(){ const msg = 'آڑھت بک — «' + shopName() + '» سے جڑنے کا کوڈ:\n' + AB_CLOUD.code() + '\nآڑھت بک کھولیں ← سیٹنگ ← آڑھت سے جڑیں'; window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank'); },
