@@ -76,6 +76,10 @@ service cloud.firestore {
     match /licenses/{code} {
       allow get: if signedIn();
       allow list, write: if isDev();
+      // گاہک کوڈ چالو کرے تو صرف ایک بار «کب چالو ہوا» لکھ سکے (ڈویلپر کی فہرست کے لیے)
+      allow update: if signedIn() && !('usedAt' in resource.data) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['usedAt']) &&
+        request.resource.data.usedAt is int;
     }
 
     // باقی سب بند

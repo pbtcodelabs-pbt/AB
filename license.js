@@ -52,7 +52,8 @@
   }
   function paidExp() { return st.phone && st.phone === phone() ? (st.exp || 0) : 0; }
   function status() {
-    const n = now(), pe = paidExp(), e = Math.max(trialEnd(), pe);
+    // کوڈ چالو ہو جائے تو آزمائش ختم — اسی کوڈ کی تاریخ چلے (آزمائش کے دن ساتھ نہیں جڑتے)
+    const n = now(), pe = paidExp(), e = pe ? pe : trialEnd();
     return { ok: e > n, paid: pe > n, forever: pe >= FOREVER - DAY, exp: e, days: Math.max(0, Math.ceil((e - n) / DAY)) };
   }
   function urDay(ms) {
@@ -116,6 +117,7 @@
       await check(false);
       st.exp = Math.max(st.exp || 0, fv(L.exp) || 0); st.dev = Math.max(st.dev || 0, fv(L.dev) || 0); st.code = code; save();
       const s = status();
+      if (s.paid && !L.usedAt) cloud().fs(`licenses/${code}?updateMask.fieldPaths=usedAt`, { method: 'PATCH', body: JSON.stringify({ fields: { usedAt: { integerValue: String(Date.now()) } } }) }).catch(() => {});
       toast(s.paid ? '✅ سبسکرپشن چالو ہو گئی — ' + (s.forever ? 'ہمیشہ کے لیے' : s.days + ' دن') : '⚠️ اس کوڈ کی مدت ختم ہو چکی');
       refresh();
       return s.paid;
@@ -236,7 +238,7 @@
         <div class="f" id="dvCw"><label>کتنے دن؟</label><input id="dvC" inputmode="numeric" placeholder="1 سے 3650"></div>
         <div class="f" style="grid-column:1/-1"><label>کتنی ڈیوائسز؟ (3 شامل؛ ہر زیادہ ڈیوائس 5,000 سالانہ)</label><input id="dvDev" inputmode="numeric" value="3"></div></div>
       <div id="dvInfo" class="muted"></div>
-      <div class="row" style="justify-content:center;margin-top:6px"><button class="btn light" id="dvChk">🔍 نمبر دیکھیں</button><button class="btn" id="dvMake">🎁 کوڈ بنائیں</button><button class="btn gray" onclick="App.closeModal()">بند</button></div>
+      <div class="row" style="justify-content:center;margin-top:6px"><button class="btn light" id="dvChk">🔍 نمبر دیکھیں</button><button class="btn" id="dvMake">🎁 کوڈ بنائیں</button><button class="btn light" onclick="AB_LIC.codes()">📋 سب کوڈ</button><button class="btn gray" onclick="App.closeModal()">بند</button></div>
       <div id="dvOut"></div>
       <details><summary>📊 فائربیس کا استعمال (مفت پیکج)</summary><div id="uBox" class="uBox"></div></details></div>`);
     if (window.AB_USAGE) AB_USAGE.render('uBox');
@@ -294,24 +296,154 @@
       const s = await devFs(`subs/${p}`);
       const cur = s ? fv(s.fields.exp) || 0 : 0;
       const exp = days ? Math.max(cur, Date.now()) + days * DAY : FOREVER;
-      const code = rnd(10);
+      const code = (days ? days + 'D' : 'LT') + rnd(7);   // مدت کا اشارہ کوڈ کے شروع میں: 3D… 180D… LT… (ہمیشہ)
       const doc = path => `projects/${CFG.projectId}/databases/(default)/documents/${path}`;
       const I = v => ({ integerValue: String(Math.trunc(v)) }), S = v => ({ stringValue: String(v) });
       await devFs(':commit', { method: 'POST', body: JSON.stringify({ writes: [
         { update: { name: doc(`licenses/${code}`), fields: { phone: S(p), name: S(name), days: I(days), exp: I(exp), dev: I(devs), at: I(Date.now()) } }, currentDocument: { exists: false } },
         { update: { name: doc(`subs/${p}`), fields: { exp: I(exp), dev: I(devs), upd: I(Date.now()) } } }
       ] }) });
-      const msg = 'آڑھت بک — آپ کا سبسکرپشن کوڈ:\n' + code + '\n' + (days ? urDay(exp) + ' تک' : 'ہمیشہ کے لیے')
+      const msg = 'آڑھت بک — آپ کا سبسکرپشن کوڈ:\n' + showCode(code) + '\n' + (days ? urDay(exp) + ' تک' : 'ہمیشہ کے لیے')
         + '\nایپ کھولیں ← سیٹنگ ← سبسکرپشن ← کوڈ لکھ کر «چالو کریں»';
-      $('dvOut').innerHTML = `<div class="okBox"><div>✅ کوڈ بن گیا — ${esc(showPhone(p))} • ${devs} ڈیوائسز • ${days ? days + ' دن • ' : ''}${days ? esc(urDay(exp)) + ' تک' : 'ہمیشہ کے لیے'}</div><div class="joinCode num">${code}</div>
-        <div class="row" style="justify-content:center"><a class="btn sm" target="_blank" href="https://wa.me/${p}?text=${encodeURIComponent(msg)}">💬 گاہک کو واٹس ایپ</a></div></div>`;
+      $('dvOut').innerHTML = `<div class="okBox"><div>✅ کوڈ بن گیا — ${esc(showPhone(p))} • ${devs} ڈیوائسز • ${days ? days + ' دن • ' : ''}${days ? esc(urDay(exp)) + ' تک' : 'ہمیشہ کے لیے'}</div><div class="joinCode num">${showCode(code)}</div>
+        <div class="row" style="justify-content:center"><button class="btn light sm" onclick="AB_LIC.copy('${showCode(code)}')">📋 کوڈ کاپی</button><a class="btn sm" target="_blank" href="https://wa.me/${p}?text=${encodeURIComponent(msg)}">💬 گاہک کو واٹس ایپ</a></div></div>`;
     } catch (e) { toast(e.message === 'denied' ? '❌ اجازت نہیں — فائربیس کے اصول دیکھیں' : '⚠️ کوڈ نہیں بن سکا، دوبارہ کوشش کریں'); }
     finally { btn.disabled = false; }
   }
 
+  // ---------- کوڈ دکھانا: مدت والا حصہ الگ (180D-K7M2QX9) ----------
+  function showCode(c) { const m = /^(\d+D|LT)([A-Z0-9]{7})$/.exec(c || ''); return m ? m[1] + '-' + m[2] : (c || ''); }
+  function copy(t) {
+    const done = () => toast('📋 کاپی ہو گیا: ' + t);
+    try { navigator.clipboard.writeText(t).then(done, () => fallback()); } catch (e) { fallback(); }
+    function fallback() { const a = document.createElement('textarea'); a.value = t; document.body.appendChild(a); a.select(); try { document.execCommand('copy'); done(); } catch (e) {} a.remove(); }
+  }
+
+  // =====================================================================
+  //   📋 سب کوڈ — فہرست، حساب، معطل / بحال / حذف، ترتیب، شیئر اور پرنٹ (صرف ڈویلپر)
+  // =====================================================================
+  let LIST = [], view = { f: 'all', sort: 'expAsc', q: '' };
+  async function loadCodes() {
+    const out = []; let tok = '';
+    for (let g = 0; g < 20; g++) {
+      const j = await devFs(`licenses?pageSize=300${tok ? '&pageToken=' + encodeURIComponent(tok) : ''}`);
+      ((j && j.documents) || []).forEach(d => {
+        const f = d.fields || {};
+        out.push({ code: d.name.split('/').pop(), phone: fv(f.phone) || '', name: fv(f.name) || '', days: fv(f.days) || 0, exp: fv(f.exp) || 0,
+          dev: fv(f.dev) || BASE_DEVICES, at: fv(f.at) || 0, usedAt: fv(f.usedAt) || 0, off: !!(f.off && f.off.booleanValue) });
+      });
+      tok = j && j.nextPageToken; if (!tok) break;
+    }
+    LIST = out;
+  }
+  function left(ms) {
+    if (ms >= FOREVER - DAY) return 'ہمیشہ';
+    const d = ms - Date.now(); if (d <= 0) return 'ختم';
+    const dd = Math.floor(d / DAY), hh = Math.floor((d % DAY) / 3600e3), mm = Math.floor((d % 3600e3) / 60000);
+    return dd ? `${dd} دن ${hh} گھنٹے` : `${hh} گھنٹے ${mm} منٹ`;
+  }
+  const BUCKETS = [
+    ['all', 'سب', () => true],
+    ['live', 'چالو', x => !x.off && x.exp > Date.now()],
+    ['d7', '7 دن میں ختم', x => !x.off && x.exp > Date.now() && x.exp - Date.now() <= 7 * DAY],
+    ['d15', '15 دن میں ختم', x => !x.off && x.exp > Date.now() && x.exp - Date.now() <= 15 * DAY],
+    ['d30', '30 دن میں ختم', x => !x.off && x.exp > Date.now() && x.exp - Date.now() <= 30 * DAY],
+    ['month', 'اس مہینے ختم', x => { const n = new Date(), e = new Date(x.exp); return !x.off && x.exp > Date.now() && e.getFullYear() === n.getFullYear() && e.getMonth() === n.getMonth(); }],
+    ['unused', 'ابھی چالو نہیں ہوئے', x => !x.off && !x.usedAt],
+    ['ended', 'ختم شدہ', x => !x.off && x.exp <= Date.now()],
+    ['off', 'معطل', x => x.off]
+  ];
+  function rows() {
+    const b = BUCKETS.find(x => x[0] === view.f) || BUCKETS[0];
+    const q = en(view.q).trim().toUpperCase().replace(/-/g, '');
+    let r = LIST.filter(b[2]).filter(x => !q || (x.name + ' ' + showPhone(x.phone) + ' ' + x.phone + ' ' + x.code).toUpperCase().replace(/-/g, '').indexOf(q) >= 0);
+    const S = { expAsc: (a, b) => a.exp - b.exp, expDesc: (a, b) => b.exp - a.exp, atDesc: (a, b) => b.at - a.at, atAsc: (a, b) => a.at - b.at, name: (a, b) => a.name.localeCompare(b.name, 'ur') };
+    return r.sort(S[view.sort] || S.expAsc);
+  }
+  function codesHtml() {
+    const r = rows();
+    return `<div class="dvp"><h3>📋 سب کوڈ (${LIST.length})</h3>
+      <div class="cdChips">${BUCKETS.map(b => `<button class="${view.f === b[0] ? 'on' : ''}" onclick="AB_LIC.cv('f','${b[0]}')">${b[1]} <b class="num">${LIST.filter(b[2]).length}</b></button>`).join('')}</div>
+      <div class="grid2"><div class="f"><input id="cdQ" placeholder="🔍 نام، نمبر یا کوڈ" value="${esc(view.q)}" oninput="AB_LIC.cv('q',this.value,true)"></div>
+        <div class="f"><select onchange="AB_LIC.cv('sort',this.value)">${[['expAsc', 'ختم: قریب پہلے'], ['expDesc', 'ختم: دور پہلے'], ['atDesc', 'بنے: نئے پہلے'], ['atAsc', 'بنے: پرانے پہلے'], ['name', 'نام سے']].map(o => `<option value="${o[0]}" ${view.sort === o[0] ? 'selected' : ''}>${o[1]}</option>`).join('')}</select></div></div>
+      <div id="cdList" class="cdList">${listHtml(r)}</div>
+      <div class="row" style="justify-content:center;margin-top:6px"><button class="btn light sm" onclick="AB_LIC.shareCodes()">📤 شیئر</button><button class="btn light sm" onclick="AB_LIC.printCodes()">🖨️ پرنٹ</button><button class="btn light sm" onclick="AB_LIC.codes(true)">🔄 تازہ</button><button class="btn gray sm" onclick="AB_LIC.dev()">⬅️ واپس</button></div></div>`;
+  }
+  function listHtml(r) {
+    return r.map(x => {
+      const st = x.off ? '⏸️ معطل' : x.exp <= Date.now() ? '⛔ ختم' : x.usedAt ? '✅ چالو' : '🕓 ابھی چالو نہیں ہوا';
+      return `<div class="cdRow ${x.off ? 'off' : x.exp <= Date.now() ? 'end' : x.exp - Date.now() <= 7 * DAY ? 'soon' : ''}">
+        <div class="cdTop"><b>${esc(x.name || '—')}</b><span class="num" dir="ltr">${esc(showPhone(x.phone))}</span></div>
+        <div class="cdMid"><span class="num" dir="ltr">${showCode(x.code)}</span><span>${st}</span><span>📱 <span class="num">${x.dev}</span></span></div>
+        <div class="cdSub">بنا: ${x.at ? urDay(x.at) : '—'} • چالو: ${x.usedAt ? urDay(x.usedAt) : '—'} • ختم: ${x.exp >= FOREVER - DAY ? 'ہمیشہ' : urDay(x.exp)} • باقی: <b>${left(x.exp)}</b></div>
+        <div class="row cdBtns"><button class="btn light sm" onclick="AB_LIC.copy('${showCode(x.code)}')">📋</button>
+          <a class="btn light sm" target="_blank" href="https://wa.me/${x.phone}">💬</a>
+          <button class="btn light sm" onclick="AB_LIC.cOff('${x.code}')">${x.off ? '▶️ بحال' : '⏸️ معطل'}</button>
+          <button class="btn gray sm" onclick="AB_LIC.cDel('${x.code}')">🗑️</button></div></div>`;
+    }).join('') || '<div class="muted">کوئی کوڈ نہیں</div>';
+  }
+  async function codes(reload) {
+    if (!dev || Date.now() > dev.until) { devOpen(); return; }
+    const H = host();
+    if (reload || !LIST.length) {
+      H.modal('<div class="dvp"><h3>📋 سب کوڈ</h3><div class="muted">⏳ فہرست آ رہی ہے…</div></div>');
+      try { await loadCodes(); } catch (e) { H.modal('<div class="dvp"><h3>📋 سب کوڈ</h3><div class="muted">⚠️ فہرست نہیں آ سکی — انٹرنیٹ یا فائربیس کے اصول دیکھیں</div><button class="btn gray sm" onclick="AB_LIC.dev()">⬅️ واپس</button></div>'); return; }
+    }
+    H.modal(codesHtml());
+  }
+  function cv(k, v, typing) {
+    view[k] = v;
+    if (typing) { const l = $('cdList'); if (l) l.innerHTML = listHtml(rows()); return; }
+    host().modal(codesHtml());
+  }
+  // ایک نمبر کی سبسکرپشن دوبارہ حساب: اس نمبر کے غیر معطل کوڈ بننے کی ترتیب سے جمع (جیسے بنتے وقت ہوئے تھے)
+  async function recompute(phone) {
+    let exp = 0, dv = 0;
+    LIST.filter(x => x.phone === phone && !x.off).sort((a, b) => a.at - b.at).forEach(x => {
+      exp = x.days ? Math.max(exp, x.at) + x.days * DAY : FOREVER; dv = Math.max(dv, x.dev);
+    });
+    await devFs(`subs/${phone}`, { method: 'PATCH', body: JSON.stringify({ fields: { exp: { integerValue: String(exp) }, dev: { integerValue: String(dv || BASE_DEVICES) }, upd: { integerValue: String(Date.now()) } } }) });
+  }
+  async function cOff(code) {
+    const x = LIST.find(y => y.code === code); if (!x) return;
+    if (!(await host().ask((x.off ? 'یہ کوڈ دوبارہ چالو کریں؟ ' : 'یہ کوڈ معطل کریں؟ گاہک کی سبسکرپشن اگلی جانچ پر (زیادہ سے زیادہ 6 گھنٹے میں) رک جائے گی۔ ') + showCode(code), x.off ? 'بحال کریں' : 'معطل کریں'))) { codes(); return; }
+    try {
+      await devFs(`licenses/${code}?updateMask.fieldPaths=off`, { method: 'PATCH', body: JSON.stringify({ fields: { off: { booleanValue: !x.off } } }) });
+      x.off = !x.off; await recompute(x.phone); toast(x.off ? '⏸️ معطل ہو گیا' : '▶️ بحال ہو گیا');
+    } catch (e) { toast('⚠️ نہیں ہو سکا — انٹرنیٹ دیکھیں'); }
+    codes();
+  }
+  async function cDel(code) {
+    const x = LIST.find(y => y.code === code); if (!x) return;
+    if (!(await host().ask('یہ کوڈ ہمیشہ کے لیے حذف کریں؟ ' + showCode(code) + ' — ' + esc(x.name) + '۔ گاہک کی سبسکرپشن سے اس کے دن نکل جائیں گے۔', 'حذف کریں'))) { codes(); return; }
+    try { await devFs(`licenses/${code}`, { method: 'DELETE' }); LIST = LIST.filter(y => y.code !== code); await recompute(x.phone); toast('🗑️ حذف ہو گیا'); }
+    catch (e) { toast('⚠️ نہیں ہو سکا — انٹرنیٹ دیکھیں'); }
+    codes();
+  }
+  function codesText() {
+    const b = BUCKETS.find(x => x[0] === view.f) || BUCKETS[0];
+    return '📒 آڑھت بک — کوڈوں کی فہرست (' + b[1] + ') — ' + urDay(Date.now()) + '\n\n' + rows().map((x, i) =>
+      `${i + 1}) ${x.name || '—'} — ${showPhone(x.phone)}\nکوڈ: ${showCode(x.code)} • ${x.dev} ڈیوائسز • ${x.off ? 'معطل' : x.exp <= Date.now() ? 'ختم' : x.usedAt ? 'چالو' : 'ابھی چالو نہیں ہوا'}\nبنا: ${x.at ? urDay(x.at) : '—'} • چالو: ${x.usedAt ? urDay(x.usedAt) : '—'} • ختم: ${x.exp >= FOREVER - DAY ? 'ہمیشہ' : urDay(x.exp)} • باقی: ${left(x.exp)}`).join('\n\n');
+  }
+  function shareCodes() {
+    const t = codesText();
+    if (navigator.share) navigator.share({ text: t }).catch(() => {});
+    else window.open('https://wa.me/?text=' + encodeURIComponent(t), '_blank');
+  }
+  function printCodes() {
+    const w = window.open('', '_blank'); if (!w) { toast('⚠️ پرنٹ والا صفحہ نہیں کھل سکا'); return; }
+    const b = BUCKETS.find(x => x[0] === view.f) || BUCKETS[0];
+    w.document.write(`<!DOCTYPE html><html lang="ur" dir="rtl"><head><meta charset="utf-8"><title>کوڈوں کی فہرست</title><style>body{font-family:'Noori',Tahoma,sans-serif;margin:12px}table{width:100%;border-collapse:collapse;font-size:13px}th,td{border:1px solid #999;padding:4px;text-align:right}th{background:#fde2e2}.n{direction:ltr;unicode-bidi:embed;font-family:Tahoma}</style></head><body>
+      <h2 style="margin:0 0 6px">📒 آڑھت بک — کوڈوں کی فہرست (${b[1]}) — ${urDay(Date.now())}</h2>
+      <table><tr><th>#</th><th>نام</th><th>موبائل</th><th>کوڈ</th><th>ڈیوائسز</th><th>حالت</th><th>بنا</th><th>چالو</th><th>ختم</th><th>باقی</th></tr>
+      ${rows().map((x, i) => `<tr><td>${i + 1}</td><td>${esc(x.name)}</td><td class="n">${esc(showPhone(x.phone))}</td><td class="n">${showCode(x.code)}</td><td>${x.dev}</td><td>${x.off ? 'معطل' : x.exp <= Date.now() ? 'ختم' : x.usedAt ? 'چالو' : 'ابھی نہیں'}</td><td>${x.at ? urDay(x.at) : '—'}</td><td>${x.usedAt ? urDay(x.usedAt) : '—'}</td><td>${x.exp >= FOREVER - DAY ? 'ہمیشہ' : urDay(x.exp)}</td><td>${left(x.exp)}</td></tr>`).join('')}</table>
+      <script>setTimeout(function(){print()},400)<\/script></body></html>`);
+    w.document.close();
+  }
+
   window.AB_LIC = {
     status, statusText, strip, card, canWrite, allowed, overLimit, check, activate, normPhone, tap,
-    open: openModal, request, useCode, restore,
+    open: openModal, request, useCode, restore, copy, codes, cv, cOff, cDel, shareCodes, printCodes, dev: () => devOpen(),
     start() {
       if (this._on) return; this._on = true;
       check(false);
