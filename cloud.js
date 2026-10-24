@@ -84,7 +84,7 @@
       await fs(`shops/${shopId}/members?documentId=${meta.uid}`, { method: 'POST', body: JSON.stringify({ fields: { role: S('owner'), name: S(st.owner || 'مالک'), at: I(Date.now()) } }) });
       await fs(`shops/${shopId}/secret?documentId=join`, { method: 'POST', body: JSON.stringify({ fields: { key: S(joinKey) } }) });
       await fs(`shops/${shopId}/secret?documentId=owner`, { method: 'POST', body: JSON.stringify({ fields: { key: S(ownerKey) } }) });
-      Object.assign(meta, { shopId, joinKey, ownerKey, role: 'owner', lastPull: 0, on: true }); saveMeta();
+      Object.assign(meta, { shopId, joinKey, ownerKey, role: 'owner', lastPull: 0, on: true, devAt: 0, devPos: null, devCount: 0 }); saveMeta();
       pushed = {}; savePushed();
       host().setCloud({ shopId, joinKey });
       await sync(true);
@@ -104,7 +104,7 @@
       try {
         await fs(`shops/${c.shopId}/members?documentId=${meta.uid}`, { method: 'POST', body: JSON.stringify({ fields: { role: S('staff'), name: S(name || 'ملازم'), key: S(c.key), at: I(Date.now()) } }) });
       } catch (e) { if (!/http 409/.test(e.message)) throw e; } // پہلے سے جڑا ہوا
-      Object.assign(meta, { shopId: c.shopId, joinKey: c.key, role: meta.role === 'owner' && meta.shopId === c.shopId ? 'owner' : 'staff', lastPull: 0, on: true }); saveMeta();
+      Object.assign(meta, { shopId: c.shopId, joinKey: c.key, role: meta.role === 'owner' && meta.shopId === c.shopId ? 'owner' : 'staff', lastPull: 0, on: true, devAt: 0, devPos: null, devCount: 0 }); saveMeta();
       pushed = {}; savePushed();
       await sync(true);
       host().setCloud({ shopId: c.shopId, joinKey: c.key });
@@ -150,6 +150,7 @@
       await pull();
       await push();
       ensureOwnerKey().catch(() => {});
+      if (Date.now() - (meta.devAt || 0) > 6 * 3600e3) refreshDevices().catch(() => {});
       meta.lastSync = Date.now(); lastErr = ''; saveMeta(); render();
       if (loud) toast('✅ سب آلات کا ڈیٹا مل گیا');
       return true;
@@ -200,6 +201,13 @@
     const j = await fs(`shops/${meta.shopId}/members?pageSize=100`);
     return (j.documents || []).map(d => ({ uid: d.name.split('/').pop(), role: d.fields.role && d.fields.role.stringValue, name: d.fields.name && d.fields.name.stringValue, at: d.fields.at ? +d.fields.at.integerValue : 0 }));
   }
+  // ---------- آلات کی حد کے لیے: یہ آلہ فہرست میں کون سے نمبر پر ہے (مالک پہلے، باقی جڑنے کی ترتیب سے) ----------
+  async function refreshDevices() {
+    const ms = await members();
+    ms.sort((a, b) => (a.role === 'owner' ? 0 : 1) - (b.role === 'owner' ? 0 : 1) || (a.at || 0) - (b.at || 0));
+    meta.devCount = ms.length; meta.devPos = ms.findIndex(m => m.uid === meta.uid); meta.devAt = Date.now(); saveMeta();
+    return ms;
+  }
   async function removeMember(uid) { await fs(`shops/${meta.shopId}/members/${uid}`, { method: 'DELETE' }); }
 
   function handleErr(e, loud) {
@@ -245,7 +253,8 @@
   }
 
   window.AB_CLOUD = {
-    enableOwner, join, sync, members, removeMember, render, parseCode, claimOwner,
+    enableOwner, join, sync, members, removeMember, render, parseCode, claimOwner, refreshDevices,
+    devices: () => ({ count: meta.devCount || 0, pos: meta.devPos == null ? -1 : meta.devPos }),
     ownerKey: () => (meta.role === 'owner' && meta.ownerKey) || '',
     // مالک کی بیک اپ فائل میں: نئے آلے پر بیک اپ لگا کر خود جڑ کر دوبارہ مالک
     ownerPack: () => (meta.on && meta.role === 'owner' && meta.ownerKey) ? { code: joinCode(), ownerKey: meta.ownerKey } : null,

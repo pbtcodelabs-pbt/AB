@@ -8,8 +8,8 @@
    ===================================================================== */
 (function(){
   'use strict';
-  const APP_VERSION = 'AB2410SA015';
-  const UPDATE_NOTE = 'کلاؤڈ سے فالتو پوچھنا کم (کام نہ ہو تو 5 منٹ بعد)؛ ڈویلپر پینل میں فائربیس استعمال کا میٹر';
+  const APP_VERSION = 'AB2410SA016';
+  const UPDATE_NOTE = 'آلات کی حد: سبسکرپشن میں 3 آلات؛ زیادہ آلے پر نیا اندراج بند، ڈویلپر پینل میں آلات کی تعداد';
   const C = window.ABCalc;
   const { fmt, toPaisa, toGrams, int, calcParchi, lineAmount, KINDS, SIDES, TEMPLATES, rateText } = C;
 
@@ -405,8 +405,9 @@
   async function loadMembers(){
     const box = $('cloudMembers'); if(!box) return;
     try{
-      const ms = await AB_CLOUD.members();
-      box.innerHTML = ms.map(m => `<div class="it" style="cursor:default"><div>${m.role === 'owner' ? '👑' : '📱'} ${esc(m.name || '')} <span class="muted">${m.uid === AB_CLOUD.uid() ? '(یہ آلہ)' : ''}</span></div>
+      const ms = await AB_CLOUD.refreshDevices();
+      const lim = window.AB_LIC ? AB_LIC.allowed() : 99;
+      box.innerHTML = `<div class="muted" style="margin-bottom:4px">📱 جڑے آلات: <span class="num">${ms.length}</span> / <span class="num">${lim}</span>${ms.length > lim ? ' — ⛔ حد سے زیادہ آلات پر نیا اندراج بند؛ کوئی آلہ ہٹائیں یا مزید آلہ لیں' : ''}</div>` + ms.map((m, i) => `<div class="it" style="cursor:default"><div>${m.role === 'owner' ? '👑' : '📱'} ${esc(m.name || '')} <span class="muted">${m.uid === AB_CLOUD.uid() ? '(یہ آلہ)' : ''}${i >= lim ? ' ⛔ حد سے زیادہ' : ''}</span></div>
         ${m.role !== 'owner' ? `<button class="btn gray sm" onclick="App.cloudRemove('${m.uid}','${esc(m.name || '')}')">ہٹائیں</button>` : ''}</div>`).join('') || '<div class="muted">کوئی نہیں</div>';
     }catch(e){ box.innerHTML = '<div class="muted">فہرست نہیں آ سکی — انٹرنیٹ دیکھیں</div>'; }
   }
