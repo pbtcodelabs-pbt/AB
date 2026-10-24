@@ -74,11 +74,13 @@
       await token();
       const shopId = 'AB' + rnd(14, 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789');
       const joinKey = rnd(8, '0123456789');
+      const ownerKey = rnd(12, 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789');
       const st = host().settings();
       await fs(`shops?documentId=${shopId}`, { method: 'POST', body: JSON.stringify({ fields: { owner: S(meta.uid), name: S(st.shop || ''), at: I(Date.now()) } }) });
       await fs(`shops/${shopId}/members?documentId=${meta.uid}`, { method: 'POST', body: JSON.stringify({ fields: { role: S('owner'), name: S(st.owner || 'مالک'), at: I(Date.now()) } }) });
       await fs(`shops/${shopId}/secret?documentId=join`, { method: 'POST', body: JSON.stringify({ fields: { key: S(joinKey) } }) });
-      Object.assign(meta, { shopId, joinKey, role: 'owner', lastPull: 0, on: true }); saveMeta();
+      await fs(`shops/${shopId}/secret?documentId=owner`, { method: 'POST', body: JSON.stringify({ fields: { key: S(ownerKey) } }) });
+      Object.assign(meta, { shopId, joinKey, ownerKey, role: 'owner', lastPull: 0, on: true }); saveMeta();
       pushed = {}; savePushed();
       host().setCloud({ shopId, joinKey });
       await sync(true);
@@ -107,6 +109,34 @@
     } catch (e) { handleErr(e, true); return false; } finally { busy = false; render(); }
   }
 
+  // ---------- مالک کا خفیہ کوڈ: پرانے مالک آلے پر نہ ہو تو بنا دیں ----------
+  async function ensureOwnerKey() {
+    if (!meta.on || meta.role !== 'owner' || meta.ownerKey) return;
+    const k = rnd(12, 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789');
+    await fs(`shops/${meta.shopId}/secret/owner`, { method: 'PATCH', body: JSON.stringify({ fields: { key: S(k) } }) });
+    meta.ownerKey = k; saveMeta(); render();
+  }
+  // ---------- مالک کا نیا آلہ: خفیہ کوڈ دے کر دوبارہ مالک بنیں ----------
+  async function claimOwner(key) {
+    key = String(key || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (key.length < 10) { toast('⚠️ مالک کا خفیہ کوڈ درست نہیں'); return false; }
+    if (!meta.on || !meta.shopId) { toast('⚠️ پہلے آڑھت سے جڑیں'); return false; }
+    if (busy) return false;
+    busy = true; render();
+    try {
+      await token();
+      await fs(`shops/${meta.shopId}/claims/${meta.uid}`, { method: 'PATCH', body: JSON.stringify({ fields: { key: S(key) } }) });
+      try { await fs(`shops/${meta.shopId}?updateMask.fieldPaths=owner`, { method: 'PATCH', body: JSON.stringify({ fields: { owner: S(meta.uid) } }) }); }
+      catch (e) { if (e.message === 'denied') { toast('⚠️ مالک کا خفیہ کوڈ غلط ہے'); return false; } throw e; }
+      await fs(`shops/${meta.shopId}/members/${meta.uid}?updateMask.fieldPaths=role`, { method: 'PATCH', body: JSON.stringify({ fields: { role: S('owner') } }) });
+      // پرانا مالک آلہ (کھو گیا / دوبارہ انسٹال) اب مالک نہیں — فہرست میں ملازم دکھے
+      try { for (const m of await members()) if (m.uid !== meta.uid && m.role === 'owner') await fs(`shops/${meta.shopId}/members/${m.uid}?updateMask.fieldPaths=role`, { method: 'PATCH', body: JSON.stringify({ fields: { role: S('staff') } }) }); } catch (e) {}
+      meta.role = 'owner'; meta.ownerKey = key; saveMeta();
+      toast('✅ آپ دوبارہ مالک بن گئے');
+      return true;
+    } catch (e) { handleErr(e, true); return false; } finally { busy = false; render(); }
+  }
+
   // ---------- ملانا: پہلے لینا، پھر بھیجنا ----------
   async function sync(loud) {
     if (!meta.on || !meta.shopId) return false;
@@ -114,6 +144,7 @@
     try {
       await pull();
       await push();
+      ensureOwnerKey().catch(() => {});
       meta.lastSync = Date.now(); lastErr = ''; saveMeta(); render();
       if (loud) toast('✅ سب آلات کا ڈیٹا مل گیا');
       return true;
@@ -201,7 +232,10 @@
   }
 
   window.AB_CLOUD = {
-    enableOwner, join, sync, members, removeMember, render, parseCode,
+    enableOwner, join, sync, members, removeMember, render, parseCode, claimOwner,
+    ownerKey: () => (meta.role === 'owner' && meta.ownerKey) || '',
+    // مالک کی بیک اپ فائل میں: نئے آلے پر بیک اپ لگا کر خود جڑ کر دوبارہ مالک
+    ownerPack: () => (meta.on && meta.role === 'owner' && meta.ownerKey) ? { code: joinCode(), ownerKey: meta.ownerKey } : null,
     on: () => !!meta.on, role: () => meta.role || '', uid: () => meta.uid || '', code: joinCode,
     start() { if (meta.on) sync(false); }
   };

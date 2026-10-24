@@ -12,8 +12,22 @@ service cloud.firestore {
     match /shops/{shopId} {
       // نیا آڑھت: بنانے والا ہی مالک
       allow create: if signedIn() && request.resource.data.owner == request.auth.uid;
-      allow get, update: if isMember(shopId);
+      allow get: if isMember(shopId);
+      // بدلنا صرف مالک؛ یا جڑا ہوا آلہ جس نے مالک کا خفیہ کوڈ دیا ہو (مالک کا نیا آلہ) — صرف owner بدلے، خود کو
+      allow update: if isOwner(shopId) || (
+        isMember(shopId) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['owner']) &&
+        request.resource.data.owner == request.auth.uid &&
+        exists(/databases/$(db)/documents/shops/$(shopId)/claims/$(request.auth.uid)) &&
+        get(/databases/$(db)/documents/shops/$(shopId)/claims/$(request.auth.uid)).data.key ==
+          get(/databases/$(db)/documents/shops/$(shopId)/secret/owner).data.key);
       allow list, delete: if false;
+
+      // مالک کا خفیہ کوڈ دینے کی جگہ — کوئی پڑھ نہیں سکتا، ہر آلہ صرف اپنی
+      match /claims/{uid} {
+        allow create, update: if signedIn() && uid == request.auth.uid;
+        allow read, delete: if false;
+      }
 
       // جڑے آلات: مالک خود، یا ملازم جو آڑھت کا جوڑنے والا کوڈ جانتا ہو
       match /members/{uid} {
