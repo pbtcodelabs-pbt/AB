@@ -1,6 +1,6 @@
 /* 📒 آڑھت بک — سبسکرپشن (فائربیس: aarhat-book)
    - ہر آڑھت کی پہچان مالک کا موبائل نمبر (settings.phone، بین الاقوامی شکل 923001234567)
-   - نئی آڑھت: 7 دن مفت آزمائش — شروع کی تاریخ سرور پر trials/<نمبر> میں (دوبارہ انسٹال سے آزمائش نئی نہیں ہوتی)
+   - نئی آڑھت: 14 دن مفت آزمائش — شروع کی تاریخ سرور پر trials/<نمبر> میں (دوبارہ انسٹال سے آزمائش نئی نہیں ہوتی)
    - ڈویلپر (ورژن پر 7 ٹیپ) کوڈ بناتا ہے: licenses/<کوڈ> اور subs/<نمبر> میں ختم ہونے کی تاریخ
    - گاہک کوڈ لکھے یا صرف «بحال کریں» — نمبر سے subs/<نمبر> پڑھ کر سبسکرپشن خود واپس (نیا فون / دوبارہ انسٹال)
    - مدت ختم: ریکارڈ محفوظ اور دیکھا جا سکے، نیا اندراج بند
@@ -11,10 +11,11 @@
   if (!CFG) return;
   const DEV_WA = '923206793793';        // ڈویلپر/سبسکرپشن: عبدالحفیظ 03206793793 — کبھی نہ بدلیں
   const DEV_EMAIL = 'piarybhai@gmail.com';
-  const TRIAL_DAYS = 7;
+  const TRIAL_DAYS = 14;
   const DAY = 864e5;
   const FOREVER = Date.UTC(2100, 0, 1);
-  const PLANS = [[30, 'ایک مہینہ'], [90, 'تین مہینے'], [180, 'چھ مہینے'], [365, 'ایک سال'], [0, 'ہمیشہ کے لیے']];
+  const PLANS = [[180, 'چھ مہینے', 15000], [365, 'ایک سال', 25000]];   // [دن، نام، قیمت روپے]
+  const rsTxt = n => n.toLocaleString('en-US');
   const KEY = 'ab_lic';                 // آلہ وار: آخری معلوم حالت (آف لائن بھی چلے) — بیک اپ/sync میں نہیں
   const BASE = `https://firestore.googleapis.com/v1/projects/${CFG.projectId}/databases/(default)/documents`;
 
@@ -148,7 +149,7 @@
     H.modal(`<h3>📜 آڑھت بک کی سبسکرپشن</h3><div class="licState">${statusText()}</div>
       ${okPhone(p) ? '' : `<div class="f"><label>مالک کا موبائل نمبر</label><input id="licPh" inputmode="tel" placeholder="03001234567"></div>`}
       <div class="muted" style="margin:6px 0 2px">مدت چنیں — ڈویلپر کو واٹس ایپ پر درخواست جائے گی، رقم کی ادائیگی کے بعد وہ آپ کو کوڈ بھیجیں گے:</div>
-      <div class="licPlans">${PLANS.map(x => `<button class="btn light" onclick="AB_LIC.request(${x[0]})">💬 ${x[1]}</button>`).join('')}</div>
+      <div class="licPlans">${PLANS.map(x => `<button class="btn light" onclick="AB_LIC.request(${x[0]})">💬 ${x[1]} — <span class="num">${rsTxt(x[2])}</span> روپے${x[0] === 365 ? '<br><small>(5,000 روپے کی بچت)</small>' : ''}</button>`).join('')}</div>
       <div class="f" style="margin-top:8px"><label>ڈویلپر سے آیا ہوا کوڈ</label><input id="licCode" placeholder="کوڈ یہاں لکھیں" style="direction:ltr;text-align:center;letter-spacing:2px"></div>
       <div class="row" style="justify-content:center;margin-top:8px"><button class="btn" onclick="AB_LIC.useCode()">✅ چالو کریں</button><button class="btn light" onclick="AB_LIC.restore()">🔄 بحال کریں</button><button class="btn gray" onclick="App.closeModal()">بند</button></div>
       <div class="muted" style="margin-top:6px">نیا فون یا ایپ دوبارہ لگائی؟ «بحال کریں» دبائیں — اسی موبائل نمبر کی باقی سبسکرپشن خود واپس آ جائے گی۔ ڈویلپر: <span class="num" dir="ltr">0320-6793793</span> (عبدالحفیظ)</div>`);
@@ -165,7 +166,7 @@
     if (!takePhone()) return;
     const s = host().settings(); const plan = PLANS.find(x => x[0] === days);
     const msg = 'السلام علیکم — آڑھت بک کی سبسکرپشن چاہیے\n'
-      + 'مدت: ' + (plan ? plan[1] : '') + '\n'
+      + 'مدت: ' + (plan ? plan[1] + ' — ' + rsTxt(plan[2]) + ' روپے' : '') + '\n'
       + 'آڑھت: ' + (s.shop || '') + '\n'
       + 'مالک: ' + (s.owner || '') + '\n'
       + 'موبائل: ' + showPhone(phone()) + '\n'
@@ -205,7 +206,7 @@
       $('dvGo').onclick = devLogin;
       return;
     }
-    const plans = '<option value="c">اپنی مرضی کے دن</option>' + PLANS.map(x => `<option value="${x[0]}">${x[1]}</option>`).join('');
+    const plans = '<option value="c">اپنی مرضی کے دن</option>' + PLANS.map(x => `<option value="${x[0]}">${x[1]}</option>`).join('') + '<option value="0">ہمیشہ کے لیے</option>';
     H.modal(`<h3>🛠️ ڈویلپر پینل — نیا کوڈ</h3>
       <div class="f"><label>گاہک کا موبائل نمبر</label><input id="dvPh" inputmode="tel" placeholder="03001234567"></div>
       <div class="f"><label>آڑھت / گاہک کا نام</label><input id="dvN"></div>
