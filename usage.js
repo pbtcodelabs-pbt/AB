@@ -108,9 +108,9 @@
     const dn = Math.max(1, month.length), full = new Date(+mk.slice(0, 4), +mk.slice(5, 7), 0).getDate();
     const proj = mCost / dn * full;
     const top = Object.keys(days).sort().slice(-7).reverse();
-    box.innerHTML = `<div class="uHead">📊 آج کا مفت پیکج (سب آڑھتیں اور سب آلات ملا کر)</div>
+    box.innerHTML = `<div class="uHead">📊 آج کا مفت پیکج (سب آڑھتیں اور سب ڈیوائسز ملا کر)</div>
       ${bar('📖 پڑھنا', t.r, FREE.r)}${bar('✍️ لکھنا', t.w, FREE.w)}${bar('🗑️ مٹانا', t.d, FREE.d)}
-      <div class="muted">مفت حد ہر روز نئی ہوتی ہے — پاکستان میں دوپہر 12 بجے (سردیوں میں 1 بجے)۔ اس آلے کا آج کا حصہ: پڑھنا <span class="num">${n(st.r)}</span>، لکھنا <span class="num">${n(st.w)}</span>۔</div>
+      <div class="muted">مفت حد ہر روز نئی ہوتی ہے — پاکستان میں دوپہر 12 بجے (سردیوں میں 1 بجے)۔ اس ڈیوائس کا آج کا حصہ: پڑھنا <span class="num">${n(st.r)}</span>، لکھنا <span class="num">${n(st.w)}</span>۔</div>
       <div class="uHead" style="margin-top:8px">💳 اگر Blaze (پیسوں والا) پیکج ہوتا</div>
       <div class="uCost">آج کا بل: <b class="num" dir="ltr">$${cost(t).toFixed(2)}</b> (تقریباً <span class="num">${n(cost(t) * PKR)}</span> روپے)<br>
         اس مہینے اب تک: <b class="num" dir="ltr">$${mCost.toFixed(2)}</b> (<span class="num">${n(mCost * PKR)}</span> روپے) • پورے مہینے کا اندازہ: <b class="num" dir="ltr">$${proj.toFixed(2)}</b> (<span class="num">${n(proj * PKR)}</span> روپے)<br>

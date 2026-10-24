@@ -245,7 +245,7 @@
   function state() {
     if (!SUPPORTED) return { cls: 'off', txt: 'کمپیوٹر والی ایپ میں ڈرائیو نہیں — روز بیک اپ فائل بنائیں' };
     if (busy) return { cls: 'busy', txt: '⏳ ڈرائیو پر محفوظ ہو رہا ہے…' };
-    if (!meta.email) return { cls: 'warn', txt: '⚠️ ڈرائیو سے نہیں جڑا — ریکارڈ صرف اس آلے میں ہے' };
+    if (!meta.email) return { cls: 'warn', txt: '⚠️ ڈرائیو سے نہیں جڑا — ریکارڈ صرف اس ڈیوائس میں ہے' };
     if (meta.pending) return { cls: 'warn', txt: '⏳ نئی تبدیلی ڈرائیو پر جانا باقی' };
     return { cls: 'ok', txt: '✅ ڈرائیو پر محفوظ — <span class="num">' + when(meta.lastDrive) + '</span>' };
   }
