@@ -8,8 +8,8 @@
    ===================================================================== */
 (function(){
   'use strict';
-  const APP_VERSION = 'AB2410SA019';
-  const UPDATE_NOTE = 'ڈویلپر پینل: گاہک کا واٹس ایپ پیغام پیسٹ کریں، نمبر، نام، مدت اور ڈیوائسز خود بھر جائیں';
+  const APP_VERSION = 'AB2410SA020';
+  const UPDATE_NOTE = 'کوڈ میں مدت کا نشان (180D-…)؛ کوڈ کاپی؛ ڈویلپر پینل میں سب کوڈوں کی فہرست: حساب، معطل، حذف، ترتیب، شیئر، پرنٹ';
   const C = window.ABCalc;
   // ---------- اردو / عربی کی بورڈ کے ہندسے (۰۱۲… / ٠١٢…) لکھتے ہی 0-9 میں — ورنہ رقم، نمبر اور کوڈ نہیں پہچانے جاتے ----------
   document.addEventListener('input', e => {
@@ -804,7 +804,7 @@
   }
   window.AB_HOST = { snapshot, apply: applyBackup, toast, version: APP_VERSION, fileName: backupFileName, count: () => liveParchis().length,
     settings: () => DB.settings,
-    modal, closeModal,
+    modal, closeModal, ask,
     setPhone(v){ DB.settings.phone = v; put('settings'); logIt('مالک کا موبائل نمبر: ' + v); },
     refreshHome(){ if(screen === 'home' && DB.settings.registered && me()) render(); },
     setCloud(c){ DB.settings.cloud = c; put('settings'); },
