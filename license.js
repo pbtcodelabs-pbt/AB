@@ -176,9 +176,10 @@
           ${x[0] === 365 ? '<div class="ps">✅ 5,000 روپے کی بچت</div>' : '<div class="ps">&nbsp;</div>'}
           <span class="pw">💬 واٹس ایپ پر درخواست</span>
           <span class="licSend"><span class="fly">💬</span><span>پیغام چیٹ میں جا رہا ہے…</span></span></button>`).join('')}</div>
-      <div class="licCodeBox"><div class="f"><label>🔑 ڈویلپر سے آیا ہوا کوڈ</label><input id="licCode" placeholder="کوڈ یہاں لکھیں" style="direction:ltr;text-align:center;letter-spacing:2px"></div>
-      <div class="row" style="justify-content:center;margin-top:8px"><button class="btn" onclick="AB_LIC.useCode()">✅ چالو کریں</button><button class="btn light" onclick="AB_LIC.restore()">🔄 بحال کریں</button><button class="btn gray" onclick="App.closeModal()">بند</button></div></div>
-      <div class="licFoot">نیا فون یا ایپ دوبارہ لگائی؟ «بحال کریں» دبائیں — اسی موبائل نمبر کی باقی سبسکرپشن خود واپس آ جائے گی۔<br>ڈویلپر: <b>پی بی ٹی کوڈ لیبز</b> ☎ <span class="num" dir="ltr">0320-6793793</span></div>`);
+      <div class="licCodeBox"><div class="lcTitle">🔑 ڈویلپر سے آیا ہوا کوڈ</div>
+        <div class="lcInWrap"><span class="lcKey">🔐</span><input id="licCode" class="lcIn" placeholder="کوڈ یہاں لکھیں" autocomplete="off" spellcheck="false"></div>
+        <div class="lcBtns"><button class="lcBtn go" onclick="AB_LIC.useCode()">✅ چالو کریں</button><button class="lcBtn rs" onclick="AB_LIC.restore()">🔄 بحال کریں</button><button class="lcBtn cl" onclick="App.closeModal()">✖ بند</button></div></div>
+      <div class="licFoot">📱 نیا فون یا ایپ دوبارہ لگائی؟ «بحال کریں» دبائیں — اسی موبائل نمبر کی باقی سبسکرپشن خود واپس آ جائے گی۔<br><span class="dev">👨‍💻 پی بی ٹی کوڈ لیبز ☎ <span class="num" dir="ltr">0320-6793793</span></span></div>`);
   }
   // نمبر نہ ہو تو پاپ اپ والے خانے سے لے کر محفوظ
   function takePhone() {
