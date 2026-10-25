@@ -8,8 +8,8 @@
    ===================================================================== */
 (function(){
   'use strict';
-  const APP_VERSION = 'AB2510SU027';
-  const UPDATE_NOTE = 'الفاظ اپنی منڈی کی زبان میں (بیوپاری / گاہک…)؛ پرچی کا سر منڈی جیسا؛ نقد، منشیانہ، مارکیٹ فیس؛ کھاتے میں جمع / بنام';
+  const APP_VERSION = 'AB2510SU028';
+  const UPDATE_NOTE = 'کھاتہ نمبر (نام کی جگہ نمبر لکھیں)؛ ہر بکری میں پیکنگ، ورائیٹی، مارکہ؛ پچھلی / اگلی پرچی؛ نقد بھی کٹوتیوں میں';
   const C = window.ABCalc;
   // ---------- اردو / عربی کی بورڈ کے ہندسے (۰۱۲… / ٠١٢…) لکھتے ہی 0-9 میں — ورنہ رقم، نمبر اور کوڈ نہیں پہچانے جاتے ----------
   document.addEventListener('input', e => {
@@ -187,9 +187,19 @@
   function ensureParty(type, name){
     const n = String(name || '').trim(); if(!n) return null;
     let p = findParty(type, n);
-    if(!p){ p = { id: uid(), type, name: n, phone: '', place: '', opening: 0, createdAt: Date.now() }; DB.parties.push(p); put('parties'); logIt('نیا ' + PT[type] + ': ' + n, p.id); }
+    if(!p){ p = { id: uid(), type, name: n, phone: '', place: '', opening: 0, createdAt: Date.now(), no: nextPartyNo(type) }; DB.parties.push(p); put('parties'); logIt('نیا ' + PT[type] + ': ' + n, p.id); }
     return p;
   }
+  // ---------- کھاتہ نمبر (منڈی کے رجسٹر جیسا): نام کی جگہ نمبر لکھیں تو کھاتہ خود آ جائے ----------
+  function nextPartyNo(type){ return DB.parties.filter(p => p.type === type).reduce((m, p) => Math.max(m, int(p.no)), 0) + 1; }
+  function numberParties(){
+    const miss = DB.parties.filter(p => !int(p.no)); if(!miss.length) return;
+    miss.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0) || String(a.id).localeCompare(String(b.id))).forEach(p => { p.no = nextPartyNo(p.type); });
+    put('parties');
+  }
+  function partyByNo(type, v){ const t = C.en ? C.en(String(v || '')).trim() : String(v || '').trim(); if(!/^\d+$/.test(t)) return null; return parties(type).find(p => int(p.no) === +t) || null; }
+  const pNo = p => p && int(p.no) ? int(p.no) : '';
+  function partyOpts(type){ return parties(type).sort((a, b) => int(a.no) - int(b.no)).map(x => `<option value="${esc(x.name)}" label="نمبر ${pNo(x)}${x.place ? ' • ' + esc(x.place) : ''}">`).join(''); }
   function liveParchis(){ return DB.parchis.filter(p => !p.deleted); }
   function liveCash(){ return DB.cash.filter(c => !c.deleted); }
   // ---------- کھاتے کے اندراج (پرانے سے نئے)؛ مثبت = زمیندار کو دینے ہیں / خریدار سے لینے ہیں ----------
@@ -359,21 +369,38 @@
   function blankLine(){ return { item: '', nag: '', grams: '', rate: '', basis: 'nag', buyer: '' }; }
   function blankParchi(){ return { id: uid(), no: 0, date: today(), zamindar: '', zamindarId: '', place: '', vehicle: '', bilty: '', lines: [blankLine()], manual: {}, buyerManual: {}, note: '', createdAt: Date.now() }; }
   function itemNames(){ const s = new Set(); liveParchis().forEach(p => p.lines.forEach(l => l.item && s.add(l.item))); return [...s].slice(0, 300); }
+  function lineVals(k, base){ const s = new Set(base); liveParchis().forEach(p => p.lines.forEach(l => l[k] && s.add(l[k]))); return [...s].slice(0, 200).map(n => `<option value="${esc(n)}">`).join(''); }
+  // جنس کے ساتھ ورائیٹی، اور پیکنگ / مارکہ (پرچی، بل، تصویر میں)
+  const lineItem = l => [l.item, l.variety].filter(Boolean).join(' ');
+  const lineXtra = l => [l.packing, l.marka ? 'مارکہ ' + l.marka : ''].filter(Boolean).join(' • ');
+  const lineFull = l => [lineItem(l), lineXtra(l) ? '(' + lineXtra(l) + ')' : ''].filter(Boolean).join(' ');
+  // پچھلی / اگلی پرچی (نمبر کی ترتیب سے)
+  function parchiNbr(p){
+    const ls = liveParchis().slice().sort((a, b) => a.no - b.no);
+    if(!p.no) return { prev: ls[ls.length - 1] || null, next: null };
+    return { prev: ls.filter(x => x.no < p.no).pop() || null, next: ls.find(x => x.no > p.no) || null };
+  }
   VIEWS.parchi = function(id){
     if(id && (!cur || cur.id !== id)){ const p = DB.parchis.find(x => x.id === id); if(p) cur = JSON.parse(JSON.stringify(p)); }
     if(!cur) cur = blankParchi();
+    numberParties();
     const p = cur, ch = cur.chargesSnap && cur.no ? cur.chargesSnap : chargesList();
     const manualCs = ch.filter(c => c.on && c.side === 'zamindar' && c.kind === 'manual');
+    const nb = parchiNbr(p);
     return `<div class="pageTitle">📝 ${p.no ? 'پرچی نمبر ' + p.no : 'نئی پرچی'} ${isLocked(p.date) ? '🔒' : ''}<span class="sp"></span>
+        <button class="btn light sm" ${nb.prev ? `onclick="App.parchiStep('${nb.prev.id}')" title="پچھلی پرچی نمبر ${nb.prev.no}"` : 'disabled'}>➡️ پچھلی</button>
+        <button class="btn light sm" ${nb.next ? `onclick="App.parchiStep('${nb.next.id}')" title="اگلی پرچی نمبر ${nb.next.no}"` : 'disabled'}>اگلی ⬅️</button>
         <button class="btn gold sm" onclick="App.newParchi()">🆕 نئی</button></div>
-      <datalist id="dlZ">${parties('zamindar').map(x => `<option value="${esc(x.name)}">`).join('')}</datalist>
-      <datalist id="dlB">${parties('buyer').map(x => `<option value="${esc(x.name)}">`).join('')}</datalist>
+      <datalist id="dlZ">${partyOpts('zamindar')}</datalist>
+      <datalist id="dlB">${partyOpts('buyer')}</datalist>
       <datalist id="dlI">${itemNames().map(n => `<option value="${esc(n)}">`).join('')}</datalist>
+      <datalist id="dlPk">${lineVals('packing', ['پیٹی', 'کریٹ', 'بوری', 'ٹوکری', 'کارٹن', 'جال', 'کھلا'])}</datalist>
+      <datalist id="dlVr">${lineVals('variety', [])}</datalist><datalist id="dlMk">${lineVals('marka', [])}</datalist>
       <div class="parchiWrap"><div>
         <div class="card"><h3>🧑‍🌾 زمیندار اور گاڑی</h3>
           <div class="grid2 wideable">
             <div class="f"><label>تاریخ</label><input type="date" value="${esc(p.date)}" onchange="App.pset('date',this.value)"></div>
-            <div class="f"><label>زمیندار کا نام</label><input list="dlZ" value="${esc(p.zamindar)}" placeholder="مثلاً حاجی اکرم" oninput="App.pset('zamindar',this.value)"></div>
+            <div class="f"><label>زمیندار — نام یا نمبر ${pNo(findParty('zamindar', p.zamindar)) ? '<span class="pnoTag num">' + pNo(findParty('zamindar', p.zamindar)) + '</span>' : ''}</label><input list="dlZ" value="${esc(p.zamindar)}" placeholder="نام یا کھاتہ نمبر" oninput="App.pset('zamindar',this.value)" onchange="App.pnum(this)"></div>
             <div class="f"><label>گاؤں / شہر</label><input value="${esc(p.place)}" placeholder="مثلاً ساہیوال" oninput="App.pset('place',this.value)"></div>
             <div class="f"><label>گاڑی نمبر</label><input value="${esc(p.vehicle)}" placeholder="گاڑی کا نمبر" oninput="App.pset('vehicle',this.value)"></div>
             <div class="f"><label>بلٹی نمبر</label><input value="${esc(p.bilty)}" placeholder="بلٹی" oninput="App.pset('bilty',this.value)"></div>
@@ -447,8 +474,12 @@
         <div class="f"><label>وزن (کلو)</label><input inputmode="decimal" value="${l.grams ? esc(l.grams / 1000) : ''}" placeholder="اختیاری" oninput="App.lset(${i},'grams',this.value)"></div>
         <div class="f"><label>ریٹ (روپے)</label><input inputmode="decimal" value="${l.rate ? esc(l.rate / 100) : ''}" placeholder="0" oninput="App.lset(${i},'rate',this.value)"></div>
         <div class="f"><label>ریٹ کس پر</label><select onchange="App.lset(${i},'basis',this.value)"><option value="nag" ${l.basis !== 'maund' ? 'selected' : ''}>فی نگ</option><option value="maund" ${l.basis === 'maund' ? 'selected' : ''}>فی من</option></select></div>
-        <div class="f"><label>خریدار</label><input list="dlB" value="${esc(l.buyer)}" placeholder="خریدار کا نام" oninput="App.lset(${i},'buyer',this.value)"></div>
-      </div><div class="row" style="justify-content:space-between;margin-top:4px"><span class="lineAmt" id="la${i}"></span>
+        <div class="f"><label>خریدار — نام یا نمبر ${pNo(findParty('buyer', l.buyer)) ? '<span class="pnoTag num">' + pNo(findParty('buyer', l.buyer)) + '</span>' : ''}</label><input list="dlB" value="${esc(l.buyer)}" placeholder="نام یا کھاتہ نمبر" oninput="App.lset(${i},'buyer',this.value)" onchange="App.lnum(${i},this)"></div>
+      </div>
+      <details class="lx" ${l.packing || l.variety || l.marka ? 'open' : ''}><summary>📦 پیکنگ / ورائیٹی / مارکہ ${l.packing || l.variety || l.marka ? '— ' + esc([l.packing, l.variety, l.marka].filter(Boolean).join('، ')) : '(اختیاری)'}</summary><div class="lineGrid">
+        <div class="f"><label>پیکنگ</label><input list="dlPk" value="${esc(l.packing || '')}" placeholder="مثلاً پیٹی" oninput="App.lset(${i},'packing',this.value)"></div>
+        <div class="f"><label>ورائیٹی</label><input list="dlVr" value="${esc(l.variety || '')}" placeholder="مثلاً چونسا" oninput="App.lset(${i},'variety',this.value)"></div>
+        <div class="f"><label>مارکہ</label><input list="dlMk" value="${esc(l.marka || '')}" placeholder="مال پر لکھا نشان" oninput="App.lset(${i},'marka',this.value)"></div></div></details><div class="row" style="justify-content:space-between;margin-top:4px"><span class="lineAmt" id="la${i}"></span>
         ${cur.lines.length > 1 ? `<button class="btn gray sm" onclick="App.delLine(${i})">🗑️ ہٹائیں</button>` : ''}</div></div>`;
   }
   function parchiCharges(){ return cur.chargesSnap && cur.no ? cur.chargesSnap : chargesList(); }
@@ -469,9 +500,9 @@
       <div class="muted">${esc(p.zamindar || 'زمیندار کا نام لکھیں')} ${p.place ? '— ' + esc(p.place) : ''} ${p.vehicle ? '— گاڑی ' + esc(p.vehicle) : ''}</div>
       <table class="t"><tr><th>کل بکری (${r.nag} نگ)</th><th class="v">${fmt(r.gross)}</th></tr>
       ${r.zCharges.map(x => `<tr><td>➖ ${esc(x.name)} ${tag(x)}</td><td class="v">${fmt(x.amount)}</td></tr>`).join('')}
-      <tr class="tot"><td>کل کٹوتی</td><td class="v">${fmt(r.zTotal)}</td></tr>
-      <tr class="net"><td>زمیندار کو صاف رقم</td><td class="v">${fmt(r.net)}</td></tr>
-      ${int(p.cashNow) ? `<tr><td>➖ نقد (ابھی دیا)</td><td class="v">${fmt(int(p.cashNow))}</td></tr><tr class="tot"><td>باقی دینے ہیں</td><td class="v">${fmt(r.net - int(p.cashNow))}</td></tr>` : ''}</table>${forPrint ? '' : zPrevHtml(p, r)}</div>`;
+      ${int(p.cashNow) ? `<tr><td>➖ نقد (ابھی دیا)</td><td class="v">${fmt(int(p.cashNow))}</td></tr>` : ''}
+      <tr class="tot"><td>کل کٹوتی</td><td class="v">${fmt(r.zTotal + int(p.cashNow))}</td></tr>
+      <tr class="net"><td>${int(p.cashNow) ? 'زمیندار کو باقی صاف رقم' : 'زمیندار کو صاف رقم'}</td><td class="v">${fmt(r.net - int(p.cashNow))}</td></tr></table>${forPrint ? '' : zPrevHtml(p, r)}</div>`;
     h += `<div class="card"><h3>🧑‍💼 خریداروں کا حساب</h3>${r.buyers.length ? r.buyers.map(b => `
       <table class="t" style="margin-bottom:8px"><tr><th>${esc(b.name)} (${b.nag} نگ) — مال</th><th class="v">${fmt(b.goods)}</th></tr>
       ${b.charges.map(x => `<tr><td>➕ ${esc(x.name)} ${tag(x)}</td><td class="v">${fmt(x.amount)}</td></tr>`).join('')}
@@ -546,16 +577,16 @@
       <div class="muted" style="text-align:center;margin-top:10px">آڑھت بک سے بنی پرچی • ${esc(urDate(today()))}</div><script>setTimeout(function(){print()},600)<\/script></body></html>`);
     w.document.close();
   }
-  function parchiHead(p){ return `<div style="text-align:center;margin-bottom:6px">${p.no ? 'پرچی نمبر <b class="num">' + p.no + '</b> • ' : ''}تاریخ: ${esc(urDate(p.date))}<br>زمیندار: <b>${esc(p.zamindar)}</b> ${p.place ? '— ' + esc(p.place) : ''} ${p.vehicle ? '• گاڑی: ' + esc(p.vehicle) : ''} ${p.bilty ? '• بلٹی: ' + esc(p.bilty) : ''}</div>`; }
+  function parchiHead(p){ return `<div style="text-align:center;margin-bottom:6px">${p.no ? 'پرچی نمبر <b class="num">' + p.no + '</b> • ' : ''}تاریخ: ${esc(urDate(p.date))}<br>زمیندار: <b>${esc(p.zamindar)}</b>${pNo(party(p.zamindarId)) ? ' (نمبر <span class="num">' + pNo(party(p.zamindarId)) + '</span>)' : ''} ${p.place ? '— ' + esc(p.place) : ''} ${p.vehicle ? '• گاڑی: ' + esc(p.vehicle) : ''} ${p.bilty ? '• بلٹی: ' + esc(p.bilty) : ''}</div>`; }
   function printParchi(){
     const r = calcParchi(cur, parchiCharges());
     printDoc('زمیندار کی پرچی', parchiHead(cur) + `<div class="card"><table class="t"><tr><th>جنس</th><th>خریدار</th><th class="v">نگ</th><th class="v">ریٹ</th><th class="v">رقم</th></tr>
-      ${r.lines.map(l => `<tr><td>${esc(l.item)}</td><td>${esc(l.buyer)}</td><td class="v">${esc(l.nag)}</td><td class="v">${fmt(int(l.rate))}${l.basis === 'maund' ? ' / من' : ''}</td><td class="v">${fmt(lineAmount(l))}</td></tr>`).join('')}</table></div>` + resultHtml(r, cur, true).split('<div class="card"><h3>🧑‍💼')[0]);
+      ${r.lines.map(l => `<tr><td>${esc(lineFull(l))}</td><td>${esc(l.buyer)}</td><td class="v">${esc(l.nag)}</td><td class="v">${fmt(int(l.rate))}${l.basis === 'maund' ? ' / من' : ''}</td><td class="v">${fmt(lineAmount(l))}</td></tr>`).join('')}</table></div>` + resultHtml(r, cur, true).split('<div class="card"><h3>🧑‍💼')[0]);
   }
   function printBuyers(){
     const r = calcParchi(cur, parchiCharges());
     printDoc('خریداروں کے بل', r.buyers.map(b => `<div class="card">${parchiHead(cur)}<h3>خریدار: ${esc(b.name)}</h3><table class="t"><tr><th>جنس</th><th class="v">نگ</th><th class="v">ریٹ</th><th class="v">رقم</th></tr>
-      ${r.lines.filter(l => (l.buyerId && l.buyerId === b.id) || (!l.buyerId && String(l.buyer).trim() === b.name)).map(l => `<tr><td>${esc(l.item)}</td><td class="v">${esc(l.nag)}</td><td class="v">${fmt(int(l.rate))}</td><td class="v">${fmt(lineAmount(l))}</td></tr>`).join('')}
+      ${r.lines.filter(l => (l.buyerId && l.buyerId === b.id) || (!l.buyerId && String(l.buyer).trim() === b.name)).map(l => `<tr><td>${esc(lineFull(l))}</td><td class="v">${esc(l.nag)}</td><td class="v">${fmt(int(l.rate))}</td><td class="v">${fmt(lineAmount(l))}</td></tr>`).join('')}
       <tr><td colspan="3">مال کی رقم</td><td class="v">${fmt(b.goods)}</td></tr>
       ${b.charges.map(x => `<tr><td colspan="3">➕ ${esc(x.name)}</td><td class="v">${fmt(x.amount)}</td></tr>`).join('')}
       <tr class="net"><td colspan="3">کل رقم</td><td class="v">${fmt(b.total)}</td></tr></table></div>`).join('<div style="page-break-after:always"></div>'));
@@ -570,13 +601,15 @@
   function partyBal(pid){ return pid ? ledger(pid).bal : null; }
   function zamindarSpec(p, r){
     const z = p.zamindarId, bal = partyBal(z);
+    const cash = int(p.cashNow), xc = r.lines.some(l => lineXtra(l));
     return { shop: shopSub() ? shopName() : shopName(), sub: shopSub(), title: 'زمیندار کی پرچی — نمبر ' + p.no,
-      meta: [['تاریخ', urDate(p.date)], ['زمیندار', p.zamindar], ['گاؤں / شہر', p.place || '—'], ['گاڑی', p.vehicle || '—'], ...(p.bilty ? [['بلٹی', p.bilty]] : [])],
-      cols: [{ t: 'جنس', w: 3 }, { t: 'خریدار', w: 3 }, { t: 'نگ', w: 1.4, num: 1 }, { t: 'ریٹ', w: 2 }, { t: 'رقم', w: 2.4, num: 1 }],
-      rows: r.lines.map(l => [l.item, l.buyer, l.nag || (l.grams ? (int(l.grams) / 1000) + ' کلو' : ''), fmt(int(l.rate)) + (l.basis === 'maund' ? ' / من' : ''), fmt(lineAmount(l))]),
+      meta: [['تاریخ', urDate(p.date)], ['زمیندار', p.zamindar + (pNo(party(z)) ? ' (نمبر ' + pNo(party(z)) + ')' : '')], ['گاؤں / شہر', p.place || '—'], ['گاڑی', p.vehicle || '—'], ...(p.bilty ? [['بلٹی', p.bilty]] : [])],
+      cols: [{ t: 'جنس', w: 3 }].concat(xc ? [{ t: 'پیکنگ / مارکہ', w: 2.4 }] : []).concat([{ t: 'خریدار', w: 3 }, { t: 'نگ', w: 1.4, num: 1 }, { t: 'ریٹ', w: 2 }, { t: 'رقم', w: 2.4, num: 1 }]),
+      rows: r.lines.map(l => [lineItem(l)].concat(xc ? [lineXtra(l)] : []).concat([l.buyer, l.nag || (l.grams ? (int(l.grams) / 1000) + ' کلو' : ''), fmt(int(l.rate)) + (l.basis === 'maund' ? ' / من' : ''), fmt(lineAmount(l))])),
+      // منڈی کی پرچی جیسا: نقد بھی کٹوتیوں میں، پھر ٹوٹل میزان، پھر صاف رقم
       lines: [['کل بکری (' + r.nag + ' نگ)', fmt(r.gross), '']].concat(r.zCharges.filter(x => x.amount).map(x => ['➖ ' + x.name, fmt(x.amount), '']))
-        .concat([['کل کٹوتی', fmt(r.zTotal), 'tot'], ['زمیندار کو صاف رقم (روپے)', fmt(r.net), int(p.cashNow) ? 'tot' : 'net']])
-        .concat(int(p.cashNow) ? [['➖ نقد (ابھی دیا)', fmt(int(p.cashNow)), ''], ['باقی دینے ہیں (روپے)', fmt(r.net - int(p.cashNow)), 'net']] : [])
+        .concat(cash ? [['➖ نقد (ابھی دیا)', fmt(cash), '']] : [])
+        .concat([['کل کٹوتی', fmt(r.zTotal + cash), 'tot'], [cash ? 'زمیندار کو باقی صاف رقم (روپے)' : 'زمیندار کو صاف رقم (روپے)', fmt(r.net - cash), 'net']])
         .concat(bal != null ? [['کھاتے کا کل بقایا — ' + balText('zamindar', bal), fmt(Math.abs(bal)), 'tot']] : []),
       sub2: shopContacts(), foot: [shopFoot(), urDate(today())].filter(Boolean).join(' • ') };
   }
@@ -584,9 +617,9 @@
     const bal = partyBal(b.id);
     const ls = r.lines.filter(l => (l.buyerId && l.buyerId === b.id) || (!l.buyerId && String(l.buyer).trim() === b.name));
     return { shop: shopName(), sub: shopSub(), title: 'خریدار کا بل — پرچی نمبر ' + p.no,
-      meta: [['تاریخ', urDate(p.date)], ['خریدار', b.name], ['زمیندار', p.zamindar], ['گاڑی', p.vehicle || '—']],
+      meta: [['تاریخ', urDate(p.date)], ['خریدار', b.name + (pNo(party(b.id)) ? ' (نمبر ' + pNo(party(b.id)) + ')' : '')], ['زمیندار', p.zamindar], ['گاڑی', p.vehicle || '—']],
       cols: [{ t: 'جنس', w: 3.5 }, { t: 'نگ', w: 1.5, num: 1 }, { t: 'ریٹ', w: 2.2 }, { t: 'رقم', w: 2.6, num: 1 }],
-      rows: ls.map(l => [l.item, l.nag || (l.grams ? (int(l.grams) / 1000) + ' کلو' : ''), fmt(int(l.rate)) + (l.basis === 'maund' ? ' / من' : ''), fmt(lineAmount(l))]),
+      rows: ls.map(l => [lineFull(l), l.nag || (l.grams ? (int(l.grams) / 1000) + ' کلو' : ''), fmt(int(l.rate)) + (l.basis === 'maund' ? ' / من' : ''), fmt(lineAmount(l))]),
       lines: [['مال کی رقم (' + b.nag + ' نگ)', fmt(b.goods), '']].concat(b.charges.filter(x => x.amount).map(x => ['➕ ' + x.name, fmt(x.amount), '']))
         .concat([['اس بل کی کل رقم (روپے)', fmt(b.total), 'net']])
         .concat(bal != null ? [['کھاتے کا کل بقایا — ' + balText('buyer', bal), fmt(Math.abs(bal)), 'tot']] : []),
@@ -706,13 +739,15 @@
   // =====================================================================
   let partySearch = '';
   function viewParties(type){
-    const list = parties(type).filter(p => !partySearch || p.name.includes(partySearch) || (p.phone || '').includes(partySearch))
+    numberParties();
+    const qn = C.en ? C.en(partySearch).trim() : partySearch;
+    const list = parties(type).filter(p => !qn || p.name.includes(qn) || (p.phone || '').includes(qn) || String(pNo(p)) === qn)
       .map(p => ({ p, bal: ledger(p.id).bal })).sort((a, b) => Math.abs(b.bal) - Math.abs(a.bal));
     const sum = list.reduce((s, x) => s + (x.bal > 0 ? x.bal : 0), 0);
     return `<div class="pageTitle">${type === 'zamindar' ? '🧑‍🌾 زمیندار' : '🧑‍💼 خریدار'} (${parties(type).length})<span class="sp"></span>${type === 'buyer' ? '<button class="btn light sm" onclick="App.go(\'due\')">🔔 یاد دہانی</button>' : ''}<button class="btn gold sm" onclick="App.partyForm('${type}')">➕ نیا ${PT[type]}</button></div>
-      <div class="card"><div class="f"><input placeholder="🔍 نام یا فون سے تلاش" value="${esc(partySearch)}" oninput="App.psearch(this.value,'${type}')"></div>
+      <div class="card"><div class="f"><input placeholder="🔍 نام، نمبر یا فون سے تلاش" value="${esc(partySearch)}" oninput="App.psearch(this.value,'${type}')"></div>
         <table class="t" style="margin-top:6px"><tr class="tot"><td>${type === 'zamindar' ? 'کل جو زمینداروں کو دینے ہیں' : 'کل جو خریداروں سے لینے ہیں'}</td><td class="v">${fmt(sum)}</td></tr></table></div>
-      <div class="card"><div class="list" id="plist">${list.map(x => `<div class="it" onclick="App.go('party','${x.p.id}')"><div><b>${esc(x.p.name)}</b> <span class="muted">${esc(x.p.place || '')} ${esc(x.p.phone || '')}</span>
+      <div class="card"><div class="list" id="plist">${list.map(x => `<div class="it" onclick="App.go('party','${x.p.id}')"><div><span class="pnoTag num">${pNo(x.p)}</span> <b>${esc(x.p.name)}</b> <span class="muted">${esc(x.p.place || '')} ${esc(x.p.phone || '')}</span>
         <div class="muted">${balText(type, x.bal)}${type === 'buyer' && x.p.limit && x.bal > x.p.limit ? ' • <span class="tag out">⛔ حد سے زیادہ</span>' : ''}${type === 'zamindar' && x.bal < 0 ? ' • پیشگی باقی' : ''}</div></div><div class="a ${x.bal > 0 ? (type === 'zamindar' ? 'amt-out' : 'amt-in') : ''}">${fmt(Math.abs(x.bal))}</div></div>`).join('') || '<div class="muted">کوئی کھاتہ نہیں — پرچی محفوظ کرنے پر خود بن جاتا ہے</div>'}</div></div>`;
   }
   VIEWS.zamindar = () => viewParties('zamindar');
@@ -724,7 +759,7 @@
         <button class="btn gold sm" onclick="App.go('cash','${p.type === 'zamindar' ? 'pay' : 'receive'}:${p.id}')">${p.type === 'zamindar' ? '💸 ادائیگی' : '💵 وصولی'}</button>
         <button class="btn light sm" onclick="App.printLedger('${p.id}')">🖨️</button>
         <button class="btn light sm" onclick="App.partyForm('${p.type}','${p.id}')">✏️</button></div>
-      <div class="card"><div class="muted">${PT[p.type]} ${p.place ? '• ' + esc(p.place) : ''} ${p.phone ? '• فون ' + esc(p.phone) : ''}${p.limit ? ' • ادھار کی حد ' + fmt(p.limit) : ''}</div>
+      <div class="card"><div class="muted">${PT[p.type]} ${pNo(p) ? '• کھاتہ نمبر <span class="num">' + pNo(p) + '</span>' : ''} ${p.place ? '• ' + esc(p.place) : ''} ${p.phone ? '• فون ' + esc(p.phone) : ''}${p.limit ? ' • ادھار کی حد ' + fmt(p.limit) : ''}</div>
         ${p.limit && L.bal > p.limit ? `<div class="warn">⛔ ادھار حد سے <span class="num">${fmt(L.bal - p.limit)}</span> روپے زیادہ</div>` : ''}
         <table class="t"><tr class="net"><td>${balText(p.type, L.bal)}</td><td class="v">${fmt(Math.abs(L.bal))}</td></tr></table></div>
       <div class="card"><h3>📖 کھاتہ</h3><div class="tblWrap">${ledgerTable(p, L)}</div></div>`;
@@ -738,13 +773,14 @@
   }
   function printLedger(id){
     const p = party(id); const L = ledger(id);
-    printDoc('کھاتہ — ' + p.name, `<h3 style="text-align:center">${PT[p.type]} کا کھاتہ: ${esc(p.name)} ${p.place ? '— ' + esc(p.place) : ''}</h3>${ledgerTable(p, L)}
+    printDoc('کھاتہ — ' + p.name, `<h3 style="text-align:center">${PT[p.type]} کا کھاتہ: ${esc(p.name)}${pNo(p) ? ' (نمبر <span class="num">' + pNo(p) + '</span>)' : ''} ${p.place ? '— ' + esc(p.place) : ''}</h3>${ledgerTable(p, L)}
       <table class="t" style="margin-top:8px"><tr class="net"><td>${balText(p.type, L.bal)}</td><td class="v">${fmt(Math.abs(L.bal))}</td></tr></table>`);
   }
   function partyForm(type, id){
-    const p = id ? party(id) : { name: '', phone: '', place: '', opening: 0 };
+    const p = id ? party(id) : { name: '', phone: '', place: '', opening: 0, no: nextPartyNo(type) };
     modal(`<h3>${id ? 'کھاتہ بدلیں' : 'نیا ' + PT[type]}</h3><div style="text-align:right">
-      <div class="f"><label>نام</label><input id="pfN" value="${esc(p.name)}"></div>
+      <div class="grid2"><div class="f"><label>کھاتہ نمبر</label><input id="pfNo" inputmode="numeric" value="${esc(pNo(p))}"></div>
+      <div class="f"><label>نام</label><input id="pfN" value="${esc(p.name)}"></div></div>
       <div class="f"><label>فون</label><input id="pfP" inputmode="tel" value="${esc(p.phone)}"></div>
       <div class="f"><label>گاؤں / شہر</label><input id="pfL" value="${esc(p.place)}"></div>
       <div class="f"><label>پچھلا بقایا (روپے) — ${type === 'zamindar' ? 'جو ہم نے اسے دینے ہیں' : 'جو اس سے لینے ہیں'}</label><input id="pfO" inputmode="decimal" value="${esc(inRs(p.opening))}" placeholder="0"></div>
@@ -755,8 +791,11 @@
   function saveParty(type, id){
     const name = $('pfN').value.trim(); if(!name){ toast('⚠️ نام لکھیں'); return; }
     const dup = findParty(type, name); if(dup && dup.id !== id){ toast('⚠️ اس نام کا ' + PT[type] + ' پہلے سے موجود ہے'); return; }
+    const no = int($('pfNo').value) || nextPartyNo(type), dn = partyByNo(type, no);
+    if(dn && dn.id !== id){ toast('⚠️ نمبر ' + no + ' پہلے سے ' + dn.name + ' کا ہے'); return; }
     let p = id ? party(id) : null;
     if(!p){ p = { id: uid(), type, createdAt: Date.now() }; DB.parties.push(p); }
+    p.no = no;
     const oldName = p.name;
     Object.assign(p, { name, phone: $('pfP').value.trim(), place: $('pfL').value.trim(), opening: toPaisa($('pfO').value) });
     if(type === 'buyer' && $('pfLim')){ p.limit = toPaisa($('pfLim').value) || 0; p.dueDays = int($('pfDue').value) || 0; }
@@ -791,7 +830,7 @@
           <span class="num">${fmt(t.gross || 0)}</span></div>`; }).join('')}</div></div>`);
     }
     if(canSee('party')){
-      const pt = DB.parties.filter(p => !p.deleted && canSee(p.type) && sHit([p.name, p.phone, p.place, PT[p.type]].join(' | '), words)).slice(0, 60);
+      const pt = DB.parties.filter(p => !p.deleted && canSee(p.type) && (sHit([p.name, p.phone, p.place, PT[p.type], 'نمبر ' + pNo(p)].join(' | '), words) || (words.length === 1 && String(pNo(p)) === words[0]))).slice(0, 60);
       if(pt.length) out.push(`<div class="card"><h3>👥 کھاتے (${pt.length})</h3><div class="list">${pt.map(p => { const b = ledger(p.id).bal;
         return `<div class="it" onclick="App.go('party','${p.id}')"><div><b>${p.type === 'zamindar' ? '🧑‍🌾' : '🧑‍💼'} ${esc(p.name)}</b> <span class="muted">${PT[p.type]} ${p.place ? '• ' + esc(p.place) : ''} ${p.phone ? '• ' + esc(p.phone) : ''}</span>
           <div class="muted">${balText(p.type, b)}</div></div><span class="num">${fmt(Math.abs(b))}</span></div>`; }).join('')}</div></div>`);
@@ -865,9 +904,9 @@
     const recent = liveCash().slice().sort((x, y) => y.at - x.at).slice(0, 30);
     return `<div class="pageTitle">💵 وصولی / ادائیگی</div>
       <div class="card"><div class="seg"><button class="${kind === 'receive' ? 'on' : ''}" onclick="App.go('cash','receive:')">💵 خریدار سے وصولی</button><button class="${kind === 'pay' ? 'on' : ''}" onclick="App.go('cash','pay:')">💸 زمیندار کو ادائیگی</button></div>
-        <datalist id="dlP">${parties(type).map(x => `<option value="${esc(x.name)}">`).join('')}</datalist>
+        <datalist id="dlP">${partyOpts(type)}</datalist>
         <div class="grid2 wideable">
-          <div class="f"><label>${PT[type]}</label><input id="cP" list="dlP" value="${esc(pp ? pp.name : '')}" placeholder="${PT[type]} کا نام" oninput="App.cashHint('${type}')"></div>
+          <div class="f"><label>${PT[type]}</label><input id="cP" list="dlP" value="${esc(pp ? pp.name : '')}" placeholder="نام یا کھاتہ نمبر" oninput="App.cashHint('${type}')" onchange="App.cashNum('${type}')"></div>
           <div class="f"><label>رقم (روپے)</label><input id="cA" inputmode="decimal" placeholder="0"></div>
           <div class="f"><label>تاریخ</label><input id="cD" type="date" value="${today()}"></div>
           <div class="f"><label>طریقہ</label><select id="cM"><option>نقد</option><option>بینک</option><option>چیک</option><option>موبائل والٹ</option></select></div>
@@ -880,6 +919,7 @@
           <div class="row"><span class="a ${c.kind === 'pay' ? 'amt-out' : 'amt-in'}">${fmt(c.amount)}</span><button class="btn gray sm" onclick="App.delCash('${c.id}')">🗑️</button></div></div>`; }).join('') || '<div class="muted">کوئی اندراج نہیں</div>'}</div></div>`;
   };
   AFTER.cash = function(){ const t = String(arg || '').startsWith('pay') ? 'zamindar' : 'buyer'; cashHint(t); };
+  function cashNum(type){ const el = $('cP'), p = el && partyByNo(type, el.value); if(p){ el.value = p.name; cashHint(type); } }
   function cashHint(type){ const el = $('cHint'); if(!el) return; const p = findParty(type, $('cP').value); el.innerHTML = p ? (balText(type, ledger(p.id).bal) + ': ' + rs(Math.abs(ledger(p.id).bal)) + ' روپے') : ''; }
   async function saveCash(kind){
     if(window.AB_LIC && !AB_LIC.canWrite()) return;
@@ -1332,6 +1372,13 @@
     logout(){ curUser = null; pinBuf = ''; menu(false); render(); },
     setTheme(k){ try{ localStorage.setItem('ab_theme', k); }catch(e){} applyTheme(k); render(); }, verTap(){ if(window.AB_LIC && AB_LIC.tap()) return; toast('ورژن ' + APP_VERSION); },
     newParchi(){ cur = blankParchi(); render(); },
+    async parchiStep(id){
+      // نئی (محفوظ نہ ہوئی) پرچی میں کچھ لکھا ہو تو پوچھیں
+      if(cur && !cur.no && (String(cur.zamindar || '').trim() || cur.lines.some(l => l.item || l.buyer || l.rate)) && !(await ask('یہ نئی پرچی ابھی محفوظ نہیں ہوئی — چھوڑ کر آگے جائیں؟', 'ہاں، چھوڑ دیں'))) return;
+      const p = DB.parchis.find(x => x.id === id); if(!p) return; cur = JSON.parse(JSON.stringify(p)); render(); window.scrollTo(0, 0);
+    },
+    pnum(el){ const p = partyByNo('zamindar', el.value); if(p){ cur.zamindar = p.name; cur.zamindarId = p.id; if(!cur.place && p.place) cur.place = p.place; render(); } else if(cur.zamindar !== el.value){ cur.zamindar = el.value; } },
+    lnum(i, el){ const p = partyByNo('buyer', el.value), l = cur.lines[i]; if(p && l){ l.buyer = p.name; l.buyerId = p.id; render(); } },
     pset(k, v){ cur[k] = k === 'cashNow' ? toPaisa(v) : v; if(k === 'zamindar' || k === 'place' || k === 'vehicle' || k === 'cashNow') renderResult(); if(k === 'date') render(); },
     lset(i, k, v){ const l = cur.lines[i]; if(!l) return; if(k === 'rate') l.rate = toPaisa(v); else if(k === 'grams') l.grams = toGrams(v); else if(k === 'nag') l.nag = String(v).replace(/[^\d]/g, ''); else l[k] = v; if(k === 'buyer') delete l.buyerId; renderResult(); },
     pman(id, v){ if(String(v).trim() === '') delete cur.manual[id]; else cur.manual[id] = toPaisa(v); renderResult(); },
@@ -1340,7 +1387,7 @@
     saveParchi, printParchi, printBuyers, delParchi, restoreParchi, shareParchi, shareSend, shareChat, shareSave, thermal, thermalBT, thermalPrint,
     setListDate(d){ listDate = d; render(); }, setRozDate(d){ rozDate = d; render(); }, toggleLock,
     psearch(v, type){ partySearch = v; const pos = v.length; render(); const i = document.querySelector('#view .f input'); if(i){ i.focus(); i.setSelectionRange(pos, pos); } },
-    partyForm, saveParty, printLedger, cashHint, saveCash, delCash,
+    partyForm, saveParty, printLedger, cashHint, cashNum, saveCash, delCash,
     chEdit(id){ editCh = id ? JSON.parse(JSON.stringify(chargesList().find(x => x.id === id))) : { id: '', name: '', kind: 'percent', rate: 0, side: 'zamindar', income: true, on: true, itemRates: {} }; render(); },
     chCancel(){ editCh = null; render(); }, chSave,
     chToggle(id, on){ const c = chargesList().find(x => x.id === id); if(c){ c.on = on; put('charges'); logIt('خرچہ ' + (on ? 'چالو' : 'بند') + ': ' + c.name); render(); } },
