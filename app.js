@@ -8,8 +8,8 @@
    ===================================================================== */
 (function(){
   'use strict';
-  const APP_VERSION = 'AB2510SU033';
-  const UPDATE_NOTE = 'بیک اپ کی پیش رفت کی پٹی (0 سے 100٪) اور مکمل ہونے پر «ٹھیک ہے» والا پیغام — ڈرائیو اور بیک اپ فائل دونوں';
+  const APP_VERSION = 'AB2510SU034';
+  const UPDATE_NOTE = 'خودکار بیک اپ ہر تبدیلی پر نہیں — دن میں تین بار: صبح 8، دوپہر 2، رات 8 بجے؛ جب چاہیں «ابھی محفوظ کریں»';
   const C = window.ABCalc;
   // ---------- اردو / عربی کی بورڈ کے ہندسے (۰۱۲… / ٠١٢…) لکھتے ہی 0-9 میں — ورنہ رقم، نمبر اور کوڈ نہیں پہچانے جاتے ----------
   document.addEventListener('input', e => {
@@ -1284,7 +1284,7 @@
     return `<div class="pageTitle">💾 بیک اپ</div>
       <div class="card"><h3>☁️ گوگل ڈرائیو پر خودکار بیک اپ</h3>
         <div id="driveStatus" class="dstatus"></div>
-        <div class="muted">ایک بار جوڑ دیں: ہر تبدیلی کے چند سیکنڈ بعد سارا ریکارڈ آپ کی اپنی گوگل ڈرائیو کے فولڈر <span class="num">BKAR Backup</span> میں خود محفوظ ہوگا (فائلیں <span class="num">BKAR…json</span> نام سے)، اور ہر دن کی الگ نقل 90 دن تک رہے گی۔ ایپ صرف اپنی بنائی فائلیں دیکھ سکتی ہے۔</div>
+        <div class="muted">ایک بار جوڑ دیں: دن میں تین بار — <b>صبح 8، دوپہر 2 اور رات 8 بجے</b> — سارا ریکارڈ آپ کی اپنی گوگل ڈرائیو کے فولڈر <span class="num">BKAR Backup</span> میں خود محفوظ ہوگا (فائلیں <span class="num">BKAR…json</span> نام سے)، اور ہر دن کی الگ نقل 90 دن تک رہے گی۔ ایپ صرف اپنی بنائی فائلیں دیکھ سکتی ہے۔</div>
         ${D && D.supported ? `<div class="row" style="margin-top:8px">${on ? `<button class="btn" id="btnDriveNow" onclick="AB_DRIVE.now()">☁️ ابھی محفوظ کریں</button><button class="btn light" onclick="AB_DRIVE.openRestore()">📂 ڈرائیو سے واپس لائیں</button><button class="btn gray sm" onclick="App.driveOff()">الگ کریں</button>` : `<button class="btn gold" onclick="AB_DRIVE.connect()">☁️ گوگل ڈرائیو جوڑیں</button>`}</div>` : ''}
         <div id="driveFiles" style="margin-top:8px"></div></div>
       <div class="card"><h3>📥 بیک اپ فائل بنائیں</h3><div class="muted">سارا ریکارڈ (پرچیاں، کھاتے، وصولی، خرچے) ایک فائل میں فون میں محفوظ ہو جائے گا۔ روز ایک بار ضرور بنائیں اور واٹس ایپ یا ای میل پر اپنے پاس بھیج دیں۔</div>

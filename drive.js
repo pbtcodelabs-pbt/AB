@@ -1,5 +1,6 @@
 /* 📒 آڑھت بک — گوگل ڈرائیو پر خودکار بیک اپ
-   - ہر تبدیلی کے چند سیکنڈ بعد «تازہ ترین» فائل ڈرائیو پر اپڈیٹ
+   - خودکار بیک اپ دن میں صرف تین بار: صبح 8، دوپہر 2، رات 8 بجے (اگر اس سے پہلے کوئی تبدیلی ہوئی ہو)؛ ایپ بند ہو تو اگلی بار کھلنے پر
+   - اس کے علاوہ جب چاہیں «ابھی محفوظ کریں»
    - ہر دن کی الگ نقل بھی، 90 دن سے پرانی خود صاف
    - اجازت صرف drive.file: ایپ صرف اپنی بنائی فائلیں دیکھ سکتی ہے
    - گوگل کا Client ID وہی جو اسی ویب سائٹ کی دوسری ایپس (دودھ ڈائری، مکتبہ، میڈیسن شیلف) میں ہے
@@ -15,7 +16,9 @@
   const LATEST_NAME = 'BKAR-LATEST.json';
   const META_KEY = 'ab_drive';
   const KEEP_DAILY = 90;
-  const AUTO_DELAY = 4000;
+  // خودکار بیک اپ کے وقت (گھنٹے، فون کا وقت) — مالک کا حکم: ہر تبدیلی پر نہیں، دن میں تین بار
+  const SLOTS = [8, 14, 20];
+  const SLOT_NAME = { 8: 'صبح 8 بجے', 14: 'دوپہر 2 بجے', 20: 'رات 8 بجے' };
   const DRIVE = 'https://www.googleapis.com/drive/v3/files';
   const UPLOAD = 'https://www.googleapis.com/upload/drive/v3/files';
 
@@ -28,7 +31,7 @@
   try { meta = JSON.parse(localStorage.getItem(META_KEY) || '{}') || {}; } catch (e) { meta = {}; }
   const saveMeta = () => { try { localStorage.setItem(META_KEY, JSON.stringify(meta)); } catch (e) {} };
 
-  let token = null, tokenExp = 0, tokenClient = null, busy = false, autoTimer = null, waitTap = false;
+  let token = null, tokenExp = 0, tokenClient = null, busy = false, waitTap = false;
   const hasToken = () => token && Date.now() < tokenExp - 60000;
 
   const pad = n => String(n).padStart(2, '0');
@@ -175,7 +178,7 @@
         busy = false; render();
         await host().progressDone('ڈرائیو پر بیک اپ ہو گیا', (meta.email ? ['📧 <span class="num" dir="ltr">' + meta.email + '</span>'] : []).concat(['📂 فولڈر: <b dir="ltr">' + FOLDER_NAME + '</b>',
           '📄 فائل: <b class="num" dir="ltr">' + dailyName + '</b>', '📚 پرچیاں: <b class="num">' + n + '</b>', '🕒 وقت: <span class="num">' + when(meta.lastDrive) + '</span>',
-          '<span class="muted">آگے سے ہر تبدیلی کے چند سیکنڈ بعد خود محفوظ ہوگا — اوپر ☁️ کا نشان بتاتا ہے</span>']));
+          '<span class="muted">آگے سے روز صبح 8، دوپہر 2 اور رات 8 بجے خود محفوظ ہوگا؛ جب چاہیں «ابھی محفوظ کریں»</span>']));
       }
       return n;
     } catch (e) {
@@ -233,24 +236,40 @@
     } catch (e) { handleErr(e, true); }
   }
 
-  // ---------- خودکار بیک اپ ----------
-  function onChanged() {
-    meta.pending = true; saveMeta(); render();
-    if (!meta.email || !navigator.onLine || !SUPPORTED) return;
-    clearTimeout(autoTimer);
-    if (!hasToken()) {
-      // اجازت پہلے دی جا چکی ہے؛ ٹوکن ختم ہو تو اگلے ٹچ پر خاموشی سے نیا لے کر محفوظ کریں
-      waitTap = true;
-      return;
-    }
-    autoTimer = setTimeout(() => { if (hasToken() && navigator.onLine) backup(false); }, AUTO_DELAY);
+  // ---------- خودکار بیک اپ: صبح 8، دوپہر 2، رات 8 بجے ----------
+  // سب سے قریب گزرا ہوا وقت (آج یا کل رات 8 بجے)
+  function lastSlot(now = new Date()) {
+    const d = new Date(now); let h = SLOTS.filter(x => x <= now.getHours()).pop();
+    if (h == null) { d.setDate(d.getDate() - 1); h = SLOTS[SLOTS.length - 1]; }
+    d.setHours(h, 0, 0, 0); return { t: d.getTime(), h };
   }
+  function nextSlot(now = new Date()) {
+    const d = new Date(now); let h = SLOTS.find(x => x > now.getHours());
+    if (h == null) { d.setDate(d.getDate() + 1); h = SLOTS[0]; }
+    d.setHours(h, 0, 0, 0); return { t: d.getTime(), h, today: dayStamp(d) === dayStamp(now) };
+  }
+  // بیک اپ کا وقت آ گیا؟ — پچھلے بیک اپ کے بعد کوئی تبدیلی ہوئی ہو اور آخری مقررہ وقت گزر چکا ہو
+  function due() {
+    if (!meta.email || !meta.pending || !SUPPORTED) return null;
+    const s = lastSlot(), last = meta.lastDrive ? new Date(meta.lastDrive).getTime() : 0;
+    return last < s.t ? s : null;
+  }
+  async function autoRun() {
+    const s = due(); if (!s || busy || !navigator.onLine) return;
+    if (!hasToken()) { waitTap = true; return; } // اجازت پہلے دی جا چکی؛ اگلے ٹچ پر خاموشی سے نیا ٹوکن
+    const n = await backup(false);
+    if (n !== false) toast('☁️ ' + SLOT_NAME[s.h] + ' کا خودکار بیک اپ ہو گیا');
+  }
+  function onChanged() { meta.pending = true; saveMeta(); render(); }
+  setInterval(autoRun, 60000);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') autoRun(); });
   document.addEventListener('pointerdown', () => {
-    if (!waitTap || busy || !meta.pending || !meta.email) return;
+    if (!waitTap || busy) return;
     waitTap = false;
-    getToken(true).then(() => backup(false)).catch(() => { waitTap = true; });
+    if (!due()) return;
+    getToken(true).then(() => autoRun()).catch(() => { waitTap = true; });
   }, true);
-  window.addEventListener('online', () => { if (meta.pending && meta.email) waitTap = true; });
+  window.addEventListener('online', () => autoRun());
 
   // ---------- جوڑنا / الگ کرنا ----------
   async function connect() { await backup(true, true); }
@@ -265,7 +284,7 @@
     if (!SUPPORTED) return { cls: 'off', txt: 'کمپیوٹر والی ایپ میں ڈرائیو نہیں — روز بیک اپ فائل بنائیں' };
     if (busy) return { cls: 'busy', txt: '⏳ ڈرائیو پر محفوظ ہو رہا ہے…' };
     if (!meta.email) return { cls: 'warn', txt: '⚠️ ڈرائیو سے نہیں جڑا — ریکارڈ صرف اس ڈیوائس میں ہے' };
-    if (meta.pending) return { cls: 'warn', txt: '⏳ نئی تبدیلی ڈرائیو پر جانا باقی' };
+    if (meta.pending) { const n = nextSlot(); return { cls: 'warn', txt: '🕒 نئی تبدیلیاں ' + (due() ? 'اب ڈرائیو پر جائیں گی' : (n.today ? 'آج ' : 'کل ') + SLOT_NAME[n.h] + ' خود ڈرائیو پر جائیں گی') + ' — یا ابھی «محفوظ کریں» دبائیں' }; }
     return { cls: 'ok', txt: '✅ ڈرائیو پر محفوظ — <span class="num">' + when(meta.lastDrive) + '</span>' };
   }
   function render() {
@@ -278,10 +297,10 @@
 
   window.addEventListener('ab-data-changed', onChanged);
   if (meta.email && navigator.onLine && SUPPORTED) loadGis().catch(() => {});
-  if (meta.pending && meta.email) waitTap = true;
+  setTimeout(autoRun, 3000);
 
   window.AB_DRIVE = {
     connect, now, disconnect, openRestore, render, supported: SUPPORTED,
-    connected: () => !!meta.email, lastBackup: () => meta.lastDrive || null, pending: () => !!meta.pending
+    connected: () => !!meta.email, slots: () => SLOTS.map(h => SLOT_NAME[h]), lastBackup: () => meta.lastDrive || null, pending: () => !!meta.pending
   };
 })();
