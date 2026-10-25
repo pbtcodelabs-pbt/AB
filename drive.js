@@ -128,15 +128,29 @@
   }
 
   // ---------- بیک اپ ----------
-  async function backup(interactive) {
-    if (busy) return false;
+  // show = true ہو (بٹن دبا کر) تو پیش رفت کی پٹی 0 → 100٪ اور آخر میں «ٹھیک ہے» والا پیغام
+  const T = 'ڈرائیو پر بیک اپ ہو رہا ہے';
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  async function backup(interactive, show) {
+    if (busy) {
+      if (!show) return false;
+      // خودکار بیک اپ چل رہا ہو تو اس کے ختم ہونے کا انتظار، پھر دوبارہ (خاموشی سے واپس نہیں)
+      if (host().progress) host().progress(T, 5, 'پچھلا بیک اپ مکمل ہو رہا ہے…');
+      while (busy) await wait(300);
+    }
+    const P = show && host().progress ? (pct, t) => { host().progress(T, pct, t); return wait(250); } : () => Promise.resolve();
     busy = true; render();
     try {
+      await P(5, 'گوگل اکاؤنٹ کی اجازت…');
       await getToken(interactive);
+      await P(20, 'اکاؤنٹ دیکھا جا رہا ہے…');
       if (!meta.email) await whoAmI();
+      await P(35, 'ڈرائیو میں فولڈر BKAR Backup…');
       await ensureFolder();
+      await P(50, 'سارا ریکارڈ جمع ہو رہا ہے…');
       const content = JSON.stringify(host().snapshot());
       const n = host().count();
+      await P(65, 'تازہ ترین فائل بھیجی جا رہی ہے…');
       let latestId = meta.latestId;
       if (!latestId) {
         const q = encodeURIComponent(`name='${LATEST_NAME}' and '${meta.folderId}' in parents and trashed=false`);
@@ -146,6 +160,7 @@
       try { meta.latestId = (await upload(LATEST_NAME, content, n, latestId)).id; }
       catch (e) { if (latestId && /404/.test(e.message)) meta.latestId = (await upload(LATEST_NAME, content, n, null)).id; else throw e; }
 
+      await P(85, 'آج کی نقل بھیجی جا رہی ہے…');
       const today = dayStamp(), dailyName = host().fileName(new Date()); // دن کی فائل کا نام ہر بار آخری وقت سے بدلتا ہے
       if (meta.dailyDay === today && meta.dailyId) {
         try { await upload(dailyName, content, n, meta.dailyId); }
@@ -156,8 +171,15 @@
       }
       meta.lastDrive = new Date().toISOString(); meta.lastCount = n; meta.pending = false;
       saveMeta();
+      if (show && host().progressDone) {
+        busy = false; render();
+        await host().progressDone('ڈرائیو پر بیک اپ ہو گیا', (meta.email ? ['📧 <span class="num" dir="ltr">' + meta.email + '</span>'] : []).concat(['📂 فولڈر: <b dir="ltr">' + FOLDER_NAME + '</b>',
+          '📄 فائل: <b class="num" dir="ltr">' + dailyName + '</b>', '📚 پرچیاں: <b class="num">' + n + '</b>', '🕒 وقت: <span class="num">' + when(meta.lastDrive) + '</span>',
+          '<span class="muted">آگے سے ہر تبدیلی کے چند سیکنڈ بعد خود محفوظ ہوگا — اوپر ☁️ کا نشان بتاتا ہے</span>']));
+      }
       return n;
     } catch (e) {
+      if (show && host().closeModal) host().closeModal();
       handleErr(e, interactive);
       return false;
     } finally { busy = false; render(); }
@@ -231,11 +253,8 @@
   window.addEventListener('online', () => { if (meta.pending && meta.email) waitTap = true; });
 
   // ---------- جوڑنا / الگ کرنا ----------
-  async function connect() {
-    const n = await backup(true);
-    if (n !== false) toast('✅ ڈرائیو سے جڑ گیا — سارا ریکارڈ محفوظ');
-  }
-  async function now() { const n = await backup(true); if (n !== false) toast('✅ ڈرائیو پر محفوظ ہو گیا'); }
+  async function connect() { await backup(true, true); }
+  async function now() { await backup(true, true); }
   function disconnect() {
     try { if (token && window.google && google.accounts && google.accounts.oauth2) google.accounts.oauth2.revoke(token, () => {}); } catch (e) {}
     meta = {}; token = null; saveMeta(); render(); toast('ڈرائیو سے الگ کر دیا');

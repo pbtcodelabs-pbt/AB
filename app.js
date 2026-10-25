@@ -8,8 +8,8 @@
    ===================================================================== */
 (function(){
   'use strict';
-  const APP_VERSION = 'AB2510SU032';
-  const UPDATE_NOTE = 'سبسکرپشن میں ڈویلپر کی پٹی: بائیں PBT Code Labs، دائیں موبائل نمبر';
+  const APP_VERSION = 'AB2510SU033';
+  const UPDATE_NOTE = 'بیک اپ کی پیش رفت کی پٹی (0 سے 100٪) اور مکمل ہونے پر «ٹھیک ہے» والا پیغام — ڈرائیو اور بیک اپ فائل دونوں';
   const C = window.ABCalc;
   // ---------- اردو / عربی کی بورڈ کے ہندسے (۰۱۲… / ٠١٢…) لکھتے ہی 0-9 میں — ورنہ رقم، نمبر اور کوڈ نہیں پہچانے جاتے ----------
   document.addEventListener('input', e => {
@@ -166,6 +166,17 @@
   function toast(msg){ const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 2600); }
   function modal(html){ $('modalBox').innerHTML = html; $('modal').classList.add('open'); }
   function closeModal(){ $('modal').classList.remove('open'); }
+  // ---------- ⏳ کام کی پیش رفت (بیک اپ وغیرہ): پٹی 0 سے 100٪ تک، آخر میں «ٹھیک ہے» والا پیغام ----------
+  function progress(title, pct, step){
+    const p = Math.max(0, Math.min(100, Math.round(pct)));
+    if(!$('pgBar') || !$('modal').classList.contains('open')){ modal(`<div class="pgBox"><h3>${esc(title)}</h3><div class="pgTrack"><i id="pgBar" style="width:${p}%"></i></div><div class="pgPct num" id="pgPct">${p}%</div><div class="muted" id="pgStep">${esc(step || '')}</div></div>`); return; }
+    $('pgBar').style.width = p + '%'; $('pgPct').textContent = p + '%'; $('pgStep').textContent = step || '';
+  }
+  function progressDone(title, lines){
+    progress(title, 100, '✅ مکمل');
+    return new Promise(r => setTimeout(() => { modal(`<div class="pgBox"><div class="pgOk">✅</div><h3>${esc(title)}</h3><div class="pgLines">${(lines || []).map(l => `<div>${l}</div>`).join('')}</div>
+      <button class="btn wide" style="margin-top:10px" onclick="App.closeModal()">👍 ٹھیک ہے</button></div>`); r(); }, 500));
+  }
   function ask(msg, okText){
     return new Promise(res => {
       modal(`<h3>تصدیق</h3><div style="margin:6px 0 12px">${msg}</div><div class="row" style="justify-content:center">
@@ -1312,13 +1323,19 @@
     const h = d.getHours(), h12 = h % 12 || 12;
     return 'BKAR' + p(d.getDate()) + p(d.getMonth() + 1) + ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'][d.getDay()] + p(h12) + p(d.getMinutes()) + (h < 12 ? 'AM' : 'PM') + '.json';
   }
-  function exportBackup(){
+  async function exportBackup(){
+    const wait = ms => new Promise(r => setTimeout(r, ms));
+    progress('📥 بیک اپ فائل بن رہی ہے', 10, 'ریکارڈ جمع ہو رہا ہے…'); await wait(300);
+    progress('📥 بیک اپ فائل بن رہی ہے', 45, 'پرچیاں، کھاتے، وصولی، خرچے…'); await wait(300);
     const blob = new Blob([JSON.stringify(snapshot())], { type: 'application/json' });
     // فائل کا نام باقی ایپس کے انداز پر: BKAR + تاریخ + مہینہ + دن + وقت + AM/PM، مثلاً BKAR2410SA0455AM.json
     // (انگریزی حروف میں — براؤزر ڈاؤن لوڈ میں اردو نام قبول نہیں کرتا)
     const name = backupFileName(new Date());
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
-    DB.settings.lastBackup = Date.now(); put('settings'); toast('✅ بیک اپ فائل بن گئی'); render();
+    progress('📥 بیک اپ فائل بن رہی ہے', 85, 'فون میں محفوظ ہو رہی ہے…'); await wait(300);
+    DB.settings.lastBackup = Date.now(); put('settings'); render();
+    await progressDone('بیک اپ فائل بن گئی', ['📄 فائل: <b class="num" dir="ltr">' + esc(name) + '</b>', '📚 پرچیاں: <b class="num">' + liveParchis().length + '</b>', '👥 کھاتے: <b class="num">' + DB.parties.filter(p => !p.deleted).length + '</b>',
+      '📂 فون کے «ڈاؤن لوڈ» فولڈر میں', '<span class="muted">یہ فائل واٹس ایپ یا ای میل پر اپنے پاس بھی بھیج دیں</span>']);
   }
   function importBackup(inp){
     const f = inp.files && inp.files[0]; inp.value = ''; if(!f) return;
@@ -1326,7 +1343,7 @@
     rdr.onload = async () => { let b; try{ b = JSON.parse(rdr.result); }catch(e){ toast('❌ یہ درست بیک اپ فائل نہیں'); return; } applyBackup(b); };
     rdr.readAsText(f);
   }
-  window.AB_HOST = { snapshot, apply: applyBackup, toast, version: APP_VERSION, fileName: backupFileName, count: () => liveParchis().length,
+  window.AB_HOST = { progress, progressDone, snapshot, apply: applyBackup, toast, version: APP_VERSION, fileName: backupFileName, count: () => liveParchis().length,
     settings: () => DB.settings,
     setLabels(m){ DB.settings.labels = m; put('settings'); logIt('الفاظ بدلے: ' + Object.keys(m).length); if(window.AB_LBL) AB_LBL.install(); render(); },
     modal, closeModal, ask,
