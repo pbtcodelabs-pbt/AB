@@ -15,7 +15,15 @@
   const BASE_DEVICES = 3;               // سبسکرپشن (اور آزمائش) میں شامل آلات؛ زیادہ آلہ = 5,000 روپے سالانہ
   const DAY = 864e5;
   const FOREVER = Date.UTC(2100, 0, 1);
-  const PLANS = [[180, 'چھ مہینے', 15000], [365, 'ایک سال', 25000]];   // [دن، نام، قیمت روپے]
+  const PLANS0 = [[180, 'چھ مہینے', 15000], [365, 'ایک سال', 25000]];   // [دن، نام، قیمت روپے] — اصل؛ ڈویلپر پینل سے بدلی جا سکتی ہیں
+  // ---------- سبسکرپشن کی ترتیب سرور پر (licenses/_CONFIG): دکھانا ہے یا نہیں + قیمتیں ----------
+  // مالک کا حکم (AB2510SU036): ابھی سبسکرپشن اور «مفت آزمائش» گاہکوں کو نظر نہ آئے؛ ڈویلپر پینل سے دوبارہ چالو اور قیمتیں بدلیں
+  // چھپی ہو تو مدت ختم ہونے پر بھی اندراج بند نہیں (گاہک کے پاس سبسکرپشن لینے کا راستہ نہیں)
+  const CFG_DOC = 'licenses/_CONFIG';
+  const subOn = () => !!(st.cfg && st.cfg.show);
+  const plansOf = c => { const p = c && Array.isArray(c.plans) ? c.plans.filter(x => x && +x[0] > 0 && x[1] && +x[2] >= 0) : null; return p && p.length ? p : PLANS0; };
+  const plans = () => plansOf(st.cfg);
+  const bestDays = () => Math.max.apply(null, plans().map(x => +x[0]));
   const rsTxt = n => n.toLocaleString('en-US');
   const KEY = 'ab_lic';                 // آلہ وار: آخری معلوم حالت (آف لائن بھی چلے) — بیک اپ/sync میں نہیں
   const BASE = `https://firestore.googleapis.com/v1/projects/${CFG.projectId}/databases/(default)/documents`;
@@ -84,6 +92,7 @@
     if (busy) return false;
     busy = true;
     const was = status();
+    await loadCfg();
     try {
       let t = await getDoc(`trials/${p}`);
       if (!t) {
@@ -139,7 +148,7 @@
         <div class="row" style="justify-content:center;margin-top:8px"><button class="btn" onclick="AB_LIC.request(-1)">💬 مزید ڈیوائس — ڈویلپر سے بات</button><button class="btn gray" onclick="App.closeModal()">بند</button></div>`);
       return false;
     }
-    if (status().ok) return true;
+    if (status().ok || !subOn()) return true;
     toast('⛔ سبسکرپشن ختم — نیا اندراج بند ہے');
     openModal();
     return false;
@@ -147,6 +156,7 @@
 
   // ---------- ہوم کی پٹی ----------
   function strip() {
+    if (!subOn()) return '';
     const s = status();
     if (s.paid && (s.forever || s.days > 5)) return '';
     const cls = !s.ok ? 'off' : s.paid ? 'warn' : 'trial';
@@ -154,6 +164,7 @@
   }
   // ---------- سیٹنگ کا خانہ ----------
   function card() {
+    if (!subOn()) return '';
     const p = phone();
     return `<div class="card"><h3>📜 سبسکرپشن</h3><div class="licState">${statusText()}</div>
       <div class="muted">شامل ڈیوائسز: <span class="num">${allowed()}</span> (ایک فون پر کئی ملازم اپنے پن سے = ایک ڈیوائس)</div>
@@ -161,6 +172,25 @@
       <div class="row" style="margin-top:6px"><button class="btn" onclick="AB_LIC.open()">📜 سبسکرپشن لیں / کوڈ لکھیں</button><button class="btn light" onclick="AB_LIC.check(true)">🔄 بحال کریں</button></div></div>`;
   }
 
+  // سب سے چھوٹی مدت کے ماہانہ حساب سے بچت
+  function saveTxt(x) {
+    const ps = plans().slice().sort((a, b) => a[0] - b[0]), base = ps[0];
+    if (!base || +x[0] === +base[0] || !+base[0]) return '<div class="ps">&nbsp;</div>';
+    const sv = Math.round((base[2] / base[0] * x[0] - x[2]) / 100) * 100;
+    return sv > 0 ? `<div class="ps">✅ ${rsTxt(sv)} روپے کی بچت</div>` : '<div class="ps">&nbsp;</div>';
+  }
+  // ---------- سرور سے ترتیب لینا ----------
+  async function loadCfg() {
+    try {
+      const f = await getDoc(CFG_DOC);
+      if (!f) return;
+      let pl = null; try { pl = JSON.parse(fv(f.plans) || 'null'); } catch (e) {}
+      const show = !!(f.show && f.show.booleanValue);
+      const was = subOn();
+      st.cfg = { show, plans: pl }; save();
+      if (was !== show) refresh();
+    } catch (e) {}
+  }
   // ---------- سبسکرپشن کا پاپ اپ ----------
   function openModal() {
     const H = host(); const p = phone();
@@ -168,12 +198,12 @@
     H.modal(`<div class="licHead"><h3>📜 آڑھت بک کی سبسکرپشن</h3><div class="licState">${statusText()}</div></div>
       ${okPhone(p) ? '' : `<div class="f"><label>مالک کا موبائل نمبر</label><input id="licPh" inputmode="tel" placeholder="03001234567"></div>`}
       <div class="licHint">👇 مدت پر ہاتھ رکھیں — درخواست سیدھی ڈویلپر کی واٹس ایپ چیٹ میں جائے گی؛ ادائیگی کے بعد وہ آپ کو کوڈ بھیجیں گے</div>
-      <div class="licPlans2">${PLANS.map(x => `<button class="licPlan ${x[0] === 365 ? 'best' : ''}" onclick="AB_LIC.request(${x[0]}, this)">
-          ${x[0] === 365 ? '<span class="rib">⭐ سب سے فائدہ مند</span>' : ''}
-          <div class="pi">${ico[x[0]] || '📅'}</div><div class="pn">${x[1]}</div>
+      <div class="licPlans2">${plans().map(x => `<button class="licPlan ${+x[0] === bestDays() && plans().length > 1 ? 'best' : ''}" onclick="AB_LIC.request(${x[0]}, this)">
+          ${+x[0] === bestDays() && plans().length > 1 ? '<span class="rib">⭐ سب سے فائدہ مند</span>' : ''}
+          <div class="pi">${+x[0] >= 365 ? '🏆' : ico[x[0]] || '📅'}</div><div class="pn">${x[1]}</div>
           <div class="pp">${rsTxt(x[2])} <small>روپے</small></div>
           <div class="pm">تقریباً <span class="num">${rsTxt(Math.round(x[2] / (x[0] / 30.4) / 10) * 10)}</span> روپے ماہانہ</div>
-          ${x[0] === 365 ? '<div class="ps">✅ 5,000 روپے کی بچت</div>' : '<div class="ps">&nbsp;</div>'}
+          ${saveTxt(x)}
           <span class="pw">💬 واٹس ایپ پر درخواست</span>
           <span class="licSend"><span class="fly">💬</span><span>پیغام چیٹ میں جا رہا ہے…</span></span></button>`).join('')}</div>
       <div class="licCodeBox"><div class="lcTitle">🔑 ڈویلپر سے آیا ہوا کوڈ</div>
@@ -191,7 +221,7 @@
   }
   function request(days, el) {
     if (!takePhone()) return;
-    const s = host().settings(); const plan = PLANS.find(x => x[0] === days);
+    const s = host().settings(); const plan = plans().find(x => x[0] === days);
     const msg = (days === -1 ? 'السلام علیکم — آڑھت بک میں مزید ڈیوائس چاہیے (ابھی ' + allowed() + ' ڈیوائسز)\n' : 'السلام علیکم — آڑھت بک کی سبسکرپشن چاہیے\n')
       + 'مدت: ' + (plan ? plan[1] + ' — ' + rsTxt(plan[2]) + ' روپے' : '') + '\n'
       + 'آڑھت: ' + (s.shop || '') + '\n'
@@ -248,16 +278,16 @@
       if (window.AB_USAGE) AB_USAGE.render('uBox');
       return;
     }
-    const plans = '<option value="c">اپنی مرضی کے دن</option>' + PLANS.map(x => `<option value="${x[0]}">${x[1]}</option>`).join('') + '<option value="0">ہمیشہ کے لیے</option>';
+    const planOpts = '<option value="c">اپنی مرضی کے دن</option>' + plans().map(x => `<option value="${x[0]}">${x[1]}</option>`).join('') + '<option value="0">ہمیشہ کے لیے</option>';
     H.modal(`<div class="dvp"><h3>🛠️ ڈویلپر پینل — نیا کوڈ</h3>
       <div class="f"><label>📋 گاہک کا واٹس ایپ والا پیغام یہاں پیسٹ کریں — نمبر، نام، مدت اور ڈیوائسز خود بھر جائیں گے</label><textarea id="dvPaste" rows="2" placeholder="پورا پیغام پیسٹ کریں"></textarea></div>
       <div class="grid2"><div class="f"><label>گاہک کا موبائل نمبر</label><input id="dvPh" inputmode="tel" placeholder="03001234567"></div>
         <div class="f"><label>آڑھت / گاہک کا نام</label><input id="dvN"></div>
-        <div class="f"><label>مدت</label><select id="dvD" onchange="document.getElementById('dvCw').style.visibility=this.value==='c'?'visible':'hidden'">${plans}</select></div>
+        <div class="f"><label>مدت</label><select id="dvD" onchange="document.getElementById('dvCw').style.visibility=this.value==='c'?'visible':'hidden'">${planOpts}</select></div>
         <div class="f" id="dvCw"><label>کتنے دن؟</label><input id="dvC" inputmode="numeric" placeholder="1 سے 3650"></div>
         <div class="f" style="grid-column:1/-1"><label>کتنی ڈیوائسز؟ (3 شامل؛ ہر زیادہ ڈیوائس 5,000 سالانہ)</label><input id="dvDev" inputmode="numeric" value="3"></div></div>
       <div id="dvInfo" class="muted"></div>
-      <div class="row" style="justify-content:center;margin-top:6px"><button class="btn light" id="dvChk">🔍 نمبر دیکھیں</button><button class="btn" id="dvMake">🎁 کوڈ بنائیں</button><button class="btn light" onclick="AB_LIC.codes()">📋 سب کوڈ</button><button class="btn light" onclick="AB_LBL.open()">📝 الفاظ</button><button class="btn gray" onclick="App.closeModal()">بند</button></div>
+      <div class="row" style="justify-content:center;margin-top:6px"><button class="btn light" id="dvChk">🔍 نمبر دیکھیں</button><button class="btn" id="dvMake">🎁 کوڈ بنائیں</button><button class="btn light" onclick="AB_LIC.codes()">📋 سب کوڈ</button><button class="btn light" onclick="AB_LIC.prices()">💰 قیمتیں</button><button class="btn light" onclick="AB_LBL.open()">📝 الفاظ</button><button class="btn gray" onclick="App.closeModal()">بند</button></div>
       <div id="dvOut"></div>
       <details><summary>📊 فائربیس کا استعمال (مفت پیکج)</summary><div id="uBox" class="uBox"></div></details></div>`);
     if (window.AB_USAGE) AB_USAGE.render('uBox');
@@ -285,7 +315,7 @@
     if (ph) $('dvPh').value = ph.replace(/[^\d+]/g, '');
     const nm = line('آڑھت') || line('مالک'); if (nm) $('dvN').value = nm;
     const md = line('مدت');
-    const pl = PLANS.find(x => md.indexOf(x[1]) === 0);
+    const pl = plans().find(x => md.indexOf(x[1]) === 0);
     if (pl) { $('dvD').value = String(pl[0]); $('dvCw').style.visibility = 'hidden'; }
     const dv = parseInt(line('ڈیوائسز'), 10); if (dv >= 1 && dv <= 50) $('dvDev').value = String(dv);
     const out = $('dvInfo');
@@ -347,6 +377,7 @@
     for (let g = 0; g < 20; g++) {
       const j = await devFs(`licenses?pageSize=300${tok ? '&pageToken=' + encodeURIComponent(tok) : ''}`);
       ((j && j.documents) || []).forEach(d => {
+        if (d.name.split('/').pop() === '_CONFIG') return; // ترتیب، کوڈ نہیں
         const f = d.fields || {};
         out.push({ code: d.name.split('/').pop(), phone: fv(f.phone) || '', name: fv(f.name) || '', days: fv(f.days) || 0, exp: fv(f.exp) || 0,
           dev: fv(f.dev) || BASE_DEVICES, at: fv(f.at) || 0, usedAt: fv(f.usedAt) || 0, off: !!(f.off && f.off.booleanValue) });
@@ -460,12 +491,52 @@
     w.document.close();
   }
 
+  // ---------- 💰 ڈویلپر: قیمتیں اور سبسکرپشن دکھانا / چھپانا (سب گاہکوں پر) ----------
+  let pDraft = null;
+  async function prices() {
+    if (!dev || Date.now() > dev.until) { devOpen(); return; }
+    try { const j = await devFs(CFG_DOC); if (j) { const f = j.fields || {}; let pl = null; try { pl = JSON.parse(fv(f.plans) || 'null'); } catch (e) {} st.cfg = { show: !!(f.show && f.show.booleanValue), plans: pl }; save(); } } catch (e) {}
+    pDraft = { show: subOn(), plans: plans().map(x => x.slice()) };
+    pRender();
+  }
+  function pRender() {
+    const d = pDraft;
+    host().modal(`<div class="dvp"><h3>💰 سبسکرپشن کی قیمتیں</h3>
+      <label class="prShow"><input type="checkbox" id="prShow" ${d.show ? 'checked' : ''}> 📜 گاہکوں کو سبسکرپشن اور «مفت آزمائش» دکھائیں</label>
+      <div class="muted">بند ہو تو ہوم اور سیٹنگ میں سبسکرپشن کا بٹن نظر نہیں آتا اور مدت ختم ہونے پر بھی اندراج بند نہیں ہوتا۔ تبدیلی سب گاہکوں پر چند منٹ میں (ایپ کھلنے پر) لگتی ہے۔</div>
+      <div class="prList">${d.plans.map((x, i) => `<div class="prRow"><div class="f"><label>دن</label><input data-i="${i}" data-k="0" inputmode="numeric" value="${x[0]}"></div>
+        <div class="f"><label>نام</label><input data-i="${i}" data-k="1" value="${esc(x[1])}"></div>
+        <div class="f"><label>قیمت (روپے)</label><input data-i="${i}" data-k="2" inputmode="numeric" value="${x[2]}"></div>
+        <button class="btn gray sm" onclick="AB_LIC.pDel(${i})">🗑️</button></div>`).join('')}</div>
+      <button class="btn light sm" onclick="AB_LIC.pAdd()">➕ نئی مدت</button>
+      <div class="row" style="justify-content:center;margin-top:8px"><button class="btn" onclick="AB_LIC.pSave()">💾 محفوظ کریں</button><button class="btn light" onclick="AB_LIC.dev()">↩️ واپس</button></div></div>`);
+  }
+  function pCollect() {
+    pDraft.show = !!($('prShow') || {}).checked;
+    document.querySelectorAll('#modalBox .prRow input').forEach(el => { const r = pDraft.plans[+el.dataset.i]; if (!r) return; const k = +el.dataset.k; r[k] = k === 1 ? el.value.trim() : (parseInt(en(el.value).replace(/[^\d]/g, ''), 10) || 0); });
+  }
+  function pAdd() { pCollect(); pDraft.plans.push([30, 'ایک مہینہ', 3000]); pRender(); }
+  function pDel(i) { pCollect(); pDraft.plans.splice(i, 1); pRender(); }
+  async function pSave() {
+    pCollect();
+    const pl = pDraft.plans.filter(x => x[0] > 0 && x[0] <= 3650 && x[1]).sort((a, b) => a[0] - b[0]);
+    if (!pl.length) { toast('⚠️ کم از کم ایک مدت لکھیں'); return; }
+    try {
+      await devFs(CFG_DOC + '?updateMask.fieldPaths=show&updateMask.fieldPaths=plans&updateMask.fieldPaths=upd', { method: 'PATCH', body: JSON.stringify({ fields: {
+        show: { booleanValue: pDraft.show }, plans: { stringValue: JSON.stringify(pl) }, upd: { integerValue: String(Date.now()) } } }) });
+      st.cfg = { show: pDraft.show, plans: pl }; save(); refresh();
+      toast('✅ محفوظ — ' + (pDraft.show ? 'سبسکرپشن گاہکوں کو نظر آئے گی' : 'سبسکرپشن چھپی ہوئی ہے'));
+      devOpen();
+    } catch (e) { toast(e.message === 'denied' ? '❌ اجازت نہیں — دوبارہ لاگ اِن کریں' : '⚠️ سرور سے رابطہ نہیں ہو سکا'); }
+  }
+
   window.AB_LIC = {
+    prices, pAdd, pDel, pSave, on: subOn,
     status, statusText, strip, card, canWrite, allowed, overLimit, check, activate, normPhone, tap,
     open: openModal, request, useCode, restore, copy, codes, cv, cOff, cDel, shareCodes, printCodes, dev: () => devOpen(),
     start() {
       if (this._on) return; this._on = true;
-      check(false);
+      check(false); if (!okPhone(phone())) loadCfg();
       setInterval(() => { if (Date.now() - (st.checked || 0) > 6 * 3600e3) check(false); }, 10 * 60000);
       window.addEventListener('online', () => check(false));
     }
