@@ -24,11 +24,14 @@
     beopari: { label: 'فروٹ / سبزی منڈی (بیوپاری / گاہک)', map: { 'زمیندار': 'بیوپاری', 'زمینداروں': 'بیوپاریوں', 'خریدار': 'گاہک', 'خریداروں': 'گاہکوں', 'کل کٹوتی': 'ٹوٹل میزان', 'منڈی خرچہ': 'مارکیٹ فیس' } }
   };
   const host = () => window.AB_HOST;
+  // مالک کی ہدایت (AB2510SU029): منڈی میں «زمیندار» کی جگہ «بیوپاری» — جب تک ڈویلپر پینل سے کچھ اور نہ چنا جائے
+  const DEFAULT = { 'زمیندار': 'بیوپاری' };
+  const curLabels = st => (st && st.labels) ? st.labels : DEFAULT;
   const AR = '\\u0621-\\u064A\\u0660-\\u06FF';   // اردو حروف — لفظ کی حد
   let map = {}, rx = null;
   function build() {
     const st = host() && host().settings ? host().settings() : {};
-    map = Object.assign({}, (st && st.labels) || {});
+    map = Object.assign({}, curLabels(st));
     // جمع خالی ہو تو خود بنے: بیوپاری → بیوپاریوں
     [['زمیندار', 'زمینداروں'], ['خریدار', 'خریداروں']].forEach(([s, p]) => { if (map[s] && !map[p]) map[p] = map[s] + 'وں'; });
     Object.keys(map).forEach(k => { if (!map[k] || map[k] === k) delete map[k]; });
@@ -79,7 +82,7 @@
   let draft = null;
   function editor() {
     const st = host().settings();
-    if (!draft) draft = Object.assign({}, st.labels || {});
+    if (!draft) draft = Object.assign({}, curLabels(st));
     const keys = KEYS.map(k => k[0]);
     const extra = Object.keys(draft).filter(k => !keys.includes(k));
     host().modal(`<div class="dvp" data-nolbl><h3>📝 الفاظ اپنی منڈی کی زبان میں</h3>

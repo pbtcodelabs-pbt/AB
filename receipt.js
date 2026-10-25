@@ -23,6 +23,8 @@
   }
   const isNum = t => /^[\d,.\s\-–/+()]+$/.test(String(t));
 
+  // 📣 ہر پرچی / بل / رسید / پرنٹ کے نیچے ہماری پہچان (مالک کی ہدایت) — منڈی کی زبان والے الفاظ اس پر نہیں لگتے
+  const BRAND = ['اپنی منڈی یا کاروبار کا موبائل، کمپیوٹر اور لیپ ٹاپ سافٹ ویئر اپنی مرضی کا بنوائیں', 'رابطہ کریں: پی بی ٹی کوڈ لیبز ☎ 0320-6793793'];
   async function draw(spec, opt) {
     opt = opt || {};
     if (window.AB_LBL) spec = AB_LBL.Lspec(spec);   // منڈی کی زبان کے الفاظ
@@ -36,7 +38,7 @@
     const cols = spec.cols || [], rows = spec.rows || [], lines = spec.lines || [], meta = spec.meta || [];
     const mcol = th ? 1 : 2;
     const HEAD = (th ? (spec.sub ? 92 : 62) : 130) + (spec.sub2 ? (th ? 26 : 32) : 0), TITLE = th ? 46 : 62;
-    const H = HEAD + TITLE + 14 + Math.ceil(meta.length / mcol) * MROW + 10 + (cols.length ? 44 + rows.length * ROW + 16 : 0) + lines.length * LINE + (th ? 60 : 70);
+    const H = HEAD + TITLE + 14 + Math.ceil(meta.length / mcol) * MROW + 10 + (cols.length ? 44 + rows.length * ROW + 16 : 0) + lines.length * LINE + (th ? 60 : 70) + (th ? 74 : 78);
     const k = th ? DOTS[opt.thermal] / W : 2;
     const cv = document.createElement('canvas');
     cv.width = Math.round(W * k); cv.height = Math.round(H * k);
@@ -111,7 +113,15 @@
     });
     // نیچے
     ctx.fillStyle = th ? '#000' : '#78716c'; ctx.textAlign = 'center'; ctx.font = `${th ? 18 : 19}px ${UR}`;
-    ctx.fillText(spec.foot || 'آڑھت بک', W / 2, H - (th ? 22 : 24));
+    ctx.fillText(spec.foot || 'آڑھت بک', W / 2, H - (th ? 96 : 102));
+    // پی بی ٹی کوڈ لیبز کی پٹی
+    const BH = th ? 66 : 70, by = H - BH;
+    if (th) { ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.strokeRect(PAD, by + 2, W - 2 * PAD, BH - 6); ctx.fillStyle = '#000'; }
+    else { ctx.fillStyle = C.c4; ctx.fillRect(0, by, W, BH); ctx.fillStyle = '#fff'; }
+    ctx.textAlign = 'center';
+    fit(ctx, BRAND[0], W - 2 * PAD - 12, th ? 18 : 20, UR); ctx.fillText(BRAND[0], W / 2, by + (th ? 26 : 28));
+    if (!th) ctx.fillStyle = '#fde68a';
+    fit(ctx, BRAND[1], W - 2 * PAD - 12, th ? 20 : 22, UR, 'bold'); ctx.fillText(BRAND[1], W / 2, by + (th ? 54 : 58));
     return cv;
   }
 
@@ -193,5 +203,5 @@
   }
   function btName() { return bt && bt.dev ? (bt.dev.name || '') : ''; }
 
-  window.AB_RECEIPT = { draw, share, copyImage, download, printThermal, printBluetooth, btName, btSupported: () => !!navigator.bluetooth };
+  window.AB_RECEIPT = { BRAND, draw, share, copyImage, download, printThermal, printBluetooth, btName, btSupported: () => !!navigator.bluetooth };
 })();

@@ -9,7 +9,7 @@
   'use strict';
   const CFG = window.AB_FIREBASE;
   if (!CFG) return;
-  const DEV_WA = '923206793793';        // ڈویلپر/سبسکرپشن: عبدالحفیظ 03206793793 — کبھی نہ بدلیں
+  const DEV_WA = '923206793793';        // ڈویلپر/سبسکرپشن: پی بی ٹی کوڈ لیبز 03206793793 — کبھی نہ بدلیں
   const DEV_EMAIL = 'piarybhai@gmail.com';
   const TRIAL_DAYS = 14;
   const BASE_DEVICES = 3;               // سبسکرپشن (اور آزمائش) میں شامل آلات؛ زیادہ آلہ = 5,000 روپے سالانہ
@@ -170,7 +170,7 @@
       <div class="licPlans">${PLANS.map(x => `<button class="btn light" onclick="AB_LIC.request(${x[0]})">💬 ${x[1]} — <span class="num">${rsTxt(x[2])}</span> روپے${x[0] === 365 ? '<br><small>(5,000 روپے کی بچت)</small>' : ''}</button>`).join('')}</div>
       <div class="f" style="margin-top:8px"><label>ڈویلپر سے آیا ہوا کوڈ</label><input id="licCode" placeholder="کوڈ یہاں لکھیں" style="direction:ltr;text-align:center;letter-spacing:2px"></div>
       <div class="row" style="justify-content:center;margin-top:8px"><button class="btn" onclick="AB_LIC.useCode()">✅ چالو کریں</button><button class="btn light" onclick="AB_LIC.restore()">🔄 بحال کریں</button><button class="btn gray" onclick="App.closeModal()">بند</button></div>
-      <div class="muted" style="margin-top:6px">نیا فون یا ایپ دوبارہ لگائی؟ «بحال کریں» دبائیں — اسی موبائل نمبر کی باقی سبسکرپشن خود واپس آ جائے گی۔ ڈویلپر: <span class="num" dir="ltr">0320-6793793</span> (عبدالحفیظ)</div>`);
+      <div class="muted" style="margin-top:6px">نیا فون یا ایپ دوبارہ لگائی؟ «بحال کریں» دبائیں — اسی موبائل نمبر کی باقی سبسکرپشن خود واپس آ جائے گی۔ ڈویلپر: پی بی ٹی کوڈ لیبز <span class="num" dir="ltr">0320-6793793</span></div>`);
   }
   // نمبر نہ ہو تو پاپ اپ والے خانے سے لے کر محفوظ
   function takePhone() {

@@ -129,6 +129,13 @@ input,select,textarea{font:inherit;}
 .stat{background:rgba(255,255,255,.96); border-radius:14px; padding:6px 10px; box-shadow:0 4px 12px rgba(0,0,0,.2); border-right:5px solid var(--red);}
 .stat .l{font-size:15px; color:#57534e;}
 .stat .n{font-family:Tahoma,Arial,sans-serif; font-size:21px; color:var(--red3); direction:ltr; text-align:right; line-height:1.6;}
+.cashSum{display:grid; grid-template-columns:repeat(4,1fr); gap:6px;}
+.cashSum>div{background:var(--l0); border:1.5px solid var(--l2); border-radius:11px; padding:4px 8px; text-align:center;}
+.cashSum .l{display:block; font-size:14px; color:#57534e;} .cashSum b{font-size:19px; color:var(--red3);}
+.cashSum .hot{background:var(--l1); border-color:var(--l3);}
+.f input.jam{border-color:#16a34a; background:#f0fdf4;} .f input.banam{border-color:#dc2626; background:#fef2f2;}
+.list .it.on{outline:2.5px solid var(--red); background:var(--l0);}
+@media (max-width:520px){ .cashSum{grid-template-columns:repeat(2,1fr);} }
 .stat.g{border-right-color:#15803d;} .stat.g .n{color:#166534;}
 .stat.y{border-right-color:#f59e0b;} .stat.y .n{color:#92400e;}
 .tiles{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px;}

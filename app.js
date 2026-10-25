@@ -8,8 +8,8 @@
    ===================================================================== */
 (function(){
   'use strict';
-  const APP_VERSION = 'AB2510SU028';
-  const UPDATE_NOTE = 'کھاتہ نمبر (نام کی جگہ نمبر لکھیں)؛ ہر بکری میں پیکنگ، ورائیٹی، مارکہ؛ پچھلی / اگلی پرچی؛ نقد بھی کٹوتیوں میں';
+  const APP_VERSION = 'AB2510SU029';
+  const UPDATE_NOTE = 'زمیندار کی جگہ بیوپاری؛ ہر پرچی / بل کے نیچے پی بی ٹی کوڈ لیبز؛ وصولی / ادائیگی منڈی کے کمپیوٹر جیسی: نمبر، جمع / بنام، کل جمع / کل بنام، پچھلی / اگلی، بدلنا؛ خریدار کا روز کا بل (سابقہ بقایا، آج وصولی، باقی بقایا)';
   const C = window.ABCalc;
   // ---------- اردو / عربی کی بورڈ کے ہندسے (۰۱۲… / ٠١٢…) لکھتے ہی 0-9 میں — ورنہ رقم، نمبر اور کوڈ نہیں پہچانے جاتے ----------
   document.addEventListener('input', e => {
@@ -212,10 +212,17 @@
       if(p.type === 'zamindar' && x.zamindarId === pid) rows.push({ date: x.date, at: x.createdAt, text: 'پرچی نمبر ' + x.no + ' — صاف رقم (' + r.nag + ' نگ)', amt: r.net, parchi: x.id });
       if(p.type === 'buyer') r.buyers.filter(b => b.id === pid).forEach(b => rows.push({ date: x.date, at: x.createdAt, text: 'پرچی نمبر ' + x.no + ' — مال (' + b.nag + ' نگ، زمیندار ' + (x.zamindar || '') + ')', amt: b.total, parchi: x.id }));
     });
-    liveCash().filter(c => c.partyId === pid).forEach(c => rows.push({ date: c.date, at: c.at, text: (c.kind === 'pay' ? (c.adv ? 'پیشگی (ایڈوانس)' : 'ادائیگی') : 'وصولی') + (c.note ? ' — ' + c.note : ''), amt: -c.amount, cash: c.id }));
+    liveCash().filter(c => c.partyId === pid).forEach(c => rows.push({ date: c.date, at: c.at, text: cashText(c, p.type) + (c.no ? ' (نمبر ' + c.no + ')' : '') + (c.note ? ' — ' + c.note : ''), amt: cashSign(c, p.type) * c.amount, cash: c.id }));
     rows.sort((a, b) => (a.date || '').localeCompare(b.date || '') || a.at - b.at);
     let bal = 0; rows.forEach(r => { bal += r.amt; r.bal = bal; });
     return { rows, bal };
+  }
+  // ---------- وصولی / ادائیگی کا کھاتے پر اثر: «جمع» = رقم آئی (receive)، «بنام» = رقم دی (pay) ----------
+  // خریدار سے وصولی اور زمیندار کو ادائیگی بقایا گھٹاتی ہیں؛ الٹی (خریدار کو دی، زمیندار سے آئی) بقایا بڑھاتی ہے
+  function cashSign(c, type){ return (type === 'zamindar') === (c.kind === 'pay') ? -1 : 1; }
+  function cashText(c, type){
+    if(c.kind === 'pay') return c.adv ? 'پیشگی (ایڈوانس)' : (type === 'buyer' ? 'ادائیگی (خریدار کو دی)' : 'ادائیگی');
+    return type === 'zamindar' ? 'وصولی (زمیندار سے آئی)' : 'وصولی';
   }
   function balText(type, bal){
     if(!bal) return 'حساب برابر';
@@ -574,9 +581,11 @@
       <style>${css} body{background:#fff !important; margin:8mm; font-size:16px;} .card{box-shadow:none; border:1px solid #999; break-inside:avoid;} .t tr.net td{background:#eee; color:#000;}
       .ph{text-align:center; border-bottom:3px double #7f1d1d; margin-bottom:8px;} .ph h1{font-family:'NooriKasheeda',serif; font-weight:normal; margin:0; font-size:32px; color:#7f1d1d;} .ph div{font-size:15px;}</style></head>
       <body><div class="ph"><h1>${esc(shopName())}</h1><div>${esc(shopSub())}</div><div>${esc(shopContacts())}</div><div>${esc(shopFoot())}</div></div>${body}
-      <div class="muted" style="text-align:center;margin-top:10px">آڑھت بک سے بنی پرچی • ${esc(urDate(today()))}</div><script>setTimeout(function(){print()},600)<\/script></body></html>`);
+      <div class="muted" style="text-align:center;margin-top:10px">آڑھت بک • ${esc(urDate(today()))}</div>${brandHtml()}<script>setTimeout(function(){print()},600)<\/script></body></html>`);
     w.document.close();
   }
+  // 📣 ہر پرنٹ کے نیچے پی بی ٹی کوڈ لیبز
+  function brandHtml(){ const B = (window.AB_RECEIPT && AB_RECEIPT.BRAND) || []; return B.length ? `<div style="text-align:center;margin-top:8px;padding:6px;border:2px solid #7f1d1d;border-radius:8px;font-size:15px">${esc(B[0])}<br><b>${esc(B[1])}</b></div>` : ''; }
   function parchiHead(p){ return `<div style="text-align:center;margin-bottom:6px">${p.no ? 'پرچی نمبر <b class="num">' + p.no + '</b> • ' : ''}تاریخ: ${esc(urDate(p.date))}<br>زمیندار: <b>${esc(p.zamindar)}</b>${pNo(party(p.zamindarId)) ? ' (نمبر <span class="num">' + pNo(party(p.zamindarId)) + '</span>)' : ''} ${p.place ? '— ' + esc(p.place) : ''} ${p.vehicle ? '• گاڑی: ' + esc(p.vehicle) : ''} ${p.bilty ? '• بلٹی: ' + esc(p.bilty) : ''}</div>`; }
   function printParchi(){
     const r = calcParchi(cur, parchiCharges());
@@ -664,15 +673,21 @@
         <div class="row" style="justify-content:center;margin-top:8px"><button class="btn gray" onclick="App.closeModal()">بند</button></div>`);
       return;
     }
+    const spec = kind === 'z' ? zamindarSpec(cur, r) : buyerSpec(cur, r, r.buyers[+key]);
+    thermalShow(spec, kind === 'z' ? 'rcpt-' + cur.no : 'rcpt-' + cur.no + '-' + (+key + 1), mm);
+  }
+  // ایک ہی تھرمل پیش منظر: پرچی، خریدار کا بل، روز کا بل
+  let thSpec = null;
+  async function thermalShow(spec, file, mm){
+    if(spec){ thSpec = { spec, file }; } else if(!thSpec) return;
     mm = mm || rcptMM();
     try{ localStorage.setItem('ab_rcpt', String(mm)); }catch(e){}
-    const spec = kind === 'z' ? zamindarSpec(cur, r) : buyerSpec(cur, r, r.buyers[+key]);
-    spec.foot = [shopFoot(), urDate(today()) + ' ' + urTime(Date.now())].filter(Boolean).join(' • ');
-    const cv = await AB_RECEIPT.draw(spec, { thermal: mm });
-    shareCv = { cv, file: (kind === 'z' ? 'rcpt-' + cur.no : 'rcpt-' + cur.no + '-' + (+key + 1)) + '.png', thermal: mm };
+    const sp = Object.assign({}, thSpec.spec, { foot: [shopFoot(), urDate(today()) + ' ' + urTime(Date.now())].filter(Boolean).join(' • ') });
+    const cv = await AB_RECEIPT.draw(sp, { thermal: mm });
+    shareCv = { cv, file: thSpec.file + '.png', thermal: mm };
     const bt = AB_RECEIPT.btSupported();
     modal(`<h3>🧾 تھرمل رسید</h3>
-      <div class="row" style="justify-content:center;margin-bottom:6px">${[58, 80].map(x => `<button class="btn ${x === mm ? '' : 'light'} sm" onclick="App.thermal('${kind}',${key == null ? 'null' : key},${x})"><span class="num">${x}</span> ملی میٹر</button>`).join('')}</div>
+      <div class="row" style="justify-content:center;margin-bottom:6px">${[58, 80].map(x => `<button class="btn ${x === mm ? '' : 'light'} sm" onclick="App.thermalShow(null,null,${x})"><span class="num">${x}</span> ملی میٹر</button>`).join('')}</div>
       <div style="background:#e7e5e4;padding:8px;border-radius:10px;max-height:52vh;overflow:auto"><img src="${cv.toDataURL('image/png')}" style="width:${mm === 58 ? 220 : 300}px;max-width:100%;display:block;margin:auto;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.25)" alt=""></div>
       <div class="row" style="justify-content:center;margin-top:8px">${bt ? `<button class="btn" onclick="App.thermalBT()">🖨️ بلوٹوتھ پرنٹر${AB_RECEIPT.btName() ? ' (' + esc(AB_RECEIPT.btName()) + ')' : ''}</button>` : ''}
         <button class="btn light" onclick="App.thermalPrint()">🖨️ عام پرنٹ</button><button class="btn light" onclick="App.shareSend()">📤 شیئر</button><button class="btn gray" onclick="App.closeModal()">بند</button></div>
@@ -702,6 +717,70 @@
     window.open('https://wa.me/' + shareCv.phone, '_blank');
   }
   function shareSave(){ if(shareCv){ AB_RECEIPT.download(shareCv.cv, shareCv.file); toast('⬇️ تصویر محفوظ'); } }
+
+  // ---------- 🧾 خریدار (گاہک) کا روز کا بل — منڈی کے ہاتھ والے بل جیسا: اس دن کا سارا مال، سابقہ بقایا، آج وصولی، باقی بقایا ----------
+  function buyerDay(pid, date){
+    const rows = [], chg = {}, nos = []; let goods = 0, total = 0, nag = 0;
+    liveParchis().filter(p => p.date === date).sort((a, b) => a.no - b.no).forEach(p => {
+      const r = calcParchi(p, p.chargesSnap || chargesList());
+      r.buyers.filter(b => b.id === pid).forEach(b => {
+        nos.push(p.no);
+        r.lines.filter(l => l.buyerId === pid).forEach(l => rows.push({ l, z: p.zamindar }));
+        b.charges.forEach(x => { if(x.amount) chg[x.name] = (chg[x.name] || 0) + x.amount; });
+        goods += b.goods; total += b.total; nag += b.nag;
+      });
+    });
+    const L = ledger(pid); let prev = 0, rec = 0, gave = 0;
+    L.rows.forEach(r => { if((r.date || '') < date) prev += r.amt; else if(r.date === date && r.cash){ if(r.amt < 0) rec -= r.amt; else gave += r.amt; } });
+    return { rows, chg, nos, goods, total, nag, prev, rec, gave, end: prev + total - rec + gave };
+  }
+  function buyerDayDates(pid){
+    const s = new Set();
+    liveParchis().forEach(p => { if(p.lines.some(l => l.buyerId === pid)) s.add(p.date); });
+    liveCash().forEach(c => { if(c.partyId === pid) s.add(c.date); });
+    return [...s].sort().reverse();
+  }
+  function dayBillSpec(pid, date){
+    const p = party(pid), d = buyerDay(pid, date);
+    const pre = d.prev ? [['سابقہ بقایا' + (d.prev < 0 ? ' (ہمارے ذمے)' : ''), fmt(Math.abs(d.prev)), '']] : [];
+    return { shop: shopName(), sub: shopSub(), title: 'خریدار کا بل — ' + urDate(date),
+      meta: [['تاریخ', urDate(date)], ['خریدار', p.name + (pNo(p) ? ' (نمبر ' + pNo(p) + ')' : '')]].concat(d.nos.length ? [['پرچی نمبر', d.nos.join('، ')]] : []),
+      cols: [{ t: 'جنس', w: 3.6 }, { t: 'نگ', w: 1.4, num: 1 }, { t: 'ریٹ', w: 2 }, { t: 'رقم', w: 2.4, num: 1 }],
+      rows: d.rows.map(x => [lineFull(x.l), x.l.nag || (x.l.grams ? (int(x.l.grams) / 1000) + ' کلو' : ''), fmt(int(x.l.rate)) + (x.l.basis === 'maund' ? ' / من' : ''), fmt(lineAmount(x.l))]),
+      lines: (d.rows.length ? [['آج کا مال (' + d.nag + ' نگ)', fmt(d.goods), '']].concat(Object.keys(d.chg).map(k => ['➕ ' + k, fmt(d.chg[k]), '']), [['آج کا بل', fmt(d.total), 'tot']]) : [['آج کوئی مال نہیں', '0', '']])
+        .concat(pre, d.prev ? [['کل رقم', fmt(d.prev + d.total), 'tot']] : [])
+        .concat(d.rec ? [['➖ آج وصول ہوئے', fmt(d.rec), '']] : [], d.gave ? [['➕ آج اسے دیے', fmt(d.gave), '']] : [])
+        .concat([['باقی بقایا — ' + balText('buyer', d.end), fmt(Math.abs(d.end)), 'net']]),
+      sub2: shopContacts(), foot: [shopFoot(), urDate(today())].filter(Boolean).join(' • ') };
+  }
+  let dayBillSel = null;
+  async function dayBill(pid, date){
+    const p = party(pid); if(!p || p.type !== 'buyer'){ toast('⚠️ خریدار چنیں'); return; }
+    if(!window.AB_RECEIPT){ toast('⚠️ تصویر نہیں بن سکی'); return; }
+    const ds = buyerDayDates(pid);
+    date = date || (ds.includes(today()) || !ds.length ? today() : ds[0]);
+    dayBillSel = { pid, date };
+    const spec = dayBillSpec(pid, date), cv = await AB_RECEIPT.draw(spec);
+    const phone = p.phone && window.AB_LIC ? AB_LIC.normPhone(p.phone) : '';
+    shareCv = { cv, file: 'bill-' + (pNo(p) || 'k') + '-' + date + '.png', phone, name: p.name };
+    modal(`<h3>🧾 ${esc(p.name)} — روز کا بل</h3>
+      <div class="row" style="justify-content:center;margin-bottom:6px"><input type="date" value="${esc(date)}" onchange="App.dayBill('${pid}',this.value)" style="max-width:180px">
+        ${ds.slice(0, 6).map(x => `<button class="btn ${x === date ? '' : 'light'} sm" onclick="App.dayBill('${pid}','${x}')">${esc(urDate(x))}</button>`).join('')}</div>
+      <img src="${cv.toDataURL('image/png')}" style="width:100%;border-radius:10px;border:1px solid var(--l3)" alt="">
+      <div class="row" style="justify-content:center;margin-top:8px"><button class="btn wa" onclick="App.shareSend()">📤 بھیجیں</button>
+        ${phone ? `<button class="btn light" onclick="App.shareChat()">💬 ${esc(p.name)} کی چیٹ</button>` : ''}
+        <button class="btn light" onclick="App.dayBillPrint()">🖨️ پرنٹ</button><button class="btn light" onclick="App.dayBillThermal()">🧾 تھرمل</button>
+        <button class="btn light" onclick="App.shareSave()">⬇️ محفوظ</button><button class="btn gray" onclick="App.closeModal()">بند</button></div>`);
+  }
+  function dayBillThermal(){ if(!dayBillSel) return; const p = party(dayBillSel.pid); thermalShow(dayBillSpec(dayBillSel.pid, dayBillSel.date), 'rcpt-' + (pNo(p) || 'k') + '-' + dayBillSel.date); }
+  function dayBillPrint(){
+    if(!dayBillSel) return; const sp = dayBillSpec(dayBillSel.pid, dayBillSel.date);
+    printDoc(sp.title, `<div style="text-align:center;margin-bottom:6px">${sp.meta.map(m => esc(m[0]) + ': <b>' + esc(m[1]) + '</b>').join(' • ')}</div>
+      <div class="card"><table class="t"><tr>${sp.cols.map(c => `<th class="${c.num ? 'v' : ''}">${esc(c.t)}</th>`).join('')}</tr>
+      ${sp.rows.map(r => `<tr>${r.map((v, i) => `<td class="${sp.cols[i].num || i > 1 ? 'v' : ''}">${esc(v)}</td>`).join('')}</tr>`).join('')}
+      ${sp.lines.map(l => `<tr class="${l[2] || ''}"><td colspan="${sp.cols.length - 1}">${esc(l[0])}</td><td class="v">${esc(l[1])}</td></tr>`).join('')}</table></div>`);
+  }
+  function dayBillFromCash(){ const el = $('cP'), p = el && (findParty('buyer', el.value) || partyByNo('buyer', el.value)); if(!p){ toast('⚠️ پہلے خریدار کا نام یا نمبر لکھیں'); return; } dayBill(p.id); }
 
   // =====================================================================
   //   پرچیاں
@@ -757,6 +836,7 @@
     const L = ledger(id);
     return `<div class="pageTitle">${p.type === 'zamindar' ? '🧑‍🌾' : '🧑‍💼'} ${esc(p.name)}<span class="sp"></span>
         <button class="btn gold sm" onclick="App.go('cash','${p.type === 'zamindar' ? 'pay' : 'receive'}:${p.id}')">${p.type === 'zamindar' ? '💸 ادائیگی' : '💵 وصولی'}</button>
+        ${p.type === 'buyer' ? `<button class="btn light sm" onclick="App.dayBill('${p.id}')">🧾 روز کا بل</button>` : ''}
         <button class="btn light sm" onclick="App.printLedger('${p.id}')">🖨️</button>
         <button class="btn light sm" onclick="App.partyForm('${p.type}','${p.id}')">✏️</button></div>
       <div class="card"><div class="muted">${PT[p.type]} ${pNo(p) ? '• کھاتہ نمبر <span class="num">' + pNo(p) + '</span>' : ''} ${p.place ? '• ' + esc(p.place) : ''} ${p.phone ? '• فون ' + esc(p.phone) : ''}${p.limit ? ' • ادھار کی حد ' + fmt(p.limit) : ''}</div>
@@ -896,51 +976,104 @@
     logIt('یاد دہانی بھیجی: ' + x.p.name + ' — ' + fmt(x.bal), x.p.id);
   }
 
+  // ---------- 💵 وصولی / ادائیگی (منڈی کے کمپیوٹر جیسا): نمبر، کھاتہ، تفصیل، جمع / بنام؛ کھاتے کا کل جمع / کل بنام؛ پچھلی / اگلی ----------
+  // arg: 'receive:<id>' (خریدار) • 'pay:<id>' (زمیندار) • 'v:<اندراج>' (پرانا اندراج دیکھیں / بدلیں)
+  function numberCash(){
+    const miss = DB.cash.filter(c => !int(c.no)); if(!miss.length) return;
+    let n = DB.cash.reduce((m, c) => Math.max(m, int(c.no)), 0);
+    miss.sort((x, y) => (x.at || 0) - (y.at || 0) || String(x.id).localeCompare(String(y.id))).forEach(c => { c.no = ++n; });
+    put('cash');
+  }
+  function nextCashNo(){ return DB.cash.reduce((m, c) => Math.max(m, int(c.no)), 0) + 1; }
+  function cashTotals(p){
+    const L = ledger(p.id); let up = 0, down = 0;
+    L.rows.forEach(r => { if(r.amt > 0) up += r.amt; else down -= r.amt; });
+    // زمیندار: مال کی رقم «جمع»، ادائیگی «بنام» • خریدار: مال «بنام»، وصولی «جمع»
+    return p.type === 'zamindar' ? { jam: up, banam: down, bal: L.bal } : { jam: down, banam: up, bal: L.bal };
+  }
   VIEWS.cash = function(a){
-    const [kind0, pid] = String(a || 'receive:').split(':');
-    const kind = kind0 === 'pay' ? 'pay' : 'receive';
-    const type = kind === 'pay' ? 'zamindar' : 'buyer';
-    const pp = pid ? party(pid) : null;
+    numberCash();
+    const [k0, id0] = String(a || 'receive:').split(':');
+    const ed = k0 === 'v' ? DB.cash.find(c => c.id === id0 && !c.deleted) : null;
+    const edP = ed ? party(ed.partyId) : null;
+    const type = ed ? (edP ? edP.type : 'buyer') : (k0 === 'pay' ? 'zamindar' : 'buyer');
+    const pp = ed ? edP : (id0 ? party(id0) : null);
+    const ls = liveCash().slice().sort((x, y) => int(x.no) - int(y.no));
+    const prev = ed ? ls.filter(c => int(c.no) < int(ed.no)).pop() : ls[ls.length - 1];
+    const next = ed ? ls.find(c => int(c.no) > int(ed.no)) : null;
+    const jam = ed && ed.kind === 'receive' ? inRs(ed.amount) : '', banam = ed && ed.kind === 'pay' ? inRs(ed.amount) : '';
     const recent = liveCash().slice().sort((x, y) => y.at - x.at).slice(0, 30);
-    return `<div class="pageTitle">💵 وصولی / ادائیگی</div>
-      <div class="card"><div class="seg"><button class="${kind === 'receive' ? 'on' : ''}" onclick="App.go('cash','receive:')">💵 خریدار سے وصولی</button><button class="${kind === 'pay' ? 'on' : ''}" onclick="App.go('cash','pay:')">💸 زمیندار کو ادائیگی</button></div>
+    return `<div class="pageTitle">💵 وصولی / ادائیگی<span class="sp"></span>
+        <button class="btn light sm" ${prev ? `onclick="App.go('cash','v:${prev.id}')" title="نمبر ${int(prev.no)}"` : 'disabled'}>➡️ پچھلی</button>
+        <button class="btn light sm" ${next ? `onclick="App.go('cash','v:${next.id}')" title="نمبر ${int(next.no)}"` : 'disabled'}>اگلی ⬅️</button>
+        <button class="btn gold sm" onclick="App.go('cash','${type === 'zamindar' ? 'pay' : 'receive'}:')">🆕 نئی</button></div>
+      <div class="card">${ed ? '' : `<div class="seg"><button class="${type === 'buyer' ? 'on' : ''}" onclick="App.go('cash','receive:')">🧑‍💼 خریدار</button><button class="${type === 'zamindar' ? 'on' : ''}" onclick="App.go('cash','pay:')">🧑‍🌾 زمیندار</button></div>`}
         <datalist id="dlP">${partyOpts(type)}</datalist>
         <div class="grid2 wideable">
-          <div class="f"><label>${PT[type]}</label><input id="cP" list="dlP" value="${esc(pp ? pp.name : '')}" placeholder="نام یا کھاتہ نمبر" oninput="App.cashHint('${type}')" onchange="App.cashNum('${type}')"></div>
-          <div class="f"><label>رقم (روپے)</label><input id="cA" inputmode="decimal" placeholder="0"></div>
-          <div class="f"><label>تاریخ</label><input id="cD" type="date" value="${today()}"></div>
-          <div class="f"><label>طریقہ</label><select id="cM"><option>نقد</option><option>بینک</option><option>چیک</option><option>موبائل والٹ</option></select></div>
-          ${kind === 'pay' ? '<div class="f"><label>ادائیگی کی قسم</label><select id="cT"><option value="">عام ادائیگی (حساب میں سے)</option><option value="adv">پیشگی (ایڈوانس) — مال آنے سے پہلے</option></select></div>' : ''}
-          <div class="f" style="grid-column:1/-1"><label>نوٹ</label><input id="cN" placeholder="اختیاری"></div>
-        </div><div id="cHint" class="muted" style="margin:6px 0"></div>
-        <button class="btn wide" onclick="App.saveCash('${kind}')">💾 ${kind === 'pay' ? 'ادائیگی' : 'وصولی'} محفوظ کریں</button></div>
-      <div class="card"><h3>🕘 حالیہ اندراج</h3><div class="list">${recent.map(c => { const p = party(c.partyId);
-        return `<div class="it"><div>${c.kind === 'pay' ? (c.adv ? '💸 پیشگی' : '💸 ادائیگی') : '💵 وصولی'} — <b>${esc(p ? p.name : '')}</b> <span class="muted">${esc(urDate(c.date))} • ${esc(c.method || '')} ${c.note ? '• ' + esc(c.note) : ''}${c.by ? ' • 👤 ' + esc(c.by) : ''}</span></div>
-          <div class="row"><span class="a ${c.kind === 'pay' ? 'amt-out' : 'amt-in'}">${fmt(c.amount)}</span><button class="btn gray sm" onclick="App.delCash('${c.id}')">🗑️</button></div></div>`; }).join('') || '<div class="muted">کوئی اندراج نہیں</div>'}</div></div>`;
+          <div class="f"><label>نمبر</label><input class="num" value="${ed ? int(ed.no) : nextCashNo()}" disabled></div>
+          <div class="f"><label>تاریخ</label><input id="cD" type="date" value="${esc(ed ? ed.date : today())}"></div>
+          <div class="f" style="grid-column:1/-1"><label>${PT[type]} — نام یا کھاتہ نمبر</label><input id="cP" list="dlP" value="${esc(pp ? pp.name : '')}" placeholder="نام یا کھاتہ نمبر" ${ed ? 'disabled' : ''} oninput="App.cashHint('${type}')" onchange="App.cashNum('${type}')"></div>
+          <div class="f" style="grid-column:1/-1"><label>تفصیل</label><input id="cN" value="${esc(ed ? ed.note || '' : '')}" placeholder="مثلاً نقد، بینک، چیک نمبر…"></div>
+          <div class="f"><label>جمع (روپے) — رقم آئی</label><input id="cJ" class="jam" inputmode="decimal" value="${esc(jam)}" placeholder="0" oninput="App.cashSide('J')"></div>
+          <div class="f"><label>بنام (روپے) — رقم دی</label><input id="cB" class="banam" inputmode="decimal" value="${esc(banam)}" placeholder="0" oninput="App.cashSide('B')"></div>
+          <div class="f"><label>طریقہ</label><select id="cM">${['نقد', 'بینک', 'چیک', 'موبائل والٹ'].map(m => `<option ${ed && ed.method === m ? 'selected' : ''}>${m}</option>`).join('')}</select></div>
+          ${type === 'zamindar' ? `<div class="f"><label>ادائیگی کی قسم</label><select id="cT"><option value="">عام ادائیگی (حساب میں سے)</option><option value="adv" ${ed && ed.adv ? 'selected' : ''}>پیشگی (ایڈوانس) — مال آنے سے پہلے</option></select></div>` : ''}
+        </div>
+        <div id="cHint" style="margin:8px 0"></div>
+        <div class="row"><button class="btn" style="flex:1" onclick="App.saveCash('${type}')">💾 ${ed ? 'تبدیلی محفوظ کریں' : 'محفوظ کریں'}</button>
+          ${ed ? `<button class="btn gray" onclick="App.delCash('${ed.id}')">🗑️ حذف</button>` : ''}
+          ${type === 'buyer' ? `<button class="btn light" onclick="App.dayBillFromCash()">🧾 روز کا بل</button>` : ''}</div>
+        ${ed && ed.by ? `<div class="muted" style="margin-top:4px">👤 ${esc(ed.by)}${ed.edBy ? ' • بدلا: ' + esc(ed.edBy) : ''}</div>` : ''}</div>
+      <div class="card"><h3>🕘 حالیہ اندراج</h3><div class="list">${recent.map(c => { const p = party(c.partyId), t = p ? p.type : 'buyer';
+        return `<div class="it ${ed && ed.id === c.id ? 'on' : ''}" onclick="App.go('cash','v:${c.id}')"><div><span class="pnoTag num">${int(c.no)}</span> ${c.kind === 'pay' ? '💸 بنام' : '💵 جمع'} — <b>${esc(p ? p.name : '')}</b> <span class="muted">${p ? PT[t] : ''} • ${esc(urDate(c.date))} • ${esc(cashText(c, t))}${c.note ? ' • ' + esc(c.note) : ''}${c.by ? ' • 👤 ' + esc(c.by) : ''}</span></div>
+          <span class="a ${c.kind === 'pay' ? 'amt-out' : 'amt-in'}">${fmt(c.amount)}</span></div>`; }).join('') || '<div class="muted">کوئی اندراج نہیں</div>'}</div></div>`;
   };
-  AFTER.cash = function(){ const t = String(arg || '').startsWith('pay') ? 'zamindar' : 'buyer'; cashHint(t); };
+  AFTER.cash = function(){ const p = $('cP'); const a = String(arg || ''); const ed = a.startsWith('v:') ? DB.cash.find(c => c.id === a.slice(2)) : null;
+    const t = ed ? ((party(ed.partyId) || {}).type || 'buyer') : (a.startsWith('pay') ? 'zamindar' : 'buyer'); cashHint(t); if(p && !p.value) p.focus(); };
+  function cashSide(w){ const o = $(w === 'J' ? 'cB' : 'cJ'), me_ = $(w === 'J' ? 'cJ' : 'cB'); if(o && me_ && String(me_.value).trim()) o.value = ''; }
   function cashNum(type){ const el = $('cP'), p = el && partyByNo(type, el.value); if(p){ el.value = p.name; cashHint(type); } }
-  function cashHint(type){ const el = $('cHint'); if(!el) return; const p = findParty(type, $('cP').value); el.innerHTML = p ? (balText(type, ledger(p.id).bal) + ': ' + rs(Math.abs(ledger(p.id).bal)) + ' روپے') : ''; }
-  async function saveCash(kind){
+  function cashHint(type){
+    const el = $('cHint'); if(!el) return; const p = findParty(type, $('cP').value);
+    if(!p){ el.innerHTML = ''; return; }
+    const t = cashTotals(p);
+    el.innerHTML = `<div class="cashSum"><div><span class="l">کھاتہ نمبر</span><b class="num">${pNo(p) || '—'}</b></div><div><span class="l">کل جمع</span><b class="num">${fmt(t.jam)}</b></div><div><span class="l">کل بنام</span><b class="num">${fmt(t.banam)}</b></div>
+      <div class="${t.bal ? 'hot' : ''}"><span class="l">${balText(type, t.bal)}</span><b class="num">${fmt(Math.abs(t.bal))}</b></div></div>`;
+  }
+  async function saveCash(type){
     if(window.AB_LIC && !AB_LIC.canWrite()) return;
-    const type = kind === 'pay' ? 'zamindar' : 'buyer';
-    const name = $('cP').value.trim(), amount = toPaisa($('cA').value), date = $('cD').value || today();
-    if(!name){ toast('⚠️ ' + PT[type] + ' کا نام لکھیں'); return; }
-    if(amount <= 0){ toast('⚠️ رقم لکھیں'); return; }
+    if(type !== 'zamindar' && type !== 'buyer') type = type === 'pay' ? 'zamindar' : 'buyer'; // پرانا انداز
+    const a = String(arg || ''), ed = a.startsWith('v:') ? DB.cash.find(c => c.id === a.slice(2) && !c.deleted) : null;
+    const jam = toPaisa($('cJ').value), banam = toPaisa($('cB').value), date = $('cD').value || today();
+    if((jam > 0) === (banam > 0)){ toast('⚠️ جمع یا بنام — کسی ایک خانے میں رقم لکھیں'); return; }
+    const kind = jam > 0 ? 'receive' : 'pay', amount = jam || banam;
+    const fields = { kind, amount, date, method: $('cM').value, note: $('cN').value.trim() };
+    if(type === 'zamindar' && kind === 'pay' && $('cT') && $('cT').value === 'adv') fields.adv = true;
+    if(ed){
+      if(String(ed.id).startsWith('pc_')){ toast('⚠️ یہ نقد پرچی نمبر کے ساتھ لکھا ہے — پرچی کھول کر بدلیں'); return; }
+      if(!(await ownerOk())) return;
+      if(!(await unlockFor(ed.date)) || !(await unlockFor(date))) return;
+      const before = fmt(ed.amount) + ' ' + (ed.kind === 'pay' ? 'بنام' : 'جمع');
+      delete ed.adv; Object.assign(ed, fields, { edAt: Date.now(), edBy: (me() || {}).name || '' });
+      put('cash'); logIt('اندراج نمبر ' + ed.no + ' بدلا: ' + before + ' ← ' + fmt(amount) + ' ' + (kind === 'pay' ? 'بنام' : 'جمع'), ed.id);
+      toast('✅ اندراج نمبر ' + ed.no + ' بدل گیا'); render(); return;
+    }
+    const name = $('cP').value.trim();
+    if(!name){ toast('⚠️ ' + PT[type] + ' کا نام یا نمبر لکھیں'); return; }
     if(!(await unlockFor(date))) return;
-    let p = findParty(type, name);
+    let p = findParty(type, name) || partyByNo(type, name);
     if(!p){ if(!(await ask('«' + esc(name) + '» نام کا کوئی ' + PT[type] + ' نہیں۔ نیا کھاتہ بنا دیں؟', 'نیا کھاتہ بنائیں'))) return; p = ensureParty(type, name); }
-    const c = { id: uid(), kind, partyId: p.id, amount, date, method: $('cM').value, note: $('cN').value.trim(), at: Date.now(), by: (me() || {}).name || '' };
-    if(kind === 'pay' && $('cT') && $('cT').value === 'adv') c.adv = true;
-    DB.cash.push(c); put('cash'); logIt((kind === 'pay' ? 'ادائیگی ' : 'وصولی ') + p.name + ': ' + fmt(amount), c.id);
-    toast('✅ ' + (kind === 'pay' ? 'ادائیگی' : 'وصولی') + ' محفوظ — ' + fmt(amount) + ' روپے'); render();
+    const c = Object.assign({ id: uid(), no: nextCashNo(), partyId: p.id, at: Date.now(), by: (me() || {}).name || '' }, fields);
+    DB.cash.push(c); put('cash'); logIt('اندراج نمبر ' + c.no + ' — ' + p.name + ': ' + fmt(amount) + ' ' + (kind === 'pay' ? 'بنام' : 'جمع'), c.id);
+    toast('✅ نمبر ' + c.no + ' محفوظ — ' + p.name + ' ' + (kind === 'pay' ? 'بنام ' : 'جمع ') + fmt(amount) + ' روپے');
+    go('cash', (type === 'zamindar' ? 'pay' : 'receive') + ':' + p.id);
   }
   async function delCash(id){
     const c = DB.cash.find(x => x.id === id); if(!c) return;
     if(!(await ownerOk())) return;
     if(!(await unlockFor(c.date))) return;
     if(!(await ask('یہ اندراج (' + fmt(c.amount) + ' روپے) ہٹا دیں؟ کھاتے سے نکل جائے گا۔'))) return;
-    c.deleted = Date.now(); put('cash'); logIt('اندراج ہٹایا: ' + fmt(c.amount), c.id); render();
+    c.deleted = Date.now(); put('cash'); logIt('اندراج' + (c.no ? ' نمبر ' + c.no : '') + ' ہٹایا: ' + fmt(c.amount), c.id);
+    if(screen === 'cash' && String(arg || '') === 'v:' + id){ const p = party(c.partyId); go('cash', (p && p.type === 'zamindar' ? 'pay' : 'receive') + ':' + (p ? p.id : '')); } else render();
   }
 
   // =====================================================================
@@ -1073,8 +1206,8 @@
         <div class="muted">${esc(urDate(d, true))}</div></div>
       <div class="stats"><div class="stat"><div class="l">بکری (${ps.length} پرچی، ${nag} نگ)</div><div class="n">${fmt(gross)}</div></div>
         <div class="stat g"><div class="l">آڑھتی کی کمائی</div><div class="n">${fmt(income)}</div></div>
-        <div class="stat"><div class="l">خریداروں سے وصولی</div><div class="n">${fmt(rec)}</div></div>
-        <div class="stat y"><div class="l">زمینداروں کو ادائیگی</div><div class="n">${fmt(pay)}</div></div></div>
+        <div class="stat"><div class="l">وصولی (جمع)</div><div class="n">${fmt(rec)}</div></div>
+        <div class="stat y"><div class="l">ادائیگی (بنام)</div><div class="n">${fmt(pay)}</div></div></div>
       <div class="card"><h3>🧮 کٹوتیاں اور خرچے</h3><table class="t">${Object.keys(byCharge).map(k => `<tr><td>${esc(k)} <span class="tag ${byCharge[k].income ? 'in' : 'out'}">${byCharge[k].income ? 'آمدن' : 'آگے ادا'}</span></td><td class="v">${fmt(byCharge[k].amt)}</td></tr>`).join('') || '<tr><td class="muted">کچھ نہیں</td></tr>'}
         <tr class="tot"><td>زمینداروں کی صاف رقم</td><td class="v">${fmt(net)}</td></tr></table></div>
       <div class="card"><h3>📚 اس دن کی پرچیاں</h3><div class="list">${ps.map(p => `<div class="it" onclick="App.go('parchi','${p.id}')"><div>نمبر <span class="num">${p.no}</span> — ${esc(p.zamindar)}</div><div class="a">${fmt((p.totals || {}).gross || 0)}</div></div>`).join('') || '<div class="muted">کوئی پرچی نہیں</div>'}</div></div>
@@ -1271,7 +1404,7 @@
         <button class="btn" onclick="App.setPin()">💾 پن لگائیں</button>${hasOwnerPin() ? '<button class="btn gray" onclick="App.removePin()">ہٹائیں</button>' : ''}</div></div>
       ${staffCard()}
       <div class="card"><h3>📜 تبدیلیوں کا ریکارڈ (آخری 40)</h3><div class="list">${lg.map(x => `<div class="it" style="cursor:default"><div>${esc(x.what)}</div><div class="muted">${esc(urDate(new Date(x.at).toISOString().slice(0, 10)))} ${urTime(x.at)}</div></div>`).join('') || '<div class="muted">کچھ نہیں</div>'}</div></div>
-      <div class="card plain"><div class="muted">ورژن: <span class="num">${APP_VERSION}</span></div></div>`;
+      <div class="card plain"><div class="muted">ورژن: <span class="num">${APP_VERSION}</span> • سافٹ ویئر: پی بی ٹی کوڈ لیبز</div>${brandHtml()}</div>`;
   };
   function saveSettings(){
     Object.assign(DB.settings, { shop: $('sShop').value.trim() || DB.settings.shop, owner: $('sOwner').value.trim(), phone: $('sPhone').value.trim(), address: $('sAddr').value.trim(),
@@ -1384,7 +1517,7 @@
     pman(id, v){ if(String(v).trim() === '') delete cur.manual[id]; else cur.manual[id] = toPaisa(v); renderResult(); },
     addLine(){ const last = cur.lines[cur.lines.length - 1] || {}; cur.lines.push(Object.assign(blankLine(), { item: last.item || '', basis: last.basis || 'nag' })); render(); },
     delLine(i){ cur.lines.splice(i, 1); render(); },
-    saveParchi, printParchi, printBuyers, delParchi, restoreParchi, shareParchi, shareSend, shareChat, shareSave, thermal, thermalBT, thermalPrint,
+    saveParchi, printParchi, printBuyers, delParchi, restoreParchi, shareParchi, shareSend, shareChat, shareSave, thermal, thermalShow, thermalBT, thermalPrint, dayBill, dayBillPrint, dayBillThermal, dayBillFromCash, cashSide,
     setListDate(d){ listDate = d; render(); }, setRozDate(d){ rozDate = d; render(); }, toggleLock,
     psearch(v, type){ partySearch = v; const pos = v.length; render(); const i = document.querySelector('#view .f input'); if(i){ i.focus(); i.setSelectionRange(pos, pos); } },
     partyForm, saveParty, printLedger, cashHint, cashNum, saveCash, delCash,
