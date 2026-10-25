@@ -164,13 +164,21 @@
   // ---------- سبسکرپشن کا پاپ اپ ----------
   function openModal() {
     const H = host(); const p = phone();
-    H.modal(`<h3>📜 آڑھت بک کی سبسکرپشن</h3><div class="licState">${statusText()}</div>
+    const ico = { 180: '🗓️', 365: '🏆' };
+    H.modal(`<div class="licHead"><h3>📜 آڑھت بک کی سبسکرپشن</h3><div class="licState">${statusText()}</div></div>
       ${okPhone(p) ? '' : `<div class="f"><label>مالک کا موبائل نمبر</label><input id="licPh" inputmode="tel" placeholder="03001234567"></div>`}
-      <div class="muted" style="margin:6px 0 2px">مدت چنیں — ڈویلپر کو واٹس ایپ پر درخواست جائے گی، رقم کی ادائیگی کے بعد وہ آپ کو کوڈ بھیجیں گے:</div>
-      <div class="licPlans">${PLANS.map(x => `<button class="btn light" onclick="AB_LIC.request(${x[0]})">💬 ${x[1]} — <span class="num">${rsTxt(x[2])}</span> روپے${x[0] === 365 ? '<br><small>(5,000 روپے کی بچت)</small>' : ''}</button>`).join('')}</div>
-      <div class="f" style="margin-top:8px"><label>ڈویلپر سے آیا ہوا کوڈ</label><input id="licCode" placeholder="کوڈ یہاں لکھیں" style="direction:ltr;text-align:center;letter-spacing:2px"></div>
-      <div class="row" style="justify-content:center;margin-top:8px"><button class="btn" onclick="AB_LIC.useCode()">✅ چالو کریں</button><button class="btn light" onclick="AB_LIC.restore()">🔄 بحال کریں</button><button class="btn gray" onclick="App.closeModal()">بند</button></div>
-      <div class="muted" style="margin-top:6px">نیا فون یا ایپ دوبارہ لگائی؟ «بحال کریں» دبائیں — اسی موبائل نمبر کی باقی سبسکرپشن خود واپس آ جائے گی۔ ڈویلپر: پی بی ٹی کوڈ لیبز <span class="num" dir="ltr">0320-6793793</span></div>`);
+      <div class="licHint">👇 مدت پر ہاتھ رکھیں — درخواست سیدھی ڈویلپر کی واٹس ایپ چیٹ میں جائے گی؛ ادائیگی کے بعد وہ آپ کو کوڈ بھیجیں گے</div>
+      <div class="licPlans2">${PLANS.map(x => `<button class="licPlan ${x[0] === 365 ? 'best' : ''}" onclick="AB_LIC.request(${x[0]}, this)">
+          ${x[0] === 365 ? '<span class="rib">⭐ سب سے فائدہ مند</span>' : ''}
+          <div class="pi">${ico[x[0]] || '📅'}</div><div class="pn">${x[1]}</div>
+          <div class="pp">${rsTxt(x[2])} <small>روپے</small></div>
+          <div class="pm">تقریباً <span class="num">${rsTxt(Math.round(x[2] / (x[0] / 30.4) / 10) * 10)}</span> روپے ماہانہ</div>
+          ${x[0] === 365 ? '<div class="ps">✅ 5,000 روپے کی بچت</div>' : '<div class="ps">&nbsp;</div>'}
+          <span class="pw">💬 واٹس ایپ پر درخواست</span>
+          <span class="licSend"><span class="fly">💬</span><span>پیغام چیٹ میں جا رہا ہے…</span></span></button>`).join('')}</div>
+      <div class="licCodeBox"><div class="f"><label>🔑 ڈویلپر سے آیا ہوا کوڈ</label><input id="licCode" placeholder="کوڈ یہاں لکھیں" style="direction:ltr;text-align:center;letter-spacing:2px"></div>
+      <div class="row" style="justify-content:center;margin-top:8px"><button class="btn" onclick="AB_LIC.useCode()">✅ چالو کریں</button><button class="btn light" onclick="AB_LIC.restore()">🔄 بحال کریں</button><button class="btn gray" onclick="App.closeModal()">بند</button></div></div>
+      <div class="licFoot">نیا فون یا ایپ دوبارہ لگائی؟ «بحال کریں» دبائیں — اسی موبائل نمبر کی باقی سبسکرپشن خود واپس آ جائے گی۔<br>ڈویلپر: <b>پی بی ٹی کوڈ لیبز</b> ☎ <span class="num" dir="ltr">0320-6793793</span></div>`);
   }
   // نمبر نہ ہو تو پاپ اپ والے خانے سے لے کر محفوظ
   function takePhone() {
@@ -180,7 +188,7 @@
     host().setPhone(el.value.trim());
     return true;
   }
-  function request(days) {
+  function request(days, el) {
     if (!takePhone()) return;
     const s = host().settings(); const plan = PLANS.find(x => x[0] === days);
     const msg = (days === -1 ? 'السلام علیکم — آڑھت بک میں مزید ڈیوائس چاہیے (ابھی ' + allowed() + ' ڈیوائسز)\n' : 'السلام علیکم — آڑھت بک کی سبسکرپشن چاہیے\n')
@@ -190,7 +198,17 @@
       + 'موبائل: ' + showPhone(phone()) + '\n'
       + 'ڈیوائسز: ' + (days === -1 ? allowed() + 1 : allowed()) + '\n'
       + 'پتہ: ' + (s.address || '');
-    window.open('https://wa.me/' + DEV_WA + '?text=' + encodeURIComponent(msg), '_blank');
+    const url = 'https://wa.me/' + DEV_WA + '?text=' + encodeURIComponent(msg);
+    if (!el) { window.open(url, '_blank'); return; }
+    // دبتا ہوا بٹن + پیغام اڑتا ہوا، پھر چیٹ (کروم میں ہاتھ رکھنے کے بعد 5 سیکنڈ تک نیا صفحہ کھل سکتا ہے)
+    try { navigator.vibrate && navigator.vibrate(35); } catch (e) {}
+    el.classList.add('press', 'sent');
+    setTimeout(() => el.classList.remove('press'), 160);
+    setTimeout(() => {
+      window.open(url, '_blank');
+      const t = el.querySelector('.licSend span:last-child'); if (t) t.textContent = '✅ چیٹ کھل گئی — وہاں «بھیجیں» دبائیں';
+      setTimeout(() => el.classList.remove('sent'), 2600);
+    }, 900);
   }
   async function useCode() { if (!takePhone()) return; const c = ($('licCode') || {}).value; if (await activate(c)) host().closeModal(); }
   async function restore() { if (!takePhone()) return; if (await check(true)) { const m = document.querySelector('#modalBox .licState'); if (m) m.innerHTML = statusText(); } }

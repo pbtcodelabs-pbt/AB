@@ -230,6 +230,35 @@ html[data-theme="white"] .themes button{border-color:#d6d3d1;}
 .licStrip.off{background:#fef2f2; border-color:#ef4444; color:#7f1d1d;}
 .licState{font-size:17px; margin:4px 0 6px;}
 .licPlans{display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:6px;}
+/* 📜 سبسکرپشن کا پاپ اپ — ابھری ہوئی مدتیں، دبانے پر دبتی، پیغام جاتا نظر آئے */
+.licHead{margin:-16px -16px 12px; padding:14px 12px 12px; border-radius:10px 10px 0 0; background:radial-gradient(circle at 20% 0,var(--c1),transparent 60%),linear-gradient(135deg,var(--c5),var(--c3) 55%,var(--c1)); color:#fff; text-align:center; position:relative; overflow:hidden; box-shadow:inset 0 -3px 0 var(--gold);}
+.licHead::after{content:''; position:absolute; inset:0; background:repeating-linear-gradient(115deg,rgba(255,255,255,.07) 0 14px,transparent 14px 30px); pointer-events:none;}
+.licHead h3{margin:0; color:#fff !important; font-family:'NooriKasheeda',serif; font-weight:normal; font-size:30px; line-height:1.9; text-shadow:0 2px 0 var(--c5),0 4px 10px rgba(0,0,0,.4);}
+.licHead .licState{display:inline-block; margin:4px 0 0; padding:2px 14px; border-radius:20px; background:rgba(255,255,255,.16); border:1.5px solid rgba(255,255,255,.45); font-size:16px;}
+.licHint{text-align:center; color:var(--muted); font-size:15px; margin:4px 0 8px;}
+.licPlans2{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:4px 2px 14px;}
+.licPlan{position:relative; border:none; border-radius:20px; padding:16px 8px 10px; cursor:pointer; color:var(--c5); text-align:center;
+  background:linear-gradient(180deg,#fff 0%,var(--l0) 45%,var(--l1) 100%);
+  box-shadow:0 7px 0 var(--c3),0 12px 18px rgba(0,0,0,.28),inset 0 2px 0 #fff,inset 0 -3px 6px var(--l2); transition:transform .08s,box-shadow .08s; -webkit-tap-highlight-color:transparent;}
+.licPlan:active,.licPlan.press{transform:translateY(6px); box-shadow:0 1px 0 var(--c3),0 3px 6px rgba(0,0,0,.25),inset 0 3px 8px var(--l2);}
+.licPlan.best{background:linear-gradient(180deg,#fffbeb 0%,#fef3c7 50%,var(--gold) 140%); box-shadow:0 7px 0 var(--c4),0 12px 18px rgba(0,0,0,.3),inset 0 2px 0 #fff,inset 0 -3px 6px var(--gold);}
+.licPlan .rib{position:absolute; top:-11px; left:50%; transform:translateX(-50%); white-space:nowrap; background:linear-gradient(180deg,var(--c1),var(--c3)); color:#fff; font-size:13px; padding:0 12px; border-radius:12px; box-shadow:0 3px 0 var(--c5); line-height:1.9;}
+.licPlan .pi{font-size:30px; line-height:1.3; filter:drop-shadow(0 3px 2px rgba(0,0,0,.25));}
+.licPlan .pn{font-size:20px; line-height:1.8; color:var(--c4);}
+.licPlan .pp{font-family:Tahoma,Arial,sans-serif; font-weight:bold; font-size:26px; line-height:1.3; color:var(--c4); text-shadow:0 2px 0 #fff,0 3px 4px rgba(0,0,0,.18);} .licPlan .pp small{font-family:inherit; font-size:14px; font-weight:normal;}
+.licPlan .pm{font-size:13px; color:var(--muted); line-height:1.8;}
+.licPlan .ps{font-size:13px; color:var(--good); line-height:1.7;}
+.licPlan .pw{display:block; margin-top:6px; padding:2px 6px; border-radius:14px; background:linear-gradient(180deg,#22c55e,#15803d); color:#fff; font-size:14px; line-height:1.9; box-shadow:0 3px 0 #14532d;}
+.licPlan.sent .pw{animation:licPulse .9s ease-in-out;}
+.licSend{position:absolute; inset:0; border-radius:20px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; background:rgba(21,128,61,.94); color:#fff; font-size:16px; line-height:1.8; opacity:0; pointer-events:none; transition:opacity .15s;}
+.licPlan.sent .licSend{opacity:1;}
+.licSend .fly{font-size:30px; animation:licFly 1s ease-in forwards;}
+@keyframes licFly{0%{transform:translate(0,0) scale(1)}60%{transform:translate(-30px,-24px) scale(1.15)}100%{transform:translate(-70px,-60px) scale(.6); opacity:0}}
+@keyframes licPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+.licCodeBox{background:var(--l0); border:1.5px dashed var(--l3); border-radius:16px; padding:8px 10px;}
+.licCodeBox input{font-family:Tahoma,Arial,sans-serif;}
+.licFoot{text-align:center; margin-top:8px; font-size:14px; color:var(--muted); line-height:1.9;}
+.licFoot b{color:var(--c4); font-weight:normal;}
 .dvp h3{font-size:21px !important; margin-bottom:2px !important;}
 .dvp .f label{font-size:13px; line-height:1.5;}
 .dvp .f input,.dvp .f select{min-height:36px; font-size:16px; padding:2px 8px; line-height:1.5;}
@@ -259,6 +288,7 @@ html[data-theme="white"] .themes button{border-color:#d6d3d1;}
 .rpTabs button.on{background:var(--c1); color:#fff;}
 .it.overLim{border-right:4px solid #ef4444; background:#fef2f2;}
 .lblList{max-height:52vh; overflow-y:auto; text-align:right;}
+.lblSec{position:sticky; top:0; z-index:1; margin:8px 0 2px; padding:2px 10px; border-radius:9px; background:linear-gradient(90deg,var(--c3),var(--c1)); color:#fff; font-size:16px;}
 .lblRow{display:grid; grid-template-columns:1fr auto 1fr; gap:6px; align-items:center; margin:4px 0;}
 .lblRow input{width:100%; border:1.5px solid var(--l3); border-radius:9px; padding:2px 8px; font:inherit; font-size:16px; min-height:34px;}
 .lblK{font-size:16px;} .lblK small{display:block; font-size:12px; color:#78716c; line-height:1.3;}

@@ -6,17 +6,27 @@
 (() => {
   'use strict';
   // [اصل لفظ، بتانے والی بات] — جمع کی شکلیں الگ، تاکہ «زمینداروں» بھی ٹھیک بدلے
+  // ['#', عنوان] = پینل میں حصے کا عنوان (لفظ نہیں)
   const KEYS = [
+    ['#', '👥 کھاتے والے'],
     ['زمیندار', 'مال بھیجنے والا'], ['زمینداروں', 'زمیندار — جمع'],
     ['خریدار', 'مال خریدنے والا'], ['خریداروں', 'خریدار — جمع'],
+    ['مالک', 'آڑھت کا مالک'], ['ملازم', 'منشی / کام والا'], ['ملازمین', 'ملازم — جمع'],
+    ['#', '📝 پرچی اور بکری'],
     ['پرچی', 'زمیندار کا حساب'], ['پرچیاں', 'پرچی — جمع'], ['پرچیوں', 'پرچی — جمع'],
-    ['بکری', 'فروخت'], ['جنس', 'مال کی قسم'], ['نگ', 'گنتی'], ['من', '40 کلو'],
-    ['کمیشن', ''], ['مزدوری', ''], ['منڈی خرچہ', ''], ['مارکیٹ فیس', ''], ['منشیانہ', ''], ['گاڑی کا کرایہ', ''], ['چنگی', ''],
+    ['بکری', 'فروخت'], ['کل بکری', 'سب بکری کا جوڑ'], ['جنس', 'مال کی قسم'], ['نگ', 'گنتی'], ['من', '40 کلو'], ['کلو', ''],
+    ['ریٹ', 'بھاؤ'], ['رقم', ''], ['پیکنگ', ''], ['ورائیٹی', ''], ['مارکہ', ''],
+    ['گاڑی', ''], ['بلٹی', ''], ['گاؤں', ''], ['بل', 'خریدار کا حساب'], ['روز کا بل', ''], ['رسید', ''], ['تفصیل', ''], ['نوٹ', ''],
+    ['#', '🧮 خرچے اور کٹوتی'],
+    ['کمیشن', ''], ['خریدار کا کمیشن', ''], ['مزدوری', ''], ['لدوائی', ''], ['اتروائی', ''], ['منڈی خرچہ', ''], ['مارکیٹ فیس', ''], ['منشیانہ', ''],
+    ['گاڑی کا کرایہ', ''], ['کرایہ', ''], ['چنگی', ''], ['تلائی', ''], ['باردانہ', ''],
     ['کل کٹوتی', 'سب کٹوتیوں کا جوڑ'], ['صاف رقم', 'زمیندار کو ملنے والی رقم'],
+    ['#', '💵 حساب کتاب'],
     ['جمع', 'کھاتے میں آنے والی رقم'], ['بنام', 'کھاتے سے جانے والی رقم'],
-    ['وصولی', ''], ['ادائیگی', ''], ['پیشگی', 'ایڈوانس'], ['نقد', ''],
-    ['کھاتہ', ''], ['کھاتے', ''], ['روزنامچہ', ''], ['گاڑی', ''], ['بلٹی', ''],
-    ['پیکنگ', ''], ['ورائیٹی', ''], ['مارکہ', ''], ['آڑھت', ''], ['آڑھتی', '']
+    ['وصولی', ''], ['ادائیگی', ''], ['پیشگی', 'ایڈوانس'], ['نقد', ''], ['بقایا', ''], ['سابقہ بقایا', 'پچھلا بقایا'], ['ادھار', ''],
+    ['کھاتہ', ''], ['کھاتے', ''], ['روزنامچہ', ''], ['کمائی', 'آڑھتی کی آمدن'],
+    ['#', '🏠 اسکرین اور نام'],
+    ['آڑھت', ''], ['آڑھتی', ''], ['ہوم', ''], ['تلاش', ''], ['رپورٹیں', ''], ['یاد دہانی', ''], ['بیک اپ', ''], ['سیٹنگ', '']
   ];
   // تیار سانچے
   const PRESETS = {
@@ -83,12 +93,13 @@
   function editor() {
     const st = host().settings();
     if (!draft) draft = Object.assign({}, curLabels(st));
-    const keys = KEYS.map(k => k[0]);
+    const keys = KEYS.filter(k => k[0] !== '#').map(k => k[0]);
     const extra = Object.keys(draft).filter(k => !keys.includes(k));
     host().modal(`<div class="dvp" data-nolbl><h3>📝 الفاظ اپنی منڈی کی زبان میں</h3>
       <div class="muted">صرف لکھائی بدلتی ہے، حساب نہیں۔ خالی چھوڑیں تو اصل لفظ رہے گا۔ یہ آڑھت کی سب ڈیوائسز پر لگے گا۔</div>
       <div class="row" style="margin:6px 0">${Object.keys(PRESETS).map(k => `<button class="btn light sm" onclick="AB_LBL.preset('${k}')">${PRESETS[k].label}</button>`).join('')}</div>
-      <div class="lblList">${KEYS.map(([k, hint]) => `<div class="lblRow"><span class="lblK">${esc(k)}${hint ? `<small>${esc(hint)}</small>` : ''}</span><span>←</span><input data-k="${esc(k)}" value="${esc(draft[k] || '')}" placeholder="${esc(k)}"></div>`).join('')}
+      <div class="f" style="margin:4px 0"><input id="lblQ" placeholder="🔍 لفظ تلاش کریں" oninput="AB_LBL.filter(this.value)"></div>
+      <div class="lblList">${KEYS.map(([k, hint]) => k === '#' ? `<div class="lblSec">${esc(hint)}</div>` : `<div class="lblRow"><span class="lblK">${esc(k)}${hint ? `<small>${esc(hint)}</small>` : ''}</span><span>←</span><input data-k="${esc(k)}" value="${esc(draft[k] || '')}" placeholder="${esc(k)}"></div>`).join('')}
         ${extra.map((k, i) => `<div class="lblRow"><input class="lblFrom" data-i="${i}" value="${esc(k)}" placeholder="اصل لفظ"><span>←</span><input data-x="${i}" value="${esc(draft[k] || '')}" placeholder="نیا لفظ"></div>`).join('')}
         <div class="lblRow"><input class="lblFrom" id="lblNewFrom" placeholder="➕ کوئی بھی اصل لفظ"><span>←</span><input id="lblNewTo" placeholder="نیا لفظ"></div></div>
       <div class="row" style="justify-content:center;margin-top:8px"><button class="btn" onclick="AB_LBL.save()">💾 محفوظ کریں</button><button class="btn light" onclick="AB_LBL.reset()">↩️ اصل پر واپس</button><button class="btn gray" onclick="AB_LBL.close()">بند</button></div></div>`);
@@ -105,6 +116,7 @@
   window.AB_LBL = {
     KEYS, PRESETS, L, Lspec, install,
     open() { draft = null; editor(); },
+    filter(q) { q = String(q || '').trim(); document.querySelectorAll('#modalBox .lblRow').forEach(r => { const i = r.querySelector('input[data-k]'); if (!i) return; r.style.display = !q || i.dataset.k.includes(q) || i.value.includes(q) ? '' : 'none'; }); },
     preset(k) { draft = Object.assign(collect(), PRESETS[k].map); if (k === 'plain') draft = {}; editor(); },
     reset() { draft = {}; editor(); },
     save() { const m = collect(); host().setLabels(m); draft = null; host().closeModal(); host().toast('✅ الفاظ محفوظ — سب ڈیوائسز پر لگ جائیں گے'); },
