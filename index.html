@@ -163,11 +163,14 @@ input,select,textarea{font:inherit;}
 .line .no{position:absolute; top:-12px; right:10px; background:var(--red); color:#fff; border-radius:10px; padding:0 9px; font-size:13px; line-height:1.8;}
 .lineGrid{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px;}
 .lineAmt{font-size:16px; color:var(--red3);}
+.lx{margin-top:4px;} .lx summary{cursor:pointer; color:var(--c3); font-size:14px; padding:2px 0;} .lx[open] summary{margin-bottom:4px;}
+.pnoTag{display:inline-block; min-width:22px; padding:0 6px; border-radius:9px; background:var(--c3); color:var(--l0); font-size:13px; text-align:center; line-height:20px;}
 .parchiWrap{display:block;}
 @media (min-width:1000px){
   .parchiWrap{display:grid; grid-template-columns:minmax(0,1.3fr) minmax(0,1fr); gap:14px; align-items:start;}
   .parchiWrap .sticky{position:sticky; top:66px;}
   .lineGrid{grid-template-columns:2fr 1fr 1fr 1fr 1fr 2fr;}
+  .lx .lineGrid{grid-template-columns:repeat(3,minmax(0,1fr));}
 }
 .chg{display:grid; grid-template-columns:1fr auto; gap:6px; align-items:center; border-bottom:1px solid var(--l1); padding:6px 0;}
 .chg .n{font-size:18px;} .chg .d{font-size:14px; color:var(--muted);}
