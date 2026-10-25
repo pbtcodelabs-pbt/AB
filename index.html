@@ -53,6 +53,8 @@ try{ var __t = localStorage.getItem('AB::ab_theme'); if(__t && __t !== 'red') do
   --barBg:linear-gradient(180deg,var(--c5),var(--c4)); --onBar:#fff; --onBg:#fff; --onBgMuted:rgba(255,255,255,.82);
   --red:var(--c2); --red2:var(--c3); --red3:var(--c4); --red4:var(--c5); --redL:var(--l1); --redL2:var(--l2); --redL3:var(--l0);
   --gold:#fbbf24; --ink:#1c1917; --muted:#78716c; --card:#ffffff; --good:#15803d; --bad:#b91c1c;
+  /* 📅 تاریخ کا ویل — ریڈیم رنگ (ہر تھیم میں ایک جیسا) */
+  --rad:#39ff14; --radTx:#eaffe4; --radDim:#8fc9a2; --radSoft:rgba(57,255,20,.6); --radBg1:#12324a; --radBg2:#06111a; --radCol:#10283a; --radBd:#1f6f5c;
 }
 html[data-theme="blue"]{--c1:#2563eb; --c2:#1d4ed8; --c3:#1e40af; --c4:#1e3a8a; --c5:#172554; --l0:#eff6ff; --l1:#dbeafe; --l2:#bfdbfe; --l3:#93c5fd;}
 html[data-theme="green"]{--c1:#16a34a; --c2:#15803d; --c3:#166534; --c4:#14532d; --c5:#052e16; --l0:#f0fdf4; --l1:#dcfce7; --l2:#bbf7d0; --l3:#86efac;}
@@ -191,6 +193,27 @@ input,select,textarea{font:inherit;}
 #toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
 #modal{position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:9000; display:none; align-items:center; justify-content:center; padding:16px;}
 #modal.open{display:flex;}
+/* ---------- 📅 تاریخ کا ویل (datewheel.js) ---------- */
+.dwBox{display:flex; align-items:center; gap:8px; border-radius:14px; padding:3px 8px; background:radial-gradient(120% 120% at 50% 0%,var(--radBg1),var(--radBg2)); border:1.5px solid var(--radBd); box-shadow:inset 0 0 12px rgba(57,255,20,.08); direction:rtl; min-height:66px; flex-wrap:wrap; justify-content:center; max-width:100%;}
+.dwShow{flex:1 1 90px; min-width:0; text-align:center; line-height:1.15;}
+.dwDay{font-family:'NooriKasheeda','Noori',serif; font-size:22px; line-height:1.45; white-space:nowrap; color:var(--radTx); text-shadow:0 0 6px var(--rad),0 0 14px var(--radSoft);}
+.dwFull{color:var(--radDim); font-size:14px; line-height:1.5;}
+.dwFull .n{white-space:nowrap;}
+.dwFull .n{font-family:Arial,sans-serif; font-weight:900; direction:ltr; unicode-bidi:isolate; margin:0 4px; color:var(--radTx);}
+.dwHint{font-size:12px; color:var(--radDim);}
+.dwTag{display:inline-block; margin-inline-start:6px; padding:0 7px; border-radius:9px; font-size:11px; line-height:1.7; background:var(--gold); color:var(--ink);}
+.dwTag.old{background:var(--radBd); color:var(--radTx);}
+.dwWheels{position:relative; display:flex; justify-content:center; gap:3px; height:60px; flex:0 0 auto;}
+.dwCol{height:60px; overflow-y:scroll; scroll-snap-type:y mandatory; scrollbar-width:none; overscroll-behavior:contain; border-radius:12px; outline:none; background:linear-gradient(var(--radBg2),var(--radCol) 50%,var(--radBg2)); -webkit-mask-image:linear-gradient(transparent,#000 30%,#000 70%,transparent); mask-image:linear-gradient(transparent,#000 30%,#000 70%,transparent);}
+.dwCol::-webkit-scrollbar{display:none}
+.dwCol:focus-visible{box-shadow:0 0 0 2px var(--rad);}
+.dwCol[data-k="y"]{width:60px} .dwCol[data-k="m"]{width:70px} .dwCol[data-k="d"]{width:44px}
+.dwSp{height:20px}
+@media (max-width:420px){ .dwCol[data-k="y"]{width:52px} .dwCol[data-k="m"]{width:62px} .dwCol[data-k="d"]{width:38px} .dwBand{width:164px !important} .dwShow{min-width:84px} }
+.dwIt{height:20px; line-height:20px; text-align:center; scroll-snap-align:center; color:var(--radDim); font:900 16px Arial,sans-serif; cursor:pointer; user-select:none;}
+.dwCol[data-k="m"] .dwIt{font:13px 'Noori',serif; line-height:20px;}
+.dwIt.on{color:var(--radTx); text-shadow:0 0 4px var(--rad),0 0 10px var(--rad),0 0 18px var(--radSoft);}
+.dwBand{position:absolute; left:50%; transform:translateX(-50%); top:20px; height:20px; width:186px; border-top:1.5px solid var(--radSoft); border-bottom:1.5px solid var(--radSoft); border-radius:9px; pointer-events:none; box-shadow:0 0 10px rgba(57,255,20,.3),inset 0 0 10px rgba(57,255,20,.14);}
 .pgBox h3{margin-bottom:10px !important;}
 .pgTrack{height:24px; border-radius:12px; background:var(--l1); border:1.5px solid var(--l3); overflow:hidden; box-shadow:inset 0 2px 4px rgba(0,0,0,.15);}
 .pgTrack i{display:block; height:100%; border-radius:12px; transition:width .35s ease; background:repeating-linear-gradient(45deg,var(--c3) 0 12px,var(--c2) 12px 24px); background-size:34px 34px; animation:pgMove .8s linear infinite;}
@@ -450,6 +473,7 @@ html[data-theme="white"] .themes button{border-color:#d6d3d1;}
 <script src="cloud.js"></script>
 <script src="license.js"></script>
 <script src="labels.js"></script>
+<script src="datewheel.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

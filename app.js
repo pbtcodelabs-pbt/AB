@@ -8,8 +8,8 @@
    ===================================================================== */
 (function(){
   'use strict';
-  const APP_VERSION = 'AB2510SU034';
-  const UPDATE_NOTE = 'خودکار بیک اپ ہر تبدیلی پر نہیں — دن میں تین بار: صبح 8، دوپہر 2، رات 8 بجے؛ جب چاہیں «ابھی محفوظ کریں»';
+  const APP_VERSION = 'AB2510SU035';
+  const UPDATE_NOTE = 'تاریخ چننے کے لیے ریڈیم رنگ کا ویل (سال، مہینہ، دن) — ساتھ بڑا دن کا نام اور پوری تاریخ';
   const C = window.ABCalc;
   // ---------- اردو / عربی کی بورڈ کے ہندسے (۰۱۲… / ٠١٢…) لکھتے ہی 0-9 میں — ورنہ رقم، نمبر اور کوڈ نہیں پہچانے جاتے ----------
   document.addEventListener('input', e => {
@@ -806,7 +806,7 @@
         <div class="muted">${esc(urDate(p.date))} ${p.vehicle ? '• گاڑی ' + esc(p.vehicle) : ''} • بکری ${rs(t.gross || 0)} • صاف ${rs(t.net || 0)}${p.by ? ' • 👤 ' + esc(p.by) : ''}</div></div>
         <button class="btn gray sm" onclick="event.stopPropagation();App.delParchi('${p.id}')">🗑️</button></div>`; }).join('');
     return `<div class="pageTitle">📚 پرچیاں<span class="sp"></span><button class="btn gold sm" onclick="App.go('parchi')">📝 نئی پرچی</button></div>
-      <div class="card"><div class="row"><div class="f" style="flex:1;min-width:160px"><label>تاریخ سے چنیں (خالی = سب)</label><input type="date" value="${esc(listDate)}" onchange="App.setListDate(this.value)"></div>
+      <div class="card"><div class="row"><div class="f" style="flex:1 1 280px;min-width:0"><label>تاریخ سے چنیں (خالی = سب)</label><input type="date" value="${esc(listDate)}" onchange="App.setListDate(this.value)"></div>
         ${listDate ? '<button class="btn gray sm" onclick="App.setListDate(\'\')">سب دکھائیں</button>' : ''}</div>
         <table class="t" style="margin-top:6px"><tr><td>پرچیاں</td><td class="v">${live.length}</td></tr><tr><td>کل بکری</td><td class="v">${fmt(g)}</td></tr><tr class="tot"><td>آڑھتی کی کمائی</td><td class="v">${fmt(inc)}</td></tr></table></div>
       <div class="card"><div class="list">${rows || '<div class="muted">کوئی پرچی نہیں</div>'}</div></div>
@@ -1212,7 +1212,7 @@
     const cs = liveCash().filter(c => c.date === d);
     const rec = cs.filter(c => c.kind === 'receive').reduce((s, c) => s + c.amount, 0), pay = cs.filter(c => c.kind === 'pay').reduce((s, c) => s + c.amount, 0);
     return `<div class="pageTitle">📖 روزنامچہ ${isLocked(d) ? '🔒' : ''}</div>
-      <div class="card"><div class="row"><div class="f" style="flex:1;min-width:160px"><label>تاریخ</label><input type="date" value="${esc(d)}" onchange="App.setRozDate(this.value)"></div>
+      <div class="card"><div class="row"><div class="f" style="flex:1 1 280px;min-width:0"><label>تاریخ</label><input type="date" value="${esc(d)}" onchange="App.setRozDate(this.value)"></div>
         <button class="btn ${isLocked(d) ? 'light' : 'gold'} sm" onclick="App.toggleLock('${d}')">${isLocked(d) ? '🔓 دن کھولیں' : '🔒 دن بند کریں'}</button></div>
         <div class="muted">${esc(urDate(d, true))}</div></div>
       <div class="stats"><div class="stat"><div class="l">بکری (${ps.length} پرچی، ${nag} نگ)</div><div class="n">${fmt(gross)}</div></div>
