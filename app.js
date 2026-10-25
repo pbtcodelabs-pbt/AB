@@ -8,8 +8,8 @@
    ===================================================================== */
 (function(){
   'use strict';
-  const APP_VERSION = 'AB2510SU038';
-  const UPDATE_NOTE = 'اوپر دکان کا نام پورا اور صاف: فون پر اپنی الگ قطار میں، روشن سنہری رنگ، لمبا ہو تو خود چھوٹا';
+  const APP_VERSION = 'AB2510SU039';
+  const UPDATE_NOTE = 'اوپر دکان کا بڑا نام الگ کیپسول میں، نیچے مالک کا نام اور موبائل؛ بٹن چھوٹے اور نیچے';
   const C = window.ABCalc;
   // ---------- اردو / عربی کی بورڈ کے ہندسے (۰۱۲… / ٠١٢…) لکھتے ہی 0-9 میں — ورنہ رقم، نمبر اور کوڈ نہیں پہچانے جاتے ----------
   document.addEventListener('input', e => {
@@ -288,15 +288,19 @@
   // دکان کا نام پورا دکھے: پہلے ایک لائن میں چھوٹا کر کے (24 سے 16 تک)، پھر بھی نہ سمائے تو دو لائنیں
   function fitTitle(){
     const t = $('ttl'); if(!t) return;
-    t.classList.remove('two'); let f = 24; t.style.fontSize = f + 'px';
-    while(t.scrollWidth > t.clientWidth + 1 && f > 16){ f--; t.style.fontSize = f + 'px'; }
+    t.classList.remove('two'); let f = 34; t.style.fontSize = f + 'px';
+    while(t.scrollWidth > t.clientWidth + 1 && f > 18){ f--; t.style.fontSize = f + 'px'; }
     if(t.scrollWidth > t.clientWidth + 1) t.classList.add('two');
   }
   window.addEventListener('resize', () => fitTitle());
   if(document.fonts && document.fonts.ready) document.fonts.ready.then(() => fitTitle());
+  if(document.fonts) document.fonts.addEventListener('loadingdone', () => fitTitle());
   function render(){
     renderSide();
-    $('ttl').textContent = shopName(); fitTitle();
+    $('ttl').textContent = shopName();
+    { const st = DB.settings, ph = st.phone ? String(st.phone).trim() : '';
+      $('ttlSub').innerHTML = DB.settings.registered ? [st.owner ? '👤 ' + esc(st.owner) : '', ph ? '📞 <span class="num">' + esc(/^0\d{10}$/.test(ph) ? ph.slice(0, 4) + '-' + ph.slice(4) : ph) + '</span>' : ''].filter(Boolean).map(x => '<span>' + x + '</span>').join('') : ''; }
+    fitTitle();
     const v = $('view');
     if(!DB.settings.registered){ v.innerHTML = viewRegister(); return; }
     if(!me()){ curUser = null; v.innerHTML = viewPinGate(); renderSide(); return; }
