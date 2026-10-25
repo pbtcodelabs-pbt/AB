@@ -8,8 +8,8 @@
    ===================================================================== */
 (function(){
   'use strict';
-  const APP_VERSION = 'AB2510SU037';
-  const UPDATE_NOTE = '14 دن کی مفت آزمائش پھر نظر آتی ہے اور اس کی پابندی بھی؛ صرف سبسکرپشن کی قیمتیں چھپی ہیں';
+  const APP_VERSION = 'AB2510SU038';
+  const UPDATE_NOTE = 'اوپر دکان کا نام پورا اور صاف: فون پر اپنی الگ قطار میں، روشن سنہری رنگ، لمبا ہو تو خود چھوٹا';
   const C = window.ABCalc;
   // ---------- اردو / عربی کی بورڈ کے ہندسے (۰۱۲… / ٠١٢…) لکھتے ہی 0-9 میں — ورنہ رقم، نمبر اور کوڈ نہیں پہچانے جاتے ----------
   document.addEventListener('input', e => {
@@ -285,9 +285,18 @@
   }
   window.addEventListener('popstate', e => { const st = e.state; if(st && st.s){ screen = st.s; arg = st.a; render(); } else { screen = 'home'; arg = null; render(); } });
   function menu(open){ $('side').classList.toggle('open', !!open); $('sideShade').classList.toggle('open', !!open); }
+  // دکان کا نام پورا دکھے: پہلے ایک لائن میں چھوٹا کر کے (24 سے 16 تک)، پھر بھی نہ سمائے تو دو لائنیں
+  function fitTitle(){
+    const t = $('ttl'); if(!t) return;
+    t.classList.remove('two'); let f = 24; t.style.fontSize = f + 'px';
+    while(t.scrollWidth > t.clientWidth + 1 && f > 16){ f--; t.style.fontSize = f + 'px'; }
+    if(t.scrollWidth > t.clientWidth + 1) t.classList.add('two');
+  }
+  window.addEventListener('resize', () => fitTitle());
+  if(document.fonts && document.fonts.ready) document.fonts.ready.then(() => fitTitle());
   function render(){
     renderSide();
-    $('ttl').textContent = shopName();
+    $('ttl').textContent = shopName(); fitTitle();
     const v = $('view');
     if(!DB.settings.registered){ v.innerHTML = viewRegister(); return; }
     if(!me()){ curUser = null; v.innerHTML = viewPinGate(); renderSide(); return; }
