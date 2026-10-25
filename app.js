@@ -8,8 +8,8 @@
    ===================================================================== */
 (function(){
   'use strict';
-  const APP_VERSION = 'AB2510SU036';
-  const UPDATE_NOTE = 'سبسکرپشن کا بٹن اور مفت آزمائش کی پٹی ابھی نظر نہیں آتی؛ ڈویلپر پینل میں «قیمتیں»: مدتیں اور قیمتیں بدلیں، سبسکرپشن دکھائیں یا چھپائیں';
+  const APP_VERSION = 'AB2510SU037';
+  const UPDATE_NOTE = '14 دن کی مفت آزمائش پھر نظر آتی ہے اور اس کی پابندی بھی؛ صرف سبسکرپشن کی قیمتیں چھپی ہیں';
   const C = window.ABCalc;
   // ---------- اردو / عربی کی بورڈ کے ہندسے (۰۱۲… / ٠١٢…) لکھتے ہی 0-9 میں — ورنہ رقم، نمبر اور کوڈ نہیں پہچانے جاتے ----------
   document.addEventListener('input', e => {
@@ -334,7 +334,7 @@
     DB.settings = Object.assign(DB.settings, { shop, owner, phone, address: $('rAddr').value.trim(), registered: true, createdAt: Date.now(), nextParchiNo: 1 });
     DB.charges = (DB.charges || []).map(c => Object.assign(c, { deleted: Date.now() })).concat(TEMPLATES[$('rTpl').value].list().map(c => Object.assign({ id: uid() }, c)));
     put('settings'); put('charges'); logIt('آڑھت رجسٹر: ' + shop);
-    go('home'); toast(window.AB_LIC && AB_LIC.on() ? '✅ خوش آمدید — 14 دن مفت آزمائش شروع' : '✅ خوش آمدید — آڑھت بک تیار ہے'); if(window.AB_LIC) AB_LIC.check(false);
+    go('home'); toast('✅ خوش آمدید — 14 دن مفت آزمائش شروع'); if(window.AB_LIC) AB_LIC.check(false);
   }
   let pinBuf = '';
   function viewPinGate(){
