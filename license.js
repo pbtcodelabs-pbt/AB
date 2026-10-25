@@ -179,7 +179,7 @@
       <div class="licCodeBox"><div class="lcTitle">🔑 ڈویلپر سے آیا ہوا کوڈ</div>
         <div class="lcInWrap"><span class="lcKey">🔐</span><input id="licCode" class="lcIn" placeholder="کوڈ یہاں لکھیں" autocomplete="off" spellcheck="false"></div>
         <div class="lcBtns"><button class="lcBtn go" onclick="AB_LIC.useCode()">✅ چالو کریں</button><button class="lcBtn rs" onclick="AB_LIC.restore()">🔄 بحال کریں</button><button class="lcBtn cl" onclick="App.closeModal()">✖ بند</button></div></div>
-      <div class="licFoot">📱 نیا فون یا ایپ دوبارہ لگائی؟ «بحال کریں» دبائیں — اسی موبائل نمبر کی باقی سبسکرپشن خود واپس آ جائے گی۔<br><span class="dev">👨‍💻 پی بی ٹی کوڈ لیبز ☎ <span class="num" dir="ltr">0320-6793793</span></span></div>`);
+      <div class="licFoot">📱 نیا فون یا ایپ دوبارہ لگائی؟ «بحال کریں» دبائیں — اسی موبائل نمبر کی باقی سبسکرپشن خود واپس آ جائے گی۔<br><span class="dev" dir="ltr"><span class="dn">👨‍💻 PBT Code Labs</span><span class="num">☎ 0320-6793793</span></span></div>`);
   }
   // نمبر نہ ہو تو پاپ اپ والے خانے سے لے کر محفوظ
   function takePhone() {
