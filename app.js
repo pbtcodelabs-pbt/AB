@@ -8,8 +8,8 @@
    ===================================================================== */
 (function(){
   'use strict';
-  const APP_VERSION = 'AB2510SU040';
-  const UPDATE_NOTE = 'سبسکرپشن: ایزی پیسہ سے ادائیگی، ٹرانزیکشن آئی ڈی اور اسکرین شاٹ کے ساتھ کوڈ کی درخواست';
+  const APP_VERSION = 'AB2510SU041';
+  const UPDATE_NOTE = 'ڈیش بورڈ سبزی منڈی جیسا: صافی پوزیشن، آج آئے / گئے، خرچے، گلہ — ہر خانہ دبائیں تو پوری تفصیل؛ نیا نام لکھتے ہی کھاتہ خود بنتا ہے';
   const C = window.ABCalc;
   // ---------- اردو / عربی کی بورڈ کے ہندسے (۰۱۲… / ٠١٢…) لکھتے ہی 0-9 میں — ورنہ رقم، نمبر اور کوڈ نہیں پہچانے جاتے ----------
   document.addEventListener('input', e => {
@@ -377,17 +377,66 @@
     return { gross, income, nag, n };
   }
   function balancesSum(type){ let s = 0; parties(type).forEach(p => { const b = ledger(p.id).bal; if(b > 0) s += b; }); return s; }
+  // ---------- 📊 ڈیش بورڈ (سبزی منڈی جیسا): ہر خانہ دبائیں تو پوری تفصیل ----------
+  function dashData(date){
+    const ps = liveParchis().filter(p => p.date === date);
+    let gross = 0, income = 0, nag = 0, exp = 0; const inc = {}, ex = {};
+    ps.forEach(p => { const r = calcParchi(p, p.chargesSnap || chargesList()); gross += r.gross; income += r.income; nag += r.nag;
+      r.zCharges.concat(...r.buyers.map(x => x.charges)).forEach(x => { if(!x.amount) return; const m = x.income ? inc : ex; m[x.name] = (m[x.name] || 0) + x.amount; if(!x.income) exp += x.amount; }); });
+    const cs = liveCash().filter(c => c.date === date);
+    const rec = cs.filter(c => c.kind === 'receive').reduce((t, c) => t + c.amount, 0), pay = cs.filter(c => c.kind === 'pay').reduce((t, c) => t + c.amount, 0);
+    const all = liveCash(); const cashHand = int(DB.settings.openCash) + all.filter(c => c.kind === 'receive').reduce((t, c) => t + c.amount, 0) - all.filter(c => c.kind === 'pay').reduce((t, c) => t + c.amount, 0);
+    const bal = type => parties(type).map(p => ({ p, bal: ledger(p.id).bal })).filter(x => x.bal);
+    const zs = bal('zamindar'), bs = bal('buyer');
+    const payab = zs.reduce((t, x) => t + (x.bal > 0 ? x.bal : 0), 0), recv = bs.reduce((t, x) => t + (x.bal > 0 ? x.bal : 0), 0);
+    return { ps, gross, income, nag, n: ps.length, inc, ex, exp, cs, rec, pay, recN: cs.filter(c => c.kind === 'receive').length, payN: cs.filter(c => c.kind === 'pay').length,
+      cashHand, zs, bs, payab, recv, zN: zs.filter(x => x.bal > 0).length, bN: bs.filter(x => x.bal > 0).length,
+      // الٹے بقایا بھی: زمیندار پر پیشگی = لینے ہیں، خریدار کی پیشگی = دینے ہیں
+      zAdv: zs.reduce((t, x) => t + (x.bal < 0 ? -x.bal : 0), 0), bAdv: bs.reduce((t, x) => t + (x.bal < 0 ? -x.bal : 0), 0),
+      get net(){ return this.recv + this.zAdv + Math.max(this.cashHand, 0) - this.payab - this.bAdv; } };
+  }
+  function dash(k){
+    const d = dashData(today());
+    const row = (a, v, on, cls) => `<div class="it" ${on ? `onclick="App.closeModal();${on}"` : 'style="cursor:default"'}><div>${a}</div><span class="num ${cls || ''}">${fmt(v)}</span></div>`;
+    const tot = (lab, v) => `<table class="t" style="margin-top:6px"><tr class="net"><td>${lab}</td><td class="v">${fmt(v)}</td></tr></table>`;
+    const cashRows = list => list.map(c => { const p = party(c.partyId); return row(`<span class="pnoTag num">${int(c.no)}</span> <b>${esc(p ? p.name : '')}</b> <span class="muted">${p ? PT[p.type] : ''}${c.note ? ' • ' + esc(c.note) : ''}</span>`, c.amount, `App.go('cash','v:${c.id}')`, c.kind === 'pay' ? 'amt-out' : 'amt-in'); }).join('') || '<div class="muted">آج کوئی اندراج نہیں</div>';
+    const partyRows = (xs, type) => xs.slice().sort((a, b) => b.bal - a.bal).map(x => row(`<span class="pnoTag num">${pNo(x.p)}</span> <b>${esc(x.p.name)}</b> <span class="muted">${balText(type, x.bal)}</span>`, Math.abs(x.bal), `App.go('party','${x.p.id}')`, (x.bal > 0) === (type === 'buyer') ? 'amt-in' : 'amt-out')).join('') || '<div class="muted">کوئی بقایا نہیں</div>';
+    const mapRows = m => Object.keys(m).sort((a, b) => m[b] - m[a]).map(n => row(esc(n), m[n])).join('') || '<div class="muted">آج کچھ نہیں</div>';
+    const T = {
+      sale: ['🧺 آج کی بکری', d.ps.map(p => row(`پرچی <span class="num">${p.no}</span> — <b>${esc(p.zamindar)}</b> <span class="muted">${esc(p.vehicle || '')}</span>`, (p.totals || {}).gross || calcParchi(p, p.chargesSnap || chargesList()).gross, `App.go('parchi','${p.id}')`)).join('') || '<div class="muted">آج کوئی پرچی نہیں</div>', tot('کل بکری (' + d.nag + ' نگ)', d.gross)],
+      income: ['💰 آج کی کمائی', mapRows(d.inc), tot('کل کمائی', d.income)],
+      exp: ['🧑‍🔧 آج کے خرچے (آگے ادا ہوتے ہیں)', mapRows(d.ex), tot('کل خرچے', d.exp)],
+      rec: ['📥 آج پیسے آئے (جمع)', cashRows(d.cs.filter(c => c.kind === 'receive')), tot('کل جمع', d.rec)],
+      pay: ['📤 آج پیسے گئے (بنام)', cashRows(d.cs.filter(c => c.kind === 'pay')), tot('کل بنام', d.pay)],
+      cashh: ['🪙 گلہ (ہاتھ میں نقد)', row('شروع کا نقد (سیٹنگ)', int(DB.settings.openCash)) + row('سب جمع (آئے)', liveCash().filter(c => c.kind === 'receive').reduce((t, c) => t + c.amount, 0)) + row('سب بنام (گئے)', liveCash().filter(c => c.kind === 'pay').reduce((t, c) => t + c.amount, 0)) + row('آج آئے', d.rec, '', 'amt-in') + row('آج گئے', d.pay, '', 'amt-out'), tot('ہاتھ میں نقد', d.cashHand)],
+      z: ['🧑‍🌾 زمینداروں کے بقایا', partyRows(d.zs, 'zamindar'), tot('کل دینے ہیں', d.payab)],
+      b: ['🧑‍💼 خریداروں کے بقایا', partyRows(d.bs, 'buyer'), tot('کل لینے ہیں', d.recv)],
+      net: ['💼 صافی پوزیشن', row('خریداروں سے لینے ہیں', d.recv, "App.dash('b')", 'amt-in') + (d.zAdv ? row('زمینداروں پر پیشگی (لینے ہیں)', d.zAdv, "App.dash('z')", 'amt-in') : '') + row('گلہ (ہاتھ میں نقد)', Math.max(d.cashHand, 0), "App.dash('cashh')", 'amt-in')
+        + row('زمینداروں کو دینے ہیں', d.payab, "App.dash('z')", 'amt-out') + (d.bAdv ? row('خریداروں کی پیشگی (دینے ہیں)', d.bAdv, "App.dash('b')", 'amt-out') : ''), tot(d.net >= 0 ? 'آپ کے حق میں' : 'آپ کے ذمے', Math.abs(d.net))]
+    }[k];
+    if(!T) return;
+    modal(`<h3>${T[0]}</h3><div class="muted" style="margin-bottom:4px">${esc(urDate(today(), true))} — کسی نام پر دبائیں تو اس کا کھاتہ / پرچی کھلے</div><div class="list" style="text-align:right;max-height:55vh;overflow:auto">${T[1]}</div>${T[2]}
+      <div class="row" style="justify-content:center;margin-top:8px"><button class="btn gray" onclick="App.closeModal()">بند</button></div>`);
+  }
   const VIEWS = {};
   const AFTER = {};
   VIEWS.home = function(){
     const t = totalsFor(today());
     const tiles = [['parchis', '📚', 'پرچیاں'], ['zamindar', '🧑‍🌾', 'زمیندار'], ['buyer', '🧑‍💼', 'خریدار'], ['cash', '💵', 'وصولی / ادائیگی'], ['roznamcha', '📖', 'روزنامچہ'], ['reports', '📊', 'رپورٹیں'], ['charges', '⚙️', 'خرچے اور کمیشن'], ['backup', '💾', 'بیک اپ'], ['settings', '🛠️', 'سیٹنگ']];
+    const d = dashData(today());
+    const card = (k, cls, ico, lab, val, sub) => `<button class="stat dash ${cls}" onclick="App.dash('${k}')"><div class="l">${ico} ${lab}</div><div class="n">${fmt(val)}</div>${sub ? `<div class="s">${sub}</div>` : ''}<span class="more">تفصیل ◂</span></button>`;
     return `<div class="pageTitle">🏠 ${esc(urDate(today(), true))}</div>${window.AB_LIC ? AB_LIC.strip() : ''}${backupBanner()}${dueBanner()}
+      ${isStaff() ? '' : `<button class="netHero ${d.net < 0 ? 'neg' : ''}" onclick="App.dash('net')"><div class="l">💼 آپ کی صافی پوزیشن (لینا − دینا)</div><div class="n">${fmt(Math.abs(d.net))} <small>روپے ${d.net >= 0 ? '📈 آپ کے حق میں' : '📉 آپ کے ذمے'}</small></div>
+        <div class="s">لینا ${fmt(d.recv + d.zAdv + Math.max(d.cashHand, 0))} (کھاتوں پر + گلہ) − دینا ${fmt(d.payab + d.bAdv)} (کھاتوں کا)</div></button>`}
       <div class="stats">
-        <div class="stat"><div class="l">آج کی بکری (${t.n} پرچی، ${t.nag} نگ)</div><div class="n">${fmt(t.gross)}</div></div>
-        ${isStaff() ? '' : `<div class="stat g"><div class="l">آج کی کمائی</div><div class="n">${fmt(t.income)}</div></div>`}
-        <div class="stat y"><div class="l">زمینداروں کو دینے ہیں</div><div class="n">${fmt(balancesSum('zamindar'))}</div></div>
-        <div class="stat"><div class="l">خریداروں سے لینے ہیں</div><div class="n">${fmt(balancesSum('buyer'))}</div></div>
+        ${card('sale', '', '🧺', 'آج کی بکری', d.gross, `<span class="num">${d.n}</span> پرچی • <span class="num">${d.nag}</span> نگ`)}
+        ${isStaff() ? '' : card('income', 'g', '💰', 'آج کی کمائی', d.income, 'کمیشن وغیرہ')}
+        ${card('rec', 'g', '📥', 'آج پیسے آئے (جمع)', d.rec, `<span class="num">${d.recN}</span> اندراج`)}
+        ${card('pay', 'y', '📤', 'آج پیسے گئے (بنام)', d.pay, `<span class="num">${d.payN}</span> اندراج`)}
+        ${card('exp', 'y', '🧑‍🔧', 'آج کے خرچے (مزدوری، کرایہ…)', d.exp, 'جو آگے ادا ہوتے ہیں')}
+        ${isStaff() ? '' : card('cashh', d.cashHand < 0 ? 'r' : 'g', '🪙', 'گلہ (ہاتھ میں نقد)', d.cashHand, 'سب جمع − سب بنام')}
+        ${card('z', 'y', '🧑‍🌾', 'زمینداروں کو دینے ہیں', d.payab, `<span class="num">${d.zN}</span> کھاتے`)}
+        ${card('b', '', '🧑‍💼', 'خریداروں سے لینے ہیں', d.recv, `<span class="num">${d.bN}</span> کھاتے`)}
       </div>
       <div class="tiles">${canSee('parchi') ? `<button class="tile big" onclick="App.go('parchi')"><span class="e">📝</span>نئی پرچی (گاڑی کی آمد)</button>` : ''}
         ${tiles.filter(x => canSee(x[0])).map(x => `<button class="tile" onclick="App.go('${x[0]}')"><span class="e">${x[1]}</span>${x[2]}</button>`).join('')}</div>`;
@@ -1085,7 +1134,7 @@
     if(!name){ toast('⚠️ ' + PT[type] + ' کا نام یا نمبر لکھیں'); return; }
     if(!(await unlockFor(date))) return;
     let p = findParty(type, name) || partyByNo(type, name);
-    if(!p){ if(!(await ask('«' + esc(name) + '» نام کا کوئی ' + PT[type] + ' نہیں۔ نیا کھاتہ بنا دیں؟', 'نیا کھاتہ بنائیں'))) return; p = ensureParty(type, name); }
+    if(!p){ p = ensureParty(type, name); toast('🆕 نیا کھاتہ بنا: ' + name); }   // نیا نام = نیا کھاتہ (پوچھے بغیر — پرچی کی طرح)
     const c = Object.assign({ id: uid(), no: nextCashNo(), partyId: p.id, at: Date.now(), by: (me() || {}).name || '' }, fields);
     DB.cash.push(c); put('cash'); logIt('اندراج نمبر ' + c.no + ' — ' + p.name + ': ' + fmt(amount) + ' ' + (kind === 'pay' ? 'بنام' : 'جمع'), c.id);
     toast('✅ نمبر ' + c.no + ' محفوظ — ' + p.name + ' ' + (kind === 'pay' ? 'بنام ' : 'جمع ') + fmt(amount) + ' روپے');
@@ -1424,7 +1473,8 @@
         <div class="f"><label>منڈی کا پتہ</label><input id="sAddr" value="${esc(s.address)}"></div>
         <div class="f"><label>کاروبار کی تفصیل (پرچی پر)</label><input id="sTag" value="${esc(s.tagline == null ? 'سبزی فروٹ کمیشن ایجنٹ' : s.tagline)}" placeholder="مثلاً سبزی فروٹ کمیشن ایجنٹ"></div>
         <div class="f"><label>ٹریڈ مارک</label><input id="sTm" value="${esc(s.trademark)}" placeholder="مثلاً ایچ جی"></div>
-        <div class="f"><label>دکان نمبر</label><input id="sNo" value="${esc(s.shopNo)}" placeholder="مثلاً 16"></div></div>
+        <div class="f"><label>دکان نمبر</label><input id="sNo" value="${esc(s.shopNo)}" placeholder="مثلاً 16"></div>
+        <div class="f"><label>🪙 شروع کا نقد (گلے میں — روپے)</label><input id="sCash" inputmode="decimal" value="${esc(inRs(s.openCash))}" placeholder="0"></div></div>
         <div class="muted" style="margin-top:6px">📞 پرچی پر نام اور نمبر (سرپرست، شراکت دار…) — زیادہ سے زیادہ 4</div>
         <div class="grid2 wideable">${[0, 1, 2, 3].map(i => { const c = (s.contacts || [])[i] || {}; return `<div class="f"><input id="sCn${i}" value="${esc(c.n)}" placeholder="نام"></div><div class="f"><input id="sCp${i}" inputmode="tel" value="${esc(c.p)}" placeholder="نمبر"></div>`; }).join('')}</div>
         <button class="btn" style="margin-top:8px" onclick="App.saveSettings()">💾 محفوظ</button></div>
@@ -1438,7 +1488,7 @@
   };
   function saveSettings(){
     Object.assign(DB.settings, { shop: $('sShop').value.trim() || DB.settings.shop, owner: $('sOwner').value.trim(), phone: $('sPhone').value.trim(), address: $('sAddr').value.trim(),
-      tagline: $('sTag').value.trim(), trademark: $('sTm').value.trim(), shopNo: $('sNo').value.trim(),
+      tagline: $('sTag').value.trim(), trademark: $('sTm').value.trim(), shopNo: $('sNo').value.trim(), openCash: toPaisa($('sCash').value),
       contacts: [0, 1, 2, 3].map(i => ({ n: $('sCn' + i).value.trim(), p: $('sCp' + i).value.trim() })).filter(c => c.n || c.p) });
     put('settings'); logIt('آڑھت کی معلومات بدلیں'); render(); toast('✅ محفوظ'); if(window.AB_LIC) AB_LIC.check(false);
   }
@@ -1547,7 +1597,7 @@
     pman(id, v){ if(String(v).trim() === '') delete cur.manual[id]; else cur.manual[id] = toPaisa(v); renderResult(); },
     addLine(){ const last = cur.lines[cur.lines.length - 1] || {}; cur.lines.push(Object.assign(blankLine(), { item: last.item || '', basis: last.basis || 'nag' })); render(); },
     delLine(i){ cur.lines.splice(i, 1); render(); },
-    saveParchi, printParchi, printBuyers, delParchi, restoreParchi, shareParchi, shareSend, shareChat, shareSave, thermal, thermalShow, thermalBT, thermalPrint, dayBill, dayBillPrint, dayBillThermal, dayBillFromCash, cashSide,
+    dash, saveParchi, printParchi, printBuyers, delParchi, restoreParchi, shareParchi, shareSend, shareChat, shareSave, thermal, thermalShow, thermalBT, thermalPrint, dayBill, dayBillPrint, dayBillThermal, dayBillFromCash, cashSide,
     setListDate(d){ listDate = d; render(); }, setRozDate(d){ rozDate = d; render(); }, toggleLock,
     psearch(v, type){ partySearch = v; const pos = v.length; render(); const i = document.querySelector('#view .f input'); if(i){ i.focus(); i.setSelectionRange(pos, pos); } },
     partyForm, saveParty, printLedger, cashHint, cashNum, saveCash, delCash,
