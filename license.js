@@ -15,6 +15,8 @@
   const BASE_DEVICES = 3;               // سبسکرپشن (اور آزمائش) میں شامل آلات؛ زیادہ آلہ = 5,000 روپے سالانہ
   const DAY = 864e5;
   const FOREVER = Date.UTC(2100, 0, 1);
+  // 💳 ادائیگی (مالک کا حکم AB2510SU040): فی الحال ایزی پیسہ
+  const PAY = { kind: 'ایزی پیسہ', no: '03206793793', title: 'Abdul Hafeez' };
   const PLANS0 = [[180, 'چھ مہینے', 15000], [365, 'ایک سال', 25000]];   // [دن، نام، قیمت روپے] — اصل؛ ڈویلپر پینل سے بدلی جا سکتی ہیں
   // ---------- سبسکرپشن کی ترتیب سرور پر (licenses/_CONFIG): دکھانا ہے یا نہیں + قیمتیں ----------
   // مالک کا حکم (AB2510SU036): ابھی سبسکرپشن اور «مفت آزمائش» گاہکوں کو نظر نہ آئے؛ ڈویلپر پینل سے دوبارہ چالو اور قیمتیں بدلیں
@@ -198,14 +200,14 @@
       ${okPhone(p) ? '' : `<div class="f"><label>مالک کا موبائل نمبر</label><input id="licPh" inputmode="tel" placeholder="03001234567"></div>`}
       ${subOn() ? '' : `<div class="licHint">مزید استعمال کے لیے ڈویلپر سے بات کریں؛ وہ آپ کو کوڈ بھیجیں گے</div>
         <div class="row" style="justify-content:center;margin:6px 0 10px"><button class="btn wa" onclick="AB_LIC.request(0)">💬 ڈویلپر سے واٹس ایپ پر بات کریں</button></div>`}
-      ${!subOn() ? '' : `<div class="licHint">👇 مدت پر ہاتھ رکھیں — درخواست سیدھی ڈویلپر کی واٹس ایپ چیٹ میں جائے گی؛ ادائیگی کے بعد وہ آپ کو کوڈ بھیجیں گے</div>
-      <div class="licPlans2">${plans().map(x => `<button class="licPlan ${+x[0] === bestDays() && plans().length > 1 ? 'best' : ''}" onclick="AB_LIC.request(${x[0]}, this)">
+      ${!subOn() ? '' : `<div class="licHint">👇 مدت پر ہاتھ رکھیں — ایزی پیسہ سے ادائیگی کر کے درخواست ڈویلپر کی واٹس ایپ چیٹ میں بھیجیں؛ وہ آپ کو کوڈ بھیجیں گے</div>
+      <div class="licPlans2">${plans().map(x => `<button class="licPlan ${+x[0] === bestDays() && plans().length > 1 ? 'best' : ''}" onclick="AB_LIC.pay(${x[0]})">
           ${+x[0] === bestDays() && plans().length > 1 ? '<span class="rib">⭐ سب سے فائدہ مند</span>' : ''}
           <div class="pi">${+x[0] >= 365 ? '🏆' : ico[x[0]] || '📅'}</div><div class="pn">${x[1]}</div>
           <div class="pp">${rsTxt(x[2])} <small>روپے</small></div>
           <div class="pm">تقریباً <span class="num">${rsTxt(Math.round(x[2] / (x[0] / 30.4) / 10) * 10)}</span> روپے ماہانہ</div>
           ${saveTxt(x)}
-          <span class="pw">💬 واٹس ایپ پر درخواست</span>
+          <span class="pw">💳 ادائیگی اور درخواست</span>
           <span class="licSend"><span class="fly">💬</span><span>پیغام چیٹ میں جا رہا ہے…</span></span></button>`).join('')}</div>`}
       <div class="licCodeBox"><div class="lcTitle">🔑 ڈویلپر سے آیا ہوا کوڈ</div>
         <div class="lcInWrap"><span class="lcKey">🔐</span><input id="licCode" class="lcIn" placeholder="کوڈ یہاں لکھیں" autocomplete="off" spellcheck="false"></div>
@@ -220,16 +222,23 @@
     host().setPhone(el.value.trim());
     return true;
   }
-  function request(days, el) {
-    if (!takePhone()) return;
-    const s = host().settings(); const plan = plans().find(x => x[0] === days);
+  function reqMsg(days, paid) {
+    const s = host().settings(); const plan = plans().find(x => +x[0] === +days);
     const msg = (days === -1 ? 'السلام علیکم — آڑھت بک میں مزید ڈیوائس چاہیے (ابھی ' + allowed() + ' ڈیوائسز)\n' : 'السلام علیکم — آڑھت بک کی سبسکرپشن چاہیے\n')
       + 'مدت: ' + (plan ? plan[1] + ' — ' + rsTxt(plan[2]) + ' روپے' : '') + '\n'
+      + (paid && plan ? '✅ میں ' + rsTxt(plan[2]) + ' روپے آپ کے ' + PAY.kind + ' نمبر ' + showPhone(normPhone(PAY.no)) + ' (' + PAY.title + ') پر بھیج چکا ہوں۔\n'
+        + (paid.tid ? 'ٹرانزیکشن آئی ڈی: ' + paid.tid + '\n' : '') + (paid.shot ? 'ادائیگی کا اسکرین شاٹ ساتھ لگا ہے۔\n' : '')
+        + 'براہِ کرم ادائیگی کنفرم کر کے مجھے ' + plan[1] + ' کی سبسکرپشن کا کوڈ عنایت فرمائیں۔\n' : '')
       + 'آڑھت: ' + (s.shop || '') + '\n'
       + 'مالک: ' + (s.owner || '') + '\n'
       + 'موبائل: ' + showPhone(phone()) + '\n'
       + 'ڈیوائسز: ' + (days === -1 ? allowed() + 1 : allowed()) + '\n'
       + 'پتہ: ' + (s.address || '');
+    return msg;
+  }
+  function request(days, el) {
+    if (!takePhone()) return;
+    const msg = reqMsg(days);
     const url = 'https://wa.me/' + DEV_WA + '?text=' + encodeURIComponent(msg);
     if (!el) { window.open(url, '_blank'); return; }
     // دبتا ہوا بٹن + پیغام اڑتا ہوا، پھر چیٹ (کروم میں ہاتھ رکھنے کے بعد 5 سیکنڈ تک نیا صفحہ کھل سکتا ہے)
@@ -241,6 +250,52 @@
       const t = el.querySelector('.licSend span:last-child'); if (t) t.textContent = '✅ چیٹ کھل گئی — وہاں «بھیجیں» دبائیں';
       setTimeout(() => el.classList.remove('sent'), 2600);
     }, 900);
+  }
+  // ---------- 💳 ادائیگی کا قدم: ایزی پیسہ نمبر، ٹرانزیکشن آئی ڈی، اسکرین شاٹ → واٹس ایپ ----------
+  let payShot = null;
+  function pay(days) {
+    if (!takePhone()) return;
+    const plan = plans().find(x => +x[0] === +days); if (!plan) return;
+    payShot = null;
+    host().modal(`<div class="licHead"><h3>💳 ادائیگی — ${esc(plan[1])}</h3><div class="licState"><span class="num">${rsTxt(plan[2])}</span> روپے</div></div>
+      <div class="payBox"><div class="payKind">📲 ${esc(PAY.kind)}</div>
+        <div class="payNo num" dir="ltr">${esc(showPhone(normPhone(PAY.no)))}</div>
+        <div class="payTitle">اکاؤنٹ کا نام: <b dir="ltr">${esc(PAY.title)}</b></div>
+        <button class="lcBtn rs" style="padding:0 16px" onclick="AB_LIC.payCopy()">📋 نمبر کاپی کریں</button></div>
+      <div class="payStep"><b>1️⃣</b> اوپر والے ${esc(PAY.kind)} نمبر پر <b class="num">${rsTxt(plan[2])}</b> روپے بھیجیں۔</div>
+      <div class="payStep"><b>2️⃣</b> ٹرانزیکشن آئی ڈی لکھیں اور ادائیگی کا اسکرین شاٹ لگائیں۔</div>
+      <div class="f"><label>🧾 ٹرانزیکشن آئی ڈی (پیغام میں آتی ہے)</label><input id="payTid" inputmode="numeric" placeholder="مثلاً 51234567890" style="direction:ltr;text-align:center;font-family:Tahoma,Arial;font-size:20px"></div>
+      <label class="payShotBtn"><input id="payFile" type="file" accept="image/*" style="display:none" onchange="AB_LIC.payFile(this)"><span id="payShotTxt">📎 ادائیگی کا اسکرین شاٹ لگائیں</span></label>
+      <img id="payPrev" alt="" style="display:none">
+      <div class="payStep"><b>3️⃣</b> درخواست بھیجیں — کوڈ آنے پر پچھلے صفحے میں لکھ کر «چالو کریں»۔</div>
+      <div class="lcBtns" style="grid-template-columns:1fr"><button class="lcBtn go" onclick="AB_LIC.paySend(${+days})">📤 ادائیگی ہو گئی — کوڈ کی درخواست بھیجیں</button></div>
+      <div class="row" style="justify-content:center;margin-top:10px"><button class="btn light sm" onclick="AB_LIC.request(${+days})">💬 ابھی ادائیگی نہیں کی — پہلے بات کریں</button><button class="btn gray sm" onclick="AB_LIC.open()">↩️ واپس</button></div>`);
+  }
+  function payCopy() {
+    const n = PAY.no;
+    try { navigator.clipboard.writeText(n).then(() => toast('📋 نمبر کاپی ہو گیا: ' + n), () => toast(n)); } catch (e) { toast(n); }
+  }
+  function payFile(inp) {
+    const f = inp.files && inp.files[0]; if (!f) return;
+    payShot = f;
+    const im = $('payPrev'); if (im) { im.src = URL.createObjectURL(f); im.style.display = 'block'; }
+    const t = $('payShotTxt'); if (t) t.textContent = '✅ اسکرین شاٹ لگ گیا — بدلنے کے لیے دبائیں';
+  }
+  async function paySend(days) {
+    const tid = en(($('payTid') || {}).value || '').replace(/\s+/g, '');
+    if (!tid && !payShot) { toast('⚠️ ٹرانزیکشن آئی ڈی لکھیں یا اسکرین شاٹ لگائیں'); return; }
+    const msg = reqMsg(days, { tid, shot: !!payShot });
+    // تصویر کے ساتھ: فون کا «شیئر» (واٹس ایپ ← پی بی ٹی کوڈ لیبز چنیں)؛ نہ چلے تو چیٹ کھلے اور تصویر وہاں خود لگائیں
+    if (payShot) {
+      try { await navigator.clipboard.writeText(msg); } catch (e) {}
+      const file = new File([payShot], 'adaigi' + (/png/i.test(payShot.type) ? '.png' : '.jpg'), { type: payShot.type || 'image/jpeg' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try { toast('📤 واٹس ایپ چنیں، پھر «PBT Code Labs» کی چیٹ'); await navigator.share({ files: [file], text: msg }); toast('✅ درخواست بھیج دی — ڈویلپر ادائیگی دیکھ کر کوڈ بھیجیں گے'); return; }
+        catch (e) { if (e && e.name === 'AbortError') return; }
+      }
+      toast('💬 چیٹ کھل رہی ہے — پیغام لکھا ہوا ہے؛ 📎 سے اسکرین شاٹ بھی لگا دیں');
+    }
+    window.open('https://wa.me/' + DEV_WA + '?text=' + encodeURIComponent(msg), '_blank');
   }
   async function useCode() { if (!takePhone()) return; const c = ($('licCode') || {}).value; if (await activate(c)) host().closeModal(); }
   async function restore() { if (!takePhone()) return; if (await check(true)) { const m = document.querySelector('#modalBox .licState'); if (m) m.innerHTML = statusText(); } }
@@ -532,6 +587,7 @@
   }
 
   window.AB_LIC = {
+    pay, payCopy, payFile, paySend,
     prices, pAdd, pDel, pSave, on: subOn,
     status, statusText, strip, card, canWrite, allowed, overLimit, check, activate, normPhone, tap,
     open: openModal, request, useCode, restore, copy, codes, cv, cOff, cDel, shareCodes, printCodes, dev: () => devOpen(),
