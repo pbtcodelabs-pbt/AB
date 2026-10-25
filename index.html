@@ -255,10 +255,30 @@ html[data-theme="white"] .themes button{border-color:#d6d3d1;}
 .licSend .fly{font-size:30px; animation:licFly 1s ease-in forwards;}
 @keyframes licFly{0%{transform:translate(0,0) scale(1)}60%{transform:translate(-30px,-24px) scale(1.15)}100%{transform:translate(-70px,-60px) scale(.6); opacity:0}}
 @keyframes licPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
-.licCodeBox{background:var(--l0); border:1.5px dashed var(--l3); border-radius:16px; padding:8px 10px;}
-.licCodeBox input{font-family:Tahoma,Arial,sans-serif;}
-.licFoot{text-align:center; margin-top:8px; font-size:14px; color:var(--muted); line-height:1.9;}
-.licFoot b{color:var(--c4); font-weight:normal;}
+.licCodeBox{position:relative; margin:18px 2px 6px; padding:22px 12px 14px; border-radius:20px; border:2.5px solid var(--gold);
+  background:radial-gradient(circle at 85% 0,var(--c1),transparent 55%),linear-gradient(160deg,var(--c3),var(--c5));
+  box-shadow:0 7px 0 var(--c5),0 12px 20px rgba(0,0,0,.32),inset 0 2px 0 rgba(255,255,255,.25);}
+.lcTitle{position:absolute; top:-15px; left:50%; transform:translateX(-50%); white-space:nowrap; padding:0 16px; border-radius:16px; font-size:17px; line-height:1.9;
+  background:linear-gradient(180deg,#fff7d6,var(--gold)); color:var(--c5); box-shadow:0 3px 0 var(--c4),0 5px 8px rgba(0,0,0,.25);}
+.lcInWrap{position:relative;}
+.lcInWrap .lcKey{position:absolute; left:12px; top:50%; transform:translateY(-50%); font-size:24px; pointer-events:none; filter:drop-shadow(0 2px 1px rgba(0,0,0,.3));}
+.lcIn{width:100%; min-height:58px; border-radius:16px; border:3px solid var(--gold); background:linear-gradient(180deg,var(--l1),#fff 40%); color:var(--c5);
+  font-family:Tahoma,Arial,sans-serif; font-size:24px; font-weight:bold; letter-spacing:3px; text-align:center; direction:ltr; text-transform:uppercase; padding:4px 44px;
+  box-shadow:inset 0 4px 8px rgba(0,0,0,.22),0 2px 0 rgba(255,255,255,.35);}
+.lcIn::placeholder{font-family:'Noori',serif; font-weight:normal; letter-spacing:0; font-size:19px; color:var(--muted); text-transform:none;}
+.lcIn:focus{outline:none; border-color:#fff; box-shadow:inset 0 4px 8px rgba(0,0,0,.22),0 0 0 4px var(--gold),0 0 18px var(--gold);}
+.lcBtns{display:grid; grid-template-columns:1.6fr 1.3fr .8fr; gap:9px; margin-top:14px;}
+.lcBtn{border:none; border-radius:14px; min-height:50px; font-size:19px; line-height:1.8; cursor:pointer; transition:transform .08s,box-shadow .08s; -webkit-tap-highlight-color:transparent;}
+.lcBtn:active{transform:translateY(5px);}
+.lcBtn.go{color:#fff; background:linear-gradient(180deg,#4ade80,#16a34a 55%,#15803d); box-shadow:0 6px 0 #14532d,0 9px 14px rgba(0,0,0,.35),inset 0 2px 0 rgba(255,255,255,.45); text-shadow:0 1px 2px rgba(0,0,0,.35);}
+.lcBtn.go:active{box-shadow:0 1px 0 #14532d,inset 0 2px 6px rgba(0,0,0,.3);}
+.lcBtn.rs{color:var(--c5); background:linear-gradient(180deg,#fff7d6,var(--gold) 70%); box-shadow:0 6px 0 #92400e,0 9px 14px rgba(0,0,0,.35),inset 0 2px 0 #fff;}
+.lcBtn.rs:active{box-shadow:0 1px 0 #92400e,inset 0 2px 6px rgba(0,0,0,.25);}
+.lcBtn.cl{color:var(--c4); background:linear-gradient(180deg,#fff,var(--l1)); box-shadow:0 6px 0 var(--l3),0 9px 14px rgba(0,0,0,.3),inset 0 2px 0 #fff;}
+.lcBtn.cl:active{box-shadow:0 1px 0 var(--l3),inset 0 2px 6px rgba(0,0,0,.2);}
+.licFoot{margin-top:14px; padding:8px 10px; border-radius:16px; background:linear-gradient(180deg,#fff,var(--l0)); border:1.5px solid var(--l2); box-shadow:0 4px 0 var(--l2); text-align:center; font-size:14px; color:var(--muted); line-height:1.9;}
+.licFoot .dev{display:inline-flex; align-items:center; gap:6px; margin-top:4px; padding:1px 14px; border-radius:16px; background:linear-gradient(180deg,var(--c1),var(--c3)); color:#fff; font-size:16px; box-shadow:0 3px 0 var(--c5);}
+.licFoot .dev .num{color:var(--gold);}
 .dvp h3{font-size:21px !important; margin-bottom:2px !important;}
 .dvp .f label{font-size:13px; line-height:1.5;}
 .dvp .f input,.dvp .f select{min-height:36px; font-size:16px; padding:2px 8px; line-height:1.5;}
