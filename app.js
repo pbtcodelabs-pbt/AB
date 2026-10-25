@@ -1220,7 +1220,7 @@
         <div class="f"><label>موبائل نمبر</label><input id="sPhone" inputmode="tel" value="${esc(s.phone)}"></div>
         <div class="f"><label>منڈی کا پتہ</label><input id="sAddr" value="${esc(s.address)}"></div>
         <div class="f"><label>کاروبار کی تفصیل (پرچی پر)</label><input id="sTag" value="${esc(s.tagline == null ? 'سبزی فروٹ کمیشن ایجنٹ' : s.tagline)}" placeholder="مثلاً سبزی فروٹ کمیشن ایجنٹ"></div>
-        <div class="f"><label>ٹریڈ مارک</label><input id="sTm" value="${esc(s.trademark)}" placeholder="مثلاً HG"></div>
+        <div class="f"><label>ٹریڈ مارک</label><input id="sTm" value="${esc(s.trademark)}" placeholder="مثلاً ایچ جی"></div>
         <div class="f"><label>دکان نمبر</label><input id="sNo" value="${esc(s.shopNo)}" placeholder="مثلاً 16"></div></div>
         <div class="muted" style="margin-top:6px">📞 پرچی پر نام اور نمبر (سرپرست، شراکت دار…) — زیادہ سے زیادہ 4</div>
         <div class="grid2 wideable">${[0, 1, 2, 3].map(i => { const c = (s.contacts || [])[i] || {}; return `<div class="f"><input id="sCn${i}" value="${esc(c.n)}" placeholder="نام"></div><div class="f"><input id="sCp${i}" inputmode="tel" value="${esc(c.p)}" placeholder="نمبر"></div>`; }).join('')}</div>
