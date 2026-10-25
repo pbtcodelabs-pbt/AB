@@ -32,7 +32,7 @@ eq('fmt پیسے', C.fmt(12345), '123.45');
   const r = C.calcParchi(p, ch);
   eq('فروٹ: کل بکری', r.gross, R(220000));
   eq('فروٹ: کمیشن 7.25٪', r.zCharges[0].amount, R(15950));
-  eq('فروٹ: منڈی خرچہ', r.zCharges[1].amount, R(50));
+  eq('فروٹ: مارکیٹ فیس', r.zCharges[1].amount, R(50));
   eq('فروٹ: چنگی ہاتھ سے', r.zCharges[2].amount, R(300));
   eq('فروٹ: گاڑی کا کرایہ', r.zCharges[3].amount, R(12000));
   eq('فروٹ: مزدوری فی نگ', r.zCharges[4].amount, R(1500));

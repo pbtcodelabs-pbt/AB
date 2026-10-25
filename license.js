@@ -238,7 +238,7 @@
         <div class="f" id="dvCw"><label>کتنے دن؟</label><input id="dvC" inputmode="numeric" placeholder="1 سے 3650"></div>
         <div class="f" style="grid-column:1/-1"><label>کتنی ڈیوائسز؟ (3 شامل؛ ہر زیادہ ڈیوائس 5,000 سالانہ)</label><input id="dvDev" inputmode="numeric" value="3"></div></div>
       <div id="dvInfo" class="muted"></div>
-      <div class="row" style="justify-content:center;margin-top:6px"><button class="btn light" id="dvChk">🔍 نمبر دیکھیں</button><button class="btn" id="dvMake">🎁 کوڈ بنائیں</button><button class="btn light" onclick="AB_LIC.codes()">📋 سب کوڈ</button><button class="btn gray" onclick="App.closeModal()">بند</button></div>
+      <div class="row" style="justify-content:center;margin-top:6px"><button class="btn light" id="dvChk">🔍 نمبر دیکھیں</button><button class="btn" id="dvMake">🎁 کوڈ بنائیں</button><button class="btn light" onclick="AB_LIC.codes()">📋 سب کوڈ</button><button class="btn light" onclick="AB_LBL.open()">📝 الفاظ</button><button class="btn gray" onclick="App.closeModal()">بند</button></div>
       <div id="dvOut"></div>
       <details><summary>📊 فائربیس کا استعمال (مفت پیکج)</summary><div id="uBox" class="uBox"></div></details></div>`);
     if (window.AB_USAGE) AB_USAGE.render('uBox');
