@@ -25,6 +25,7 @@
 
   async function draw(spec, opt) {
     opt = opt || {};
+    if (window.AB_LBL) spec = AB_LBL.Lspec(spec);   // منڈی کی زبان کے الفاظ
     await fonts();
     const th = !!opt.thermal;
     // تھرمل: منطقی چوڑائی 420 (58 ملی میٹر پر لکھائی پڑھنے لائق رہے)، کینوس = پرنٹر کے نقطے
@@ -34,7 +35,7 @@
     const ROW = th ? 40 : 46, LINE = th ? 42 : 50, MROW = th ? 34 : 40;
     const cols = spec.cols || [], rows = spec.rows || [], lines = spec.lines || [], meta = spec.meta || [];
     const mcol = th ? 1 : 2;
-    const HEAD = th ? (spec.sub ? 92 : 62) : 130, TITLE = th ? 46 : 62;
+    const HEAD = (th ? (spec.sub ? 92 : 62) : 130) + (spec.sub2 ? (th ? 26 : 32) : 0), TITLE = th ? 46 : 62;
     const H = HEAD + TITLE + 14 + Math.ceil(meta.length / mcol) * MROW + 10 + (cols.length ? 44 + rows.length * ROW + 16 : 0) + lines.length * LINE + (th ? 60 : 70);
     const k = th ? DOTS[opt.thermal] / W : 2;
     const cv = document.createElement('canvas');
@@ -48,6 +49,7 @@
     fit(ctx, spec.shop || 'آڑھت بک', W - 2 * PAD, th ? 40 : 52, "'NooriKasheeda', " + UR);
     ctx.fillText(spec.shop || 'آڑھت بک', W / 2, th ? 46 : 62);
     if (spec.sub) { fit(ctx, spec.sub, W - 2 * PAD, th ? 20 : 24, UR); ctx.fillStyle = th ? '#000' : '#fde68a'; ctx.fillText(spec.sub, W / 2, th ? 80 : 108); }
+    if (spec.sub2) { fit(ctx, spec.sub2, W - 2 * PAD, th ? 18 : 21, UR); ctx.fillStyle = th ? '#000' : '#fff'; ctx.fillText(spec.sub2, W / 2, (th ? 80 : 108) + (th ? 24 : 30)); }
     let y = HEAD;
     // عنوان
     if (th) { ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(PAD, y + 2); ctx.lineTo(W - PAD, y + 2); ctx.moveTo(PAD, y + TITLE - 2); ctx.lineTo(W - PAD, y + TITLE - 2); ctx.stroke(); }

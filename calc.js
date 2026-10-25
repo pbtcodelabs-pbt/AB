@@ -23,19 +23,21 @@
   const TEMPLATES = {
     fruit: { label: '🍎 فروٹ منڈی آڑھت', list: () => [
       ch('کمیشن', 'percent', 725, 'zamindar', true),
-      ch('منڈی خرچہ', 'fixed', 5000, 'zamindar', false),
+      ch('مارکیٹ فیس', 'fixed', 5000, 'zamindar', false),
       ch('چنگی', 'manual', 0, 'zamindar', false),
       ch('گاڑی کا کرایہ', 'manual', 0, 'zamindar', false),
       ch('مزدوری (اتروائی)', 'perNag', 1000, 'zamindar', false),
+      ch('منشیانہ', 'manual', 0, 'zamindar', true),
       ch('خریدار کا کمیشن', 'percent', 100, 'buyer', true),
       ch('مزدوری (لدوائی)', 'perNag', 500, 'buyer', false)
     ]},
     sabzi: { label: '🥬 سبزی منڈی آڑھت', list: () => [
       ch('کمیشن', 'percent', 725, 'zamindar', true),
-      ch('منڈی خرچہ', 'fixed', 4000, 'zamindar', false),
+      ch('مارکیٹ فیس', 'fixed', 4000, 'zamindar', false),
       ch('چنگی', 'manual', 0, 'zamindar', false),
       ch('گاڑی کا کرایہ', 'manual', 0, 'zamindar', false),
       ch('مزدوری (اتروائی)', 'perNag', 500, 'zamindar', false),
+      ch('منشیانہ', 'manual', 0, 'zamindar', true),
       ch('خریدار کا کمیشن', 'percent', 100, 'buyer', true),
       ch('مزدوری (لدوائی)', 'perNag', 300, 'buyer', false)
     ]},

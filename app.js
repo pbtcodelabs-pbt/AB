@@ -8,8 +8,8 @@
    ===================================================================== */
 (function(){
   'use strict';
-  const APP_VERSION = 'AB2410SA026';
-  const UPDATE_NOTE = 'کمپیوٹر کی نئی ایپ: ہر اپڈیٹ خود آئے گی، گوگل ڈرائیو بیک اپ بھی';
+  const APP_VERSION = 'AB2510SU027';
+  const UPDATE_NOTE = 'الفاظ اپنی منڈی کی زبان میں (بیوپاری / گاہک…)؛ پرچی کا سر منڈی جیسا؛ نقد، منشیانہ، مارکیٹ فیس؛ کھاتے میں جمع / بنام';
   const C = window.ABCalc;
   // ---------- اردو / عربی کی بورڈ کے ہندسے (۰۱۲… / ٠١٢…) لکھتے ہی 0-9 میں — ورنہ رقم، نمبر اور کوڈ نہیں پہچانے جاتے ----------
   document.addEventListener('input', e => {
@@ -377,6 +377,7 @@
             <div class="f"><label>گاؤں / شہر</label><input value="${esc(p.place)}" placeholder="مثلاً ساہیوال" oninput="App.pset('place',this.value)"></div>
             <div class="f"><label>گاڑی نمبر</label><input value="${esc(p.vehicle)}" placeholder="گاڑی کا نمبر" oninput="App.pset('vehicle',this.value)"></div>
             <div class="f"><label>بلٹی نمبر</label><input value="${esc(p.bilty)}" placeholder="بلٹی" oninput="App.pset('bilty',this.value)"></div>
+            <div class="f"><label>نقد (ابھی زمیندار کو دیا)</label><input inputmode="decimal" value="${esc(inRs(p.cashNow))}" placeholder="0" oninput="App.pset('cashNow',this.value)"></div>
             <div class="f"><label>نوٹ</label><input value="${esc(p.note)}" placeholder="اختیاری" oninput="App.pset('note',this.value)"></div>
           </div></div>
         <div class="card"><h3>🧺 بکری — کس خریدار کو، کتنے نگ، کس ریٹ پر</h3>
@@ -455,9 +456,10 @@
   function zPrevHtml(p, r){
     const z = p.zamindarId ? party(p.zamindarId) : findParty('zamindar', p.zamindar); if(!z) return '';
     const old = DB.parchis.find(x => x.id === p.id && !x.deleted);
-    const prior = ledger(z.id).bal - (old ? calcParchi(old, old.chargesSnap || chargesList()).net : 0);
+    const lc = DB.cash.find(c => c.id === 'pc_' + p.id && !c.deleted);
+    const prior = ledger(z.id).bal - (old ? calcParchi(old, old.chargesSnap || chargesList()).net : 0) + (lc ? lc.amount : 0);
     if(!prior) return '';
-    const after = prior + r.net;
+    const after = prior + r.net - int(p.cashNow);
     return `<table class="t" style="margin-top:4px"><tr><td>${prior < 0 ? '➖ پہلے سے پیشگی / لینے ہیں' : '➕ پچھلا بقایا (دینے ہیں)'}</td><td class="v">${fmt(Math.abs(prior))}</td></tr>
       <tr class="tot"><td>اس پرچی کے بعد کل — ${balText('zamindar', after)}</td><td class="v">${fmt(Math.abs(after))}</td></tr></table>`;
   }
@@ -468,7 +470,8 @@
       <table class="t"><tr><th>کل بکری (${r.nag} نگ)</th><th class="v">${fmt(r.gross)}</th></tr>
       ${r.zCharges.map(x => `<tr><td>➖ ${esc(x.name)} ${tag(x)}</td><td class="v">${fmt(x.amount)}</td></tr>`).join('')}
       <tr class="tot"><td>کل کٹوتی</td><td class="v">${fmt(r.zTotal)}</td></tr>
-      <tr class="net"><td>زمیندار کو صاف رقم</td><td class="v">${fmt(r.net)}</td></tr></table>${forPrint ? '' : zPrevHtml(p, r)}</div>`;
+      <tr class="net"><td>زمیندار کو صاف رقم</td><td class="v">${fmt(r.net)}</td></tr>
+      ${int(p.cashNow) ? `<tr><td>➖ نقد (ابھی دیا)</td><td class="v">${fmt(int(p.cashNow))}</td></tr><tr class="tot"><td>باقی دینے ہیں</td><td class="v">${fmt(r.net - int(p.cashNow))}</td></tr>` : ''}</table>${forPrint ? '' : zPrevHtml(p, r)}</div>`;
     h += `<div class="card"><h3>🧑‍💼 خریداروں کا حساب</h3>${r.buyers.length ? r.buyers.map(b => `
       <table class="t" style="margin-bottom:8px"><tr><th>${esc(b.name)} (${b.nag} نگ) — مال</th><th class="v">${fmt(b.goods)}</th></tr>
       ${b.charges.map(x => `<tr><td>➕ ${esc(x.name)} ${tag(x)}</td><td class="v">${fmt(x.amount)}</td></tr>`).join('')}
@@ -523,17 +526,23 @@
       DB.parchis.push(snap);
       logIt('نئی پرچی ' + snap.no + ': ' + snap.zamindar + ' — بکری ' + fmt(snap.totals.gross), snap.id);
     }
+    // «نقد» جو گاڑی آتے ہی زمیندار کو دیا — اسی پرچی سے جڑی ادائیگی (کھاتے میں خود)
+    { const cid = 'pc_' + snap.id, amt = int(snap.cashNow); let c = DB.cash.find(x => x.id === cid);
+      if(amt > 0){ if(!c){ c = { id: cid, kind: 'pay', at: Date.now(), by: (me() || {}).name || '' }; DB.cash.push(c); }
+        Object.assign(c, { partyId: snap.zamindarId, amount: amt, date: snap.date, method: 'نقد', note: 'پرچی نمبر ' + snap.no + ' کے ساتھ', parchiId: snap.id }); delete c.deleted; put('cash'); }
+      else if(c && !c.deleted){ c.deleted = Date.now(); put('cash'); } }
     if(put('parchis')){ cur = JSON.parse(JSON.stringify(snap)); toast('✅ پرچی نمبر ' + snap.no + ' محفوظ — کھاتوں میں درج'); render(); }
   }
 
   // ---------- پرنٹ ----------
   function printDoc(title, body){
+    if(window.AB_LBL){ title = AB_LBL.L(title); body = AB_LBL.L(body); }
     const w = window.open('', '_blank'); if(!w){ toast('⚠️ پرنٹ والا صفحہ نہیں کھل سکا'); return; }
     const css = [...document.querySelectorAll('style')].map(s => s.textContent).join('\n');
     w.document.write(`<!DOCTYPE html><html lang="ur" dir="rtl"><head><meta charset="utf-8"><title>${esc(title)}</title><base href="${esc(location.href.replace(/[^/]*$/, ''))}">
       <style>${css} body{background:#fff !important; margin:8mm; font-size:16px;} .card{box-shadow:none; border:1px solid #999; break-inside:avoid;} .t tr.net td{background:#eee; color:#000;}
       .ph{text-align:center; border-bottom:3px double #7f1d1d; margin-bottom:8px;} .ph h1{font-family:'NooriKasheeda',serif; font-weight:normal; margin:0; font-size:32px; color:#7f1d1d;} .ph div{font-size:15px;}</style></head>
-      <body><div class="ph"><h1>${esc(shopName())}</h1><div>${esc(DB.settings.address || '')} ${DB.settings.phone ? '• فون ' + esc(DB.settings.phone) : ''}</div></div>${body}
+      <body><div class="ph"><h1>${esc(shopName())}</h1><div>${esc(shopSub())}</div><div>${esc(shopContacts())}</div><div>${esc(shopFoot())}</div></div>${body}
       <div class="muted" style="text-align:center;margin-top:10px">آڑھت بک سے بنی پرچی • ${esc(urDate(today()))}</div><script>setTimeout(function(){print()},600)<\/script></body></html>`);
     w.document.close();
   }
@@ -553,7 +562,11 @@
   }
 
   // ---------- 📤 واٹس ایپ: پرچی / بل کی تصویر (receipt.js) — پہلے ایپ میں دکھے، پھر بھیجیں ----------
-  function shopSub(){ const s = DB.settings; return [s.address, s.phone].filter(Boolean).join(' • '); }
+  // پرچی کا سر اور نیچے کا حصہ — منڈی کی چھپی پرچی جیسا
+  function shopTag(){ const s = DB.settings; return s.tagline == null ? 'سبزی فروٹ کمیشن ایجنٹ' : s.tagline; }
+  function shopContacts(){ const s = DB.settings; const cs = (s.contacts || []).filter(c => c.n || c.p); return cs.length ? cs.map(c => [c.n, c.p].filter(Boolean).join(' ')).join(' • ') : (s.phone ? [s.owner, s.phone].filter(Boolean).join(' ') : ''); }
+  function shopFoot(){ const s = DB.settings; return [s.shopNo ? 'دکان نمبر ' + s.shopNo : '', s.address].filter(Boolean).join(' • '); }
+  function shopSub(){ const s = DB.settings; return [shopTag(), s.trademark ? 'ٹریڈ مارک ' + s.trademark : ''].filter(Boolean).join(' • '); }
   function partyBal(pid){ return pid ? ledger(pid).bal : null; }
   function zamindarSpec(p, r){
     const z = p.zamindarId, bal = partyBal(z);
@@ -562,9 +575,10 @@
       cols: [{ t: 'جنس', w: 3 }, { t: 'خریدار', w: 3 }, { t: 'نگ', w: 1.4, num: 1 }, { t: 'ریٹ', w: 2 }, { t: 'رقم', w: 2.4, num: 1 }],
       rows: r.lines.map(l => [l.item, l.buyer, l.nag || (l.grams ? (int(l.grams) / 1000) + ' کلو' : ''), fmt(int(l.rate)) + (l.basis === 'maund' ? ' / من' : ''), fmt(lineAmount(l))]),
       lines: [['کل بکری (' + r.nag + ' نگ)', fmt(r.gross), '']].concat(r.zCharges.filter(x => x.amount).map(x => ['➖ ' + x.name, fmt(x.amount), '']))
-        .concat([['کل کٹوتی', fmt(r.zTotal), 'tot'], ['زمیندار کو صاف رقم (روپے)', fmt(r.net), 'net']])
+        .concat([['کل کٹوتی', fmt(r.zTotal), 'tot'], ['زمیندار کو صاف رقم (روپے)', fmt(r.net), int(p.cashNow) ? 'tot' : 'net']])
+        .concat(int(p.cashNow) ? [['➖ نقد (ابھی دیا)', fmt(int(p.cashNow)), ''], ['باقی دینے ہیں (روپے)', fmt(r.net - int(p.cashNow)), 'net']] : [])
         .concat(bal != null ? [['کھاتے کا کل بقایا — ' + balText('zamindar', bal), fmt(Math.abs(bal)), 'tot']] : []),
-      foot: 'آڑھت بک • ' + urDate(today()) };
+      sub2: shopContacts(), foot: [shopFoot(), urDate(today())].filter(Boolean).join(' • ') };
   }
   function buyerSpec(p, r, b){
     const bal = partyBal(b.id);
@@ -576,7 +590,7 @@
       lines: [['مال کی رقم (' + b.nag + ' نگ)', fmt(b.goods), '']].concat(b.charges.filter(x => x.amount).map(x => ['➕ ' + x.name, fmt(x.amount), '']))
         .concat([['اس بل کی کل رقم (روپے)', fmt(b.total), 'net']])
         .concat(bal != null ? [['کھاتے کا کل بقایا — ' + balText('buyer', bal), fmt(Math.abs(bal)), 'tot']] : []),
-      foot: 'آڑھت بک • ' + urDate(today()) };
+      sub2: shopContacts(), foot: [shopFoot(), urDate(today())].filter(Boolean).join(' • ') };
   }
   async function shareParchi(kind, key){
     if(!cur || !cur.no){ toast('⚠️ پہلے پرچی محفوظ کریں'); return; }
@@ -620,7 +634,7 @@
     mm = mm || rcptMM();
     try{ localStorage.setItem('ab_rcpt', String(mm)); }catch(e){}
     const spec = kind === 'z' ? zamindarSpec(cur, r) : buyerSpec(cur, r, r.buyers[+key]);
-    spec.foot = 'آڑھت بک • ' + urDate(today()) + ' • ' + urTime(Date.now());
+    spec.foot = [shopFoot(), urDate(today()) + ' ' + urTime(Date.now())].filter(Boolean).join(' • ');
     const cv = await AB_RECEIPT.draw(spec, { thermal: mm });
     shareCv = { cv, file: (kind === 'z' ? 'rcpt-' + cur.no : 'rcpt-' + cur.no + '-' + (+key + 1)) + '.png', thermal: mm };
     const bt = AB_RECEIPT.btSupported();
@@ -681,9 +695,11 @@
     if(!(await ownerOk())) return;
     if(!(await unlockFor(p.date))) return;
     if(!(await ask('پرچی نمبر ' + p.no + ' (' + esc(p.zamindar) + ') ردی کی ٹوکری میں چلی جائے گی اور کھاتوں سے نکل جائے گی۔ بعد میں واپس لائی جا سکتی ہے۔'))) return;
-    p.deleted = Date.now(); put('parchis'); logIt('پرچی ' + p.no + ' ردی میں', p.id); render(); toast('🗑️ ردی کی ٹوکری میں');
+    p.deleted = Date.now(); put('parchis');
+    { const c = DB.cash.find(x => x.id === 'pc_' + p.id && !x.deleted); if(c){ c.deleted = Date.now(); c.byParchi = 1; put('cash'); } }
+    logIt('پرچی ' + p.no + ' ردی میں', p.id); render(); toast('🗑️ ردی کی ٹوکری میں');
   }
-  async function restoreParchi(id){ const p = DB.parchis.find(x => x.id === id); if(!p) return; if(!(await ownerOk())) return; delete p.deleted; put('parchis'); logIt('پرچی ' + p.no + ' واپس', p.id); render(); toast('✅ پرچی واپس آ گئی'); }
+  async function restoreParchi(id){ const p = DB.parchis.find(x => x.id === id); if(!p) return; if(!(await ownerOk())) return; delete p.deleted; put('parchis'); { const c = DB.cash.find(x => x.id === 'pc_' + p.id && x.byParchi); if(c){ delete c.deleted; delete c.byParchi; put('cash'); } } logIt('پرچی ' + p.no + ' واپس', p.id); render(); toast('✅ پرچی واپس آ گئی'); }
 
   // =====================================================================
   //   زمیندار / خریدار
@@ -715,7 +731,8 @@
   };
   function ledgerTable(p, L){
     const z = p.type === 'zamindar';
-    return `<table class="t"><tr><th>تاریخ</th><th>تفصیل</th><th class="v">${z ? 'جمع' : 'نام'}</th><th class="v">${z ? 'ادا' : 'وصول'}</th><th class="v">بقایا</th></tr>
+    // منشی کی زبان: زمیندار کو مال کی رقم «جمع»، ادائیگی «بنام»؛ خریدار پر مال «بنام»، وصولی «جمع»
+    return `<table class="t"><tr><th>تاریخ</th><th>تفصیل</th><th class="v">${z ? 'جمع' : 'بنام'}</th><th class="v">${z ? 'بنام' : 'جمع'}</th><th class="v">بقایا</th></tr>
       ${L.rows.map(r => `<tr ${r.parchi ? `onclick="App.go('parchi','${r.parchi}')" style="cursor:pointer"` : ''}><td>${esc(urDate(r.date))}</td><td>${esc(r.text)}</td>
         <td class="v">${r.amt > 0 ? fmt(r.amt) : ''}</td><td class="v">${r.amt < 0 ? fmt(-r.amt) : ''}</td><td class="v">${fmt(r.bal)}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">ابھی کوئی اندراج نہیں</td></tr>'}</table>`;
   }
@@ -996,7 +1013,7 @@
     const rep = rpBuild(RP.tab);
     const cols = rep.cols.map((c, i) => ({ t: c[0], w: i === 0 ? 2.6 : 1.4, num: c[1] }));
     const rows = rep.rows.concat(rep.total ? [rep.total] : []);
-    const cv = await AB_RECEIPT.draw({ shop: shopName(), sub: shopSub(), title: '📊 ' + rep.title, meta: [['مدت', rep.noRange ? 'پچھلے 12 مہینے' : rpRange()]], cols, rows, lines: [], foot: 'آڑھت بک • ' + urDate(today()) });
+    const cv = await AB_RECEIPT.draw({ shop: shopName(), sub: shopSub(), title: '📊 ' + rep.title, meta: [['مدت', rep.noRange ? 'پچھلے 12 مہینے' : rpRange()]], cols, rows, lines: [], sub2: shopContacts(), foot: [shopFoot(), urDate(today())].filter(Boolean).join(' • ') });
     shareCv = { cv, file: 'report-' + RP.tab + '.png' };
     modal(`<h3>📊 ${esc(rep.title)}</h3><img src="${cv.toDataURL('image/png')}" style="width:100%;border-radius:10px;border:1px solid var(--l3)" alt="">
       <div class="row" style="justify-content:center;margin-top:8px"><button class="btn wa" onclick="App.shareSend()">📤 بھیجیں</button><button class="btn light" onclick="App.shareSave()">⬇️ محفوظ کریں</button><button class="btn gray" onclick="App.closeModal()">بند</button></div>`);
@@ -1108,7 +1125,7 @@
     if(!(await ask('بیک اپ: «' + esc(st.shop || '') + '» — ' + esc(b.at ? b.at.slice(0, 10) : '') + ' — ' + np + ' پرچیاں۔ موجودہ ریکارڈ اس سے بدل جائے گا۔ جاری رکھیں؟', 'واپس لائیں'))) return false;
     try{ const db = await idb(); const tx = db.transaction('kv', 'readwrite'); const s = tx.objectStore('kv'); KEYS.forEach(k => { const v = localStorage.getItem(k); if(v != null) s.put(v, 'before_import_' + k); }); }catch(e){}
     KEYS.forEach(k => { if(b.data[k] != null) localStorage.setItem(k, b.data[k]); else localStorage.removeItem(k); });
-    loadAll(); safeCopy(); logIt('بیک اپ واپس لایا گیا (' + (b.at || '') + ')'); curUser = ownerUser(); go('home'); toast('✅ بیک اپ واپس آ گیا');
+    loadAll(); safeCopy(); if(window.AB_LBL) AB_LBL.install(); logIt('بیک اپ واپس لایا گیا (' + (b.at || '') + ')'); curUser = ownerUser(); go('home'); toast('✅ بیک اپ واپس آ گیا');
     // مالک کی بیک اپ اور یہ آلہ کلاؤڈ سے نہیں جڑا: جڑ کر دوبارہ مالک بنیں
     if(b.cloudOwner && window.AB_CLOUD && !AB_CLOUD.on() && navigator.onLine){
       if(await ask('یہ بیک اپ کلاؤڈ والی آڑھت کے مالک کا ہے۔ یہ ڈیوائس آڑھت سے جوڑ کر دوبارہ مالک بنا دیں؟', 'جوڑیں اور مالک بنیں')){
@@ -1138,6 +1155,7 @@
   }
   window.AB_HOST = { snapshot, apply: applyBackup, toast, version: APP_VERSION, fileName: backupFileName, count: () => liveParchis().length,
     settings: () => DB.settings,
+    setLabels(m){ DB.settings.labels = m; put('settings'); logIt('الفاظ بدلے: ' + Object.keys(m).length); if(window.AB_LBL) AB_LBL.install(); render(); },
     modal, closeModal, ask,
     setPhone(v){ DB.settings.phone = v; put('settings'); logIt('مالک کا موبائل نمبر: ' + v); },
     refreshHome(){ if(screen === 'home' && DB.settings.registered && me()) render(); },
@@ -1164,6 +1182,7 @@
       if(!changed.size) return 0;
       changed.forEach(c => { try{ localStorage.setItem('ab_' + c, JSON.stringify(DB[c])); }catch(e){} });
       safeCopy();
+      if(changed.has('settings') && window.AB_LBL) AB_LBL.install();   // دوسری ڈیوائس سے بدلے الفاظ
       // لکھتے ہوئے فارم کو نہ مٹائیں — صرف دیکھنے والی اسکرینیں تازہ
       if(['home', 'parchis', 'zamindar', 'buyer', 'party', 'roznamcha', 'settings'].includes(screen) && !$('modal').classList.contains('open')) render();
       else if(!DB.settings.registered) render();
@@ -1199,7 +1218,12 @@
         <div class="f"><label>آڑھت / دکان کا نام</label><input id="sShop" value="${esc(s.shop)}"></div>
         <div class="f"><label>مالک کا نام</label><input id="sOwner" value="${esc(s.owner)}"></div>
         <div class="f"><label>موبائل نمبر</label><input id="sPhone" inputmode="tel" value="${esc(s.phone)}"></div>
-        <div class="f"><label>منڈی کا پتہ</label><input id="sAddr" value="${esc(s.address)}"></div></div>
+        <div class="f"><label>منڈی کا پتہ</label><input id="sAddr" value="${esc(s.address)}"></div>
+        <div class="f"><label>کاروبار کی تفصیل (پرچی پر)</label><input id="sTag" value="${esc(s.tagline == null ? 'سبزی فروٹ کمیشن ایجنٹ' : s.tagline)}" placeholder="مثلاً سبزی فروٹ کمیشن ایجنٹ"></div>
+        <div class="f"><label>ٹریڈ مارک</label><input id="sTm" value="${esc(s.trademark)}" placeholder="مثلاً ایچ جی"></div>
+        <div class="f"><label>دکان نمبر</label><input id="sNo" value="${esc(s.shopNo)}" placeholder="مثلاً 16"></div></div>
+        <div class="muted" style="margin-top:6px">📞 پرچی پر نام اور نمبر (سرپرست، شراکت دار…) — زیادہ سے زیادہ 4</div>
+        <div class="grid2 wideable">${[0, 1, 2, 3].map(i => { const c = (s.contacts || [])[i] || {}; return `<div class="f"><input id="sCn${i}" value="${esc(c.n)}" placeholder="نام"></div><div class="f"><input id="sCp${i}" inputmode="tel" value="${esc(c.p)}" placeholder="نمبر"></div>`; }).join('')}</div>
         <button class="btn" style="margin-top:8px" onclick="App.saveSettings()">💾 محفوظ</button></div>
       <div class="card"><h3>🎨 رنگ</h3><div class="themesCard">${themePicker()}</div><div class="muted">رنگ صرف اس ڈیوائس پر بدلتا ہے؛ ریکارڈ پر کوئی اثر نہیں۔</div></div>
       <div class="card"><h3>🔒 مالک کا پن</h3><div class="muted">پن لگانے سے ایپ کھلتے وقت پن پوچھے گی، اور بند دن کی تبدیلی بھی صرف اسی سے ہوگی۔ ${hasOwnerPin() ? '✅ پن لگا ہوا ہے' : '❌ ابھی پن نہیں لگا'}</div>
@@ -1210,7 +1234,9 @@
       <div class="card plain"><div class="muted">ورژن: <span class="num">${APP_VERSION}</span></div></div>`;
   };
   function saveSettings(){
-    Object.assign(DB.settings, { shop: $('sShop').value.trim() || DB.settings.shop, owner: $('sOwner').value.trim(), phone: $('sPhone').value.trim(), address: $('sAddr').value.trim() });
+    Object.assign(DB.settings, { shop: $('sShop').value.trim() || DB.settings.shop, owner: $('sOwner').value.trim(), phone: $('sPhone').value.trim(), address: $('sAddr').value.trim(),
+      tagline: $('sTag').value.trim(), trademark: $('sTm').value.trim(), shopNo: $('sNo').value.trim(),
+      contacts: [0, 1, 2, 3].map(i => ({ n: $('sCn' + i).value.trim(), p: $('sCp' + i).value.trim() })).filter(c => c.n || c.p) });
     put('settings'); logIt('آڑھت کی معلومات بدلیں'); render(); toast('✅ محفوظ'); if(window.AB_LIC) AB_LIC.check(false);
   }
   // پن ایک دوسرے کے آگے والے حصے نہ ہوں (1234 اور 12345 ساتھ نہیں — ورنہ چار ہندسوں پر ہی پہلا کھل جائے)
@@ -1306,7 +1332,7 @@
     logout(){ curUser = null; pinBuf = ''; menu(false); render(); },
     setTheme(k){ try{ localStorage.setItem('ab_theme', k); }catch(e){} applyTheme(k); render(); }, verTap(){ if(window.AB_LIC && AB_LIC.tap()) return; toast('ورژن ' + APP_VERSION); },
     newParchi(){ cur = blankParchi(); render(); },
-    pset(k, v){ cur[k] = v; if(k === 'zamindar' || k === 'place' || k === 'vehicle') renderResult(); if(k === 'date') render(); },
+    pset(k, v){ cur[k] = k === 'cashNow' ? toPaisa(v) : v; if(k === 'zamindar' || k === 'place' || k === 'vehicle' || k === 'cashNow') renderResult(); if(k === 'date') render(); },
     lset(i, k, v){ const l = cur.lines[i]; if(!l) return; if(k === 'rate') l.rate = toPaisa(v); else if(k === 'grams') l.grams = toGrams(v); else if(k === 'nag') l.nag = String(v).replace(/[^\d]/g, ''); else l[k] = v; if(k === 'buyer') delete l.buyerId; renderResult(); },
     pman(id, v){ if(String(v).trim() === '') delete cur.manual[id]; else cur.manual[id] = toPaisa(v); renderResult(); },
     addLine(){ const last = cur.lines[cur.lines.length - 1] || {}; cur.lines.push(Object.assign(blankLine(), { item: last.item || '', basis: last.basis || 'nag' })); render(); },
@@ -1342,6 +1368,7 @@
     $('verBadge').textContent = APP_VERSION; applyTheme(curTheme());
     const restored = await safeRestoreIfEmpty();
     loadAll();
+    if(window.AB_LBL) AB_LBL.install();
     try{ history.replaceState({ s: 'home', a: null }, ''); }catch(e){}
     render();
     if(restored) toast('🛡️ ریکارڈ حفاظتی کاپی سے واپس آ گیا');
