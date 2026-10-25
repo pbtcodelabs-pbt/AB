@@ -73,7 +73,7 @@
     if (s.paid && s.forever) return '✅ سبسکرپشن چالو — ہمیشہ کے لیے';
     if (s.paid) return `✅ سبسکرپشن چالو — <span class="num">${s.days}</span> دن باقی (${urDay(s.exp)} تک)`;
     if (s.ok) return `🎁 مفت آزمائش — <span class="num">${s.days}</span> دن باقی`;
-    return '⛔ سبسکرپشن ختم — آپ کا ریکارڈ محفوظ ہے اور دیکھ سکتے ہیں، مگر نیا اندراج بند ہے';
+    return (paidExp() ? '⛔ سبسکرپشن ختم' : '⛔ 14 دن کی مفت آزمائش ختم') + ' — آپ کا ریکارڈ محفوظ ہے اور دیکھ سکتے ہیں، مگر نیا اندراج بند ہے';
   }
 
   // ---------- فائربیس (گمنام شناخت cloud.js والی) ----------
@@ -148,28 +148,27 @@
         <div class="row" style="justify-content:center;margin-top:8px"><button class="btn" onclick="AB_LIC.request(-1)">💬 مزید ڈیوائس — ڈویلپر سے بات</button><button class="btn gray" onclick="App.closeModal()">بند</button></div>`);
       return false;
     }
-    if (status().ok || !subOn()) return true;
-    toast('⛔ سبسکرپشن ختم — نیا اندراج بند ہے');
+    if (status().ok) return true;
+    toast(paidExp() ? '⛔ سبسکرپشن ختم — نیا اندراج بند ہے' : '⛔ مفت آزمائش ختم — نیا اندراج بند ہے');
     openModal();
     return false;
   }
 
   // ---------- ہوم کی پٹی ----------
+  // سبسکرپشن چھپی ہو (subOn بند) تب بھی 14 دن کی مفت آزمائش دکھے اور اس کی پابندی رہے؛ صرف قیمتیں / سبسکرپشن بٹن نہیں
   function strip() {
-    if (!subOn()) return '';
     const s = status();
     if (s.paid && (s.forever || s.days > 5)) return '';
     const cls = !s.ok ? 'off' : s.paid ? 'warn' : 'trial';
-    return `<div class="licStrip ${cls}" onclick="AB_LIC.open()"><div>${!s.ok ? '⛔ سبسکرپشن ختم — نیا اندراج بند (ریکارڈ محفوظ ہے)' : s.paid ? `⏳ سبسکرپشن کے <span class="num">${s.days}</span> دن باقی` : `🎁 مفت آزمائش: <span class="num">${s.days}</span> دن باقی`}</div><button class="btn gold sm">📜 سبسکرپشن</button></div>`;
+    return `<div class="licStrip ${cls}" onclick="AB_LIC.open()"><div>${!s.ok ? (paidExp() ? '⛔ سبسکرپشن ختم' : '⛔ مفت آزمائش ختم') + ' — نیا اندراج بند (ریکارڈ محفوظ ہے)' : s.paid ? `⏳ سبسکرپشن کے <span class="num">${s.days}</span> دن باقی` : `🎁 مفت آزمائش: <span class="num">${s.days}</span> دن باقی`}</div>${subOn() ? '<button class="btn gold sm">📜 سبسکرپشن</button>' : !s.ok ? '<button class="btn gold sm">🔑 کوڈ</button>' : ''}</div>`;
   }
   // ---------- سیٹنگ کا خانہ ----------
   function card() {
-    if (!subOn()) return '';
     const p = phone();
     return `<div class="card"><h3>📜 سبسکرپشن</h3><div class="licState">${statusText()}</div>
       <div class="muted">شامل ڈیوائسز: <span class="num">${allowed()}</span> (ایک فون پر کئی ملازم اپنے پن سے = ایک ڈیوائس)</div>
       <div class="muted">مالک کا موبائل نمبر: <span class="num">${esc(showPhone(p) || '—')}</span> — سبسکرپشن اسی نمبر پر ہے؛ نیا فون ہو یا ایپ دوبارہ لگے تو «بحال کریں» سے خود واپس آ جاتی ہے۔</div>
-      <div class="row" style="margin-top:6px"><button class="btn" onclick="AB_LIC.open()">📜 سبسکرپشن لیں / کوڈ لکھیں</button><button class="btn light" onclick="AB_LIC.check(true)">🔄 بحال کریں</button></div></div>`;
+      <div class="row" style="margin-top:6px"><button class="btn" onclick="AB_LIC.open()">${subOn() ? '📜 سبسکرپشن لیں / کوڈ لکھیں' : '🔑 کوڈ لکھیں'}</button><button class="btn light" onclick="AB_LIC.check(true)">🔄 بحال کریں</button></div></div>`;
   }
 
   // سب سے چھوٹی مدت کے ماہانہ حساب سے بچت
@@ -197,7 +196,9 @@
     const ico = { 180: '🗓️', 365: '🏆' };
     H.modal(`<div class="licHead"><h3>📜 آڑھت بک کی سبسکرپشن</h3><div class="licState">${statusText()}</div></div>
       ${okPhone(p) ? '' : `<div class="f"><label>مالک کا موبائل نمبر</label><input id="licPh" inputmode="tel" placeholder="03001234567"></div>`}
-      <div class="licHint">👇 مدت پر ہاتھ رکھیں — درخواست سیدھی ڈویلپر کی واٹس ایپ چیٹ میں جائے گی؛ ادائیگی کے بعد وہ آپ کو کوڈ بھیجیں گے</div>
+      ${subOn() ? '' : `<div class="licHint">مزید استعمال کے لیے ڈویلپر سے بات کریں؛ وہ آپ کو کوڈ بھیجیں گے</div>
+        <div class="row" style="justify-content:center;margin:6px 0 10px"><button class="btn wa" onclick="AB_LIC.request(0)">💬 ڈویلپر سے واٹس ایپ پر بات کریں</button></div>`}
+      ${!subOn() ? '' : `<div class="licHint">👇 مدت پر ہاتھ رکھیں — درخواست سیدھی ڈویلپر کی واٹس ایپ چیٹ میں جائے گی؛ ادائیگی کے بعد وہ آپ کو کوڈ بھیجیں گے</div>
       <div class="licPlans2">${plans().map(x => `<button class="licPlan ${+x[0] === bestDays() && plans().length > 1 ? 'best' : ''}" onclick="AB_LIC.request(${x[0]}, this)">
           ${+x[0] === bestDays() && plans().length > 1 ? '<span class="rib">⭐ سب سے فائدہ مند</span>' : ''}
           <div class="pi">${+x[0] >= 365 ? '🏆' : ico[x[0]] || '📅'}</div><div class="pn">${x[1]}</div>
@@ -205,7 +206,7 @@
           <div class="pm">تقریباً <span class="num">${rsTxt(Math.round(x[2] / (x[0] / 30.4) / 10) * 10)}</span> روپے ماہانہ</div>
           ${saveTxt(x)}
           <span class="pw">💬 واٹس ایپ پر درخواست</span>
-          <span class="licSend"><span class="fly">💬</span><span>پیغام چیٹ میں جا رہا ہے…</span></span></button>`).join('')}</div>
+          <span class="licSend"><span class="fly">💬</span><span>پیغام چیٹ میں جا رہا ہے…</span></span></button>`).join('')}</div>`}
       <div class="licCodeBox"><div class="lcTitle">🔑 ڈویلپر سے آیا ہوا کوڈ</div>
         <div class="lcInWrap"><span class="lcKey">🔐</span><input id="licCode" class="lcIn" placeholder="کوڈ یہاں لکھیں" autocomplete="off" spellcheck="false"></div>
         <div class="lcBtns"><button class="lcBtn go" onclick="AB_LIC.useCode()">✅ چالو کریں</button><button class="lcBtn rs" onclick="AB_LIC.restore()">🔄 بحال کریں</button><button class="lcBtn cl" onclick="App.closeModal()">✖ بند</button></div></div>
