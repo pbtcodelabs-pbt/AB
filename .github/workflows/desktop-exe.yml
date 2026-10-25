@@ -20,7 +20,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p desktop/app
-          cp index.html app.js calc.js drive.js cloud-config.js receipt.js labels.js usage.js cloud.js license.js manifest.json desktop/app/
+          cp index.html app.js calc.js drive.js cloud-config.js receipt.js labels.js datewheel.js usage.js cloud.js license.js manifest.json desktop/app/
           cp -r icons fonts desktop/app/
       - name: Test calculations
         run: node tools/arhat_test.js
