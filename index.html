@@ -49,6 +49,8 @@ try{ var __t = localStorage.getItem('AB::ab_theme'); if(__t && __t !== 'red') do
   /* 🎨 رنگ کا تھیم — ایک جگہ سے پوری ایپ (سرخ بنیادی؛ نیلا، سبز، کالا، سلیٹی، سادہ سفید بھی) */
   --c1:#dc2626; --c2:#b91c1c; --c3:#991b1b; --c4:#7f1d1d; --c5:#450a0a;
   --l0:#fff5f5; --l1:#fee2e2; --l2:#fecaca; --l3:#fca5a5;
+  /* 📊 ڈیش بورڈ کے خانوں کے رنگ (سبزی منڈی جیسے) */
+  --dbOr:#ea580c; --dbPu:#7c3aed; --dbGd:#ca8a04; --dbRd:#dc2626; --dbGr:#059669; --dbBl:#0284c7; --dbPk:#be185d;
   --pageBg:radial-gradient(circle at 20% 0%,var(--c1) 0%,var(--c3) 38%,var(--c4) 70%,var(--c5) 100%);
   --barBg:linear-gradient(180deg,var(--c5),var(--c4)); --onBar:#fff; --onBg:#fff; --onBgMuted:rgba(255,255,255,.82);
   --red:var(--c2); --red2:var(--c3); --red3:var(--c4); --red4:var(--c5); --redL:var(--l1); --redL2:var(--l2); --redL3:var(--l0);
@@ -115,6 +117,52 @@ input,select,textarea{font:inherit;}
 #side .nav{display:flex; align-items:center; gap:10px; width:100%; border:none; background:rgba(255,255,255,.08); color:#fff; border-radius:12px; padding:4px 12px; margin-bottom:6px; font-size:19px; text-align:right;}
 #side .nav.on{background:#fff; color:var(--red3); box-shadow:0 3px 0 var(--gold);}
 #side .nav .e{font-size:20px; width:26px; text-align:center;}
+/* ☰ مینو — سبزی منڈی جیسی نمبر والی رنگین قطاریں */
+#side .sideSort{display:grid; grid-template-columns:1fr 1fr; gap:6px; margin:0 0 8px;}
+#side .sideSort button{border:1.5px solid rgba(255,255,255,.35); background:rgba(255,255,255,.1); color:#fff; border-radius:10px; font:inherit; font-size:15px; line-height:1.9;}
+#side .sideSort button.on{background:#fff; color:var(--c4);}
+#side .nav{position:relative; background:var(--nc,rgba(255,255,255,.12)); border-radius:0; margin:0; padding:7px 10px; min-height:52px; box-shadow:inset 0 -1px 0 rgba(0,0,0,.18);}
+#side .nav.home{background:rgba(255,255,255,.14); border-radius:12px 12px 0 0;}
+#side .nav .no{flex:0 0 auto; min-width:34px; height:34px; border-radius:9px; background:#fff; color:var(--c5); display:flex; align-items:center; justify-content:center; font-family:Tahoma,Arial,sans-serif; font-weight:bold; font-size:17px; box-shadow:0 2px 0 rgba(0,0,0,.25);}
+#side .nav .tx{flex:1; text-align:right;}
+#side .nav .dh{flex:0 0 auto; font-size:22px; opacity:.75; padding:0 4px; cursor:grab; touch-action:none;}
+#side .nav.on{outline:3px solid var(--gold); outline-offset:-3px; color:#fff; background:var(--nc,var(--c3));}
+/* 📊 چھوٹا ڈیش بورڈ */
+.dbx{position:relative; background:linear-gradient(160deg,var(--c5),var(--c3)); border-radius:16px; padding:8px 8px 6px; margin-bottom:8px; box-shadow:0 4px 12px rgba(0,0,0,.3);}
+.dbEye{position:absolute; top:-8px; left:-6px; width:30px; height:30px; border-radius:50%; border:2px solid #fff; background:var(--c1); font-size:15px; line-height:1; padding:0; z-index:2; box-shadow:0 2px 6px rgba(0,0,0,.3);}
+.dbRow{display:grid; gap:5px;} .dbRow.r3{grid-template-columns:repeat(3,minmax(0,1fr));} .dbRow.r4{grid-template-columns:repeat(4,minmax(0,1fr));}
+.dbChip{border:none; border-radius:10px; padding:2px 3px 3px; color:#fff; font:inherit; display:flex; flex-direction:column; align-items:stretch; gap:1px; min-width:0; box-shadow:0 3px 0 rgba(0,0,0,.3); cursor:pointer;}
+.dbChip:active{transform:translateY(2px); box-shadow:0 1px 0 rgba(0,0,0,.3);}
+.dbChip .l{font-size:12px; line-height:1.7; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-align:center;}
+.dbChip .v{background:#fff; color:var(--c5); border-radius:7px; font-family:Tahoma,Arial,sans-serif; font-weight:bold; font-size:14px; line-height:1.6; text-align:center; direction:ltr; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.dbChip.or{background:var(--dbOr);} .dbChip.pu{background:var(--dbPu);} .dbChip.gd{background:var(--dbGd);} .dbChip.rd{background:var(--dbRd);} .dbChip.gr{background:var(--dbGr);} .dbChip.bl{background:var(--dbBl);} .dbChip.pk{background:var(--dbPk);}
+.dbPer{display:grid; grid-template-columns:repeat(4,1fr); gap:5px; margin:5px 0;}
+.dbPer button{border:1.5px solid rgba(255,255,255,.45); background:transparent; color:#fff; border-radius:12px; font:inherit; font-size:13px; line-height:1.8; padding:0;}
+.dbPer button.on{background:var(--gold); color:var(--c5); border-color:var(--gold);}
+.dbShow{display:block; width:100%; border:1.5px dashed var(--l3); background:rgba(255,255,255,.9); color:var(--c4); border-radius:12px; font:inherit; font-size:15px; line-height:1.9; margin-bottom:8px;}
+/* 🏠 ہوم کے آئیکن */
+.homeBar{display:flex; align-items:center; gap:5px; background:rgba(255,255,255,.92); border-radius:14px; padding:3px 8px; margin:2px 0 10px; box-shadow:0 2px 8px rgba(0,0,0,.15);}
+.homeBar .muted{font-size:14px;}
+.homeBar button{width:32px; height:32px; border-radius:50%; border:2px solid var(--c3); background:#fff; color:var(--c3); font-family:Tahoma,Arial,sans-serif; font-weight:bold; font-size:15px; padding:0;}
+.homeBar button.on{background:var(--c3); color:#fff;}
+.homeBar .hbEdit{width:38px; height:38px; border-radius:11px; border:none; background:linear-gradient(180deg,var(--gold),#d97706); font-size:19px; box-shadow:0 3px 0 var(--c4);}
+.homeBar .hbEdit.on{background:linear-gradient(180deg,#4ade80,#16a34a);}
+.homeGrid{display:grid; grid-template-columns:repeat(var(--cols,3),minmax(0,1fr)); gap:14px 8px; padding:2px 2px 20px;}
+.hIc{position:relative; display:flex; flex-direction:column; align-items:center; gap:3px; min-width:0;}
+.hIc .hb{position:relative; width:70px; height:70px; border:none; border-radius:18px; padding:0; background:linear-gradient(160deg,var(--c1),var(--c3)); box-shadow:0 4px 0 var(--c5),0 6px 12px rgba(0,0,0,.3); display:flex; align-items:flex-start; justify-content:center; overflow:hidden; touch-action:none;}
+.hIc .hb:active{transform:translateY(3px); box-shadow:0 1px 0 var(--c5);}
+.hIc .hb .e{font-size:36px; line-height:50px; filter:drop-shadow(0 2px 2px rgba(0,0,0,.3));}
+.hIc .hb .no{position:absolute; left:0; right:0; bottom:0; height:20px; background:#fff; color:var(--c5); font-family:Tahoma,Arial,sans-serif; font-weight:bold; font-size:13px; line-height:20px; text-align:center;}
+.hIc .t{color:#fff; font-size:15px; line-height:1.7; text-align:center; text-shadow:0 1px 3px rgba(0,0,0,.6); max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.homeGrid[style*="--cols:1"] .hIc,.homeGrid[style*="--cols:2"] .hIc{flex-direction:row; gap:10px; background:rgba(255,255,255,.12); border-radius:14px; padding:4px 8px;}
+.hIc.add .hb{background:rgba(255,255,255,.2); border:2px dashed #fff; box-shadow:none;} .hIc.add .hb .e{line-height:66px;}
+.hIc .hx{position:absolute; top:-6px; right:calc(50% - 44px); width:26px; height:26px; border-radius:50%; border:2px solid #fff; background:var(--c2); color:#fff; font-size:12px; padding:0; z-index:2;}
+.homeGrid.edit .hIc[data-k] .hb{animation:hWig .35s infinite alternate;}
+@keyframes hWig{from{transform:rotate(-2deg)}to{transform:rotate(2deg)}}
+.hIc.dragging{opacity:.3;}
+.hIc.ghost{position:fixed; z-index:9999; pointer-events:none; width:72px; opacity:.9; transform:scale(1.1);}
+.hIc.ghost .hb{width:70px; height:70px; display:flex; justify-content:center; border-radius:18px; background:linear-gradient(160deg,var(--c1),var(--c3));} .hIc.ghost .e{font-size:36px; line-height:60px;}
+@media (min-width:700px){ .hIc .hb{width:84px; height:84px;} .hIc .hb .e{font-size:44px; line-height:62px;} .hIc .t{font-size:17px;} .dbChip .v{font-size:17px;} .dbChip .l{font-size:14px;} }
 #main{flex:1; min-width:0; padding:10px 10px 90px;}
 @media (min-width:900px){
   #side{position:sticky; top:56px; height:calc(100vh - 56px); transform:none; box-shadow:none; width:250px; flex:0 0 250px;}
