@@ -8,8 +8,8 @@
    ===================================================================== */
 (function(){
   'use strict';
-  const APP_VERSION = 'AB2610MO050';
-  const UPDATE_NOTE = 'مفت آزمائش کا بڑا ڈبہ ہٹا — اب اوپر بٹنوں کے ساتھ باریک سی پٹی؛ ہوم پر جگہ کھلی';
+  const APP_VERSION = 'AB2610MO051';
+  const UPDATE_NOTE = '📲 ہوم اسکرین پر انسٹال آسان: اوپر 📲 بٹن (کروم کا اپنا پیغام یا قدم بہ قدم رہنمائی)؛ گول آئیکن کے لیے نیا آئیکن؛ آئیکن دبا کر رکھیں تو نئی پرچی / وصولی / خرچہ';
   const C = window.ABCalc;
   // ---------- اردو / عربی کی بورڈ کے ہندسے (۰۱۲… / ٠١٢…) لکھتے ہی 0-9 میں — ورنہ رقم، نمبر اور کوڈ نہیں پہچانے جاتے ----------
   document.addEventListener('input', e => {
@@ -310,7 +310,7 @@
   if(document.fonts) document.fonts.addEventListener('loadingdone', () => fitTitle());
   function render(){
     renderSide();
-    $('ttl').textContent = shopName();
+    $('ttl').textContent = shopName(); instRender();
     { const c = $('licChip'); if(c) c.innerHTML = window.AB_LIC && DB.settings.registered ? AB_LIC.chip() : ''; }
     { const st = DB.settings, ph = st.phone ? String(st.phone).trim() : '';
       $('ttlSub').innerHTML = DB.settings.registered ? [st.owner ? '👤 ' + esc(st.owner) : '', ph ? '📞 <span class="num">' + esc(/^0\d{10}$/.test(ph) ? ph.slice(0, 4) + '-' + ph.slice(4) : ph) + '</span>' : ''].filter(Boolean).map(x => '<span>' + x + '</span>').join('') : ''; }
@@ -1936,6 +1936,29 @@
     if(from && from !== APP_VERSION){ try{ AppUpd.done(from, APP_VERSION, UPDATE_NOTE); }catch(e){} }
     try{ localStorage.setItem('ab_updFrom', APP_VERSION); }catch(e){}
   }
+  // ---------- 📲 ہوم اسکرین پر انسٹال (ویب ایڈریس سے): کروم کا اپنا پیغام، ورنہ قدم بہ قدم رہنمائی ----------
+  let instEvt = null;
+  const isStandalone = () => { try{ return matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches || navigator.standalone === true; }catch(e){ return false; } };
+  function instRender(){ const b = $('instBtn'); if(!b) return; let done = false; try{ done = localStorage.getItem('ab_installed') === '1'; }catch(e){} b.style.display = isStandalone() || (done && !instEvt) ? 'none' : ''; b.classList.toggle('ready', !!instEvt); }
+  window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); instEvt = e; try{ localStorage.removeItem('ab_installed'); }catch(er){} instRender(); });
+  window.addEventListener('appinstalled', () => { instEvt = null; try{ localStorage.setItem('ab_installed', '1'); }catch(e){} instRender(); closeModal(); toast('✅ آڑھت بک فون میں انسٹال ہو گئی — اب ہوم اسکرین کے آئیکن سے کھولیں'); });
+  async function installApp(){
+    if(instEvt){
+      const ev = instEvt; ev.prompt();
+      try{ const r = await ev.userChoice; if(r && r.outcome === 'accepted'){ instEvt = null; toast('⏳ انسٹال ہو رہی ہے…'); } }catch(e){}
+      instRender(); return;
+    }
+    const ua = navigator.userAgent || '';
+    const ios = /iPhone|iPad|iPod/i.test(ua), inApp = /FBAN|FBAV|Instagram|Line\/|WhatsApp|; wv\)/i.test(ua), android = /Android/i.test(ua);
+    const step = (n, t) => `<div class="insStep"><span class="num">${n}</span><div>${t}</div></div>`;
+    modal(`<h3>📲 آڑھت بک فون میں لگائیں</h3><div style="text-align:right">
+      ${inApp ? `<div class="warn">⚠️ یہ لنک واٹس ایپ / فیس بک کے اندر کھلا ہے — یہاں سے انسٹال نہیں ہوتی۔</div>${step(1, 'اوپر کونے میں <b>⋮</b> دبائیں')}${step(2, '<b>«کروم میں کھولیں»</b> چنیں')}${step(3, 'کروم میں یہی بٹن 📲 دوبارہ دبائیں')}`
+      : ios ? `${step(1, 'نیچے <b>شیئر کا نشان ⬆️</b> دبائیں')}${step(2, 'نیچے سرکا کر <b>«ہوم اسکرین میں شامل کریں ➕»</b> چنیں')}${step(3, 'اوپر <b>«شامل کریں»</b> دبائیں — ہوم اسکرین پر آڑھت بک کا آئیکن آ جائے گا')}`
+      : android ? `${step(1, 'کروم میں اوپر کونے کے <b>⋮</b> (تین نقطے) دبائیں')}${step(2, '<b>«ایپ انسٹال کریں»</b> یا <b>«ہوم اسکرین میں شامل کریں»</b> چنیں')}${step(3, '<b>«انسٹال کریں»</b> دبائیں — ہوم اسکرین پر سرخ آئیکن «آڑھت بک» آ جائے گا')}`
+      : `${step(1, 'کروم میں اوپر پتے والی پٹی کے آخر میں <b>انسٹال کا نشان ⬇️</b> دبائیں (یا ⋮ ← «آڑھت بک انسٹال کریں»)')}${step(2, '<b>«انسٹال کریں»</b> دبائیں — کمپیوٹر کے ڈیسک ٹاپ / شروع کے مینو میں آڑھت بک آ جائے گی')}`}
+      <div class="muted" style="margin-top:6px">✅ انسٹال کے بعد ایپ ہوم اسکرین کے آئیکن سے پوری اسکرین پر کھلے گی، انٹرنیٹ کے بغیر بھی چلے گی، اور ہر نیا ورژن خود آ جائے گا۔ آپ کا ریکارڈ وہی رہے گا۔</div></div>
+      <div class="row" style="justify-content:center;margin-top:8px"><button class="btn" onclick="App.closeModal()">👍 ٹھیک ہے</button></div>`);
+  }
   function registerSW(){
     if(!('serviceWorker' in navigator) || window.__APP_WRONG_REPO) return;
     let refreshing = false;
@@ -1955,7 +1978,7 @@
   //   عوامی بٹن
   // =====================================================================
   window.App = {
-    go, menu, register, pinKey, closeModal, staffForm,
+    go, menu, register, pinKey, closeModal, staffForm, installApp,
     rpSet(k, v){ if(k === 'preset') rpPreset(v); else { RP[k] = v; if(k !== 'tab') RP.preset = ''; } render(); }, rpPrint, rpShare,
     remind, setDueDays(v){ DB.settings.dueDays = int(v) || 7; put('settings'); render(); },
     searchQ(v){ sQuery = v; const r = $('sRes'); if(r) r.innerHTML = searchResults(v); },
@@ -2039,6 +2062,8 @@
     loadAll();
     if(window.AB_LBL) AB_LBL.install();
     try{ history.replaceState({ s: 'home', a: null }, ''); }catch(e){}
+    // ہوم اسکرین کے آئیکن کو دبا کر رکھنے والے شارٹ کٹ (manifest): #parchi / #cash / #exp
+    { const h = (location.hash || '').slice(1); if(h && VIEWS[h] && h !== 'home'){ screen = h; try{ history.replaceState({ s: h, a: null }, '', location.pathname); }catch(e){} } }
     render();
     if(restored) toast('🛡️ ریکارڈ حفاظتی کاپی سے واپس آ گیا');
     if(DB.settings.registered) safeCopy();
