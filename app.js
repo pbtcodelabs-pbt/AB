@@ -8,8 +8,8 @@
    ===================================================================== */
 (function(){
   'use strict';
-  const APP_VERSION = 'AB2610MO046';
-  const UPDATE_NOTE = 'پرچیاں، روزنامچہ اور سیٹنگ سبزی منڈی کے انداز پر: تلاش، مدت کے بٹن، کارڈ، دن آگے پیچھے، کھلنے والے حصے';
+  const APP_VERSION = 'AB2610MO047';
+  const UPDATE_NOTE = 'رپورٹیں، خرچے اور کمیشن، بیک اپ، یاد دہانی اور تلاش بھی سبزی منڈی کے انداز پر: کارڈ، بٹن، کھلنے والے حصے';
   const C = window.ABCalc;
   // ---------- اردو / عربی کی بورڈ کے ہندسے (۰۱۲… / ٠١٢…) لکھتے ہی 0-9 میں — ورنہ رقم، نمبر اور کوڈ نہیں پہچانے جاتے ----------
   document.addEventListener('input', e => {
@@ -1182,7 +1182,7 @@
   function sWords(q){ return norm(q).toLowerCase().replace(/[،,]/g, ' ').split(/\s+/).filter(Boolean); }
   function sHit(hay, words){ const h = norm(hay).toLowerCase(); const hn = h.replace(/[\s\-]/g, ''); return words.every(w => h.indexOf(w) >= 0 || hn.indexOf(w.replace(/-/g, '')) >= 0); }
   function searchResults(q){
-    const words = sWords(q); if(!words.length) return '<div class="muted">پرچی نمبر، گاڑی نمبر، بلٹی، زمیندار یا خریدار کا نام، جنس، فون نمبر یا رقم لکھیں۔ کئی الفاظ بھی لکھ سکتے ہیں، جیسے «اکرم آم»۔</div>';
+    const words = sWords(q); if(!words.length) return '<div class="card muted">پرچی نمبر، گاڑی نمبر، بلٹی، زمیندار یا خریدار کا نام، جنس، فون نمبر یا رقم لکھیں۔ کئی الفاظ بھی لکھ سکتے ہیں، جیسے «اکرم آم»۔</div>';
     const out = [];
     if(canSee('parchis') || canSee('parchi')){
       const exact = words.length === 1 && /^\d+$/.test(words[0]) ? +words[0] : 0;
@@ -1191,31 +1191,34 @@
           .concat(p.lines.map(l => l.item + ' ' + l.buyer)).join(' | ');
         return (exact && p.no === exact) || sHit(hay, words);
       }).sort((a, b) => (exact && b.no === exact) - (exact && a.no === exact) || (b.date || '').localeCompare(a.date || '') || b.no - a.no).slice(0, 60);
-      if(ps.length) out.push(`<div class="card"><h3>📚 پرچیاں (${ps.length})</h3><div class="list">${ps.map(p => { const t = p.totals || {};
+      if(ps.length) out.push(`<div class="secHd">📚 پرچیاں <span class="num">${ps.length}</span></div><div class="pcList">${ps.map(p => { const t = ptot(p);
         const buyers = [...new Set(p.lines.map(l => l.buyer).filter(Boolean))].join('، '), items = [...new Set(p.lines.map(l => l.item).filter(Boolean))].join('، ');
-        return `<div class="it" onclick="App.go('parchi','${p.id}')"><div><b>نمبر <span class="num">${p.no}</span> — ${esc(p.zamindar)}</b>
-          <div class="muted">${esc(urDate(p.date))}${p.vehicle ? ' • گاڑی ' + esc(p.vehicle) : ''}${p.bilty ? ' • بلٹی ' + esc(p.bilty) : ''} • ${esc(items)} • خریدار: ${esc(buyers)}</div></div>
-          <span class="num">${fmt(t.gross || 0)}</span></div>`; }).join('')}</div></div>`);
+        return `<div class="pCard" onclick="App.go('parchi','${p.id}')"><span class="pAv num">${p.no}</span>
+          <div class="pMid"><b>${esc(p.zamindar)}</b><div class="muted">${esc(urDate(p.date))}${p.vehicle ? ' • 🚚 ' + esc(p.vehicle) : ''}${p.bilty ? ' • بلٹی ' + esc(p.bilty) : ''}</div>
+          <div class="muted">${esc(items)}${buyers ? ' • ' + esc(buyers) : ''}</div></div>
+          <div class="pBal"><span class="num">${fmt(t.gross || 0)}</span><small>بکری</small></div></div>`; }).join('')}</div>`);
     }
     if(canSee('party')){
       const pt = DB.parties.filter(p => !p.deleted && canSee(p.type) && (sHit([p.name, p.phone, p.place, PT[p.type], 'نمبر ' + pNo(p)].join(' | '), words) || (words.length === 1 && String(pNo(p)) === words[0]))).slice(0, 60);
-      if(pt.length) out.push(`<div class="card"><h3>👥 کھاتے (${pt.length})</h3><div class="list">${pt.map(p => { const b = ledger(p.id).bal;
-        return `<div class="it" onclick="App.go('party','${p.id}')"><div><b>${p.type === 'zamindar' ? '🧑‍🌾' : '🧑‍💼'} ${esc(p.name)}</b> <span class="muted">${PT[p.type]} ${p.place ? '• ' + esc(p.place) : ''} ${p.phone ? '• ' + esc(p.phone) : ''}</span>
-          <div class="muted">${balText(p.type, b)}</div></div><span class="num">${fmt(Math.abs(b))}</span></div>`; }).join('')}</div></div>`);
+      if(pt.length) out.push(`<div class="secHd">👥 کھاتے <span class="num">${pt.length}</span></div><div class="pcList">${pt.map(p => { const b = ledger(p.id).bal;
+        return `<div class="pCard" onclick="App.go('party','${p.id}')"><span class="pAv num ${p.type === 'buyer' ? 'in' : ''}">${pNo(p) || '؟'}</span>
+          <div class="pMid"><b>${esc(p.name)}</b><div class="muted">${p.type === 'zamindar' ? '🧑‍🌾' : '🧑‍💼'} ${PT[p.type]}${p.place ? ' • ' + esc(p.place) : ''}${p.phone ? ' • 📞 ' + esc(p.phone) : ''}</div></div>
+          <div class="pBal ${b > 0 ? (p.type === 'zamindar' ? 'out' : 'in') : ''}"><span class="num">${fmt(Math.abs(b))}</span><small>${balText(p.type, b)}</small></div></div>`; }).join('')}</div>`);
     }
     if(canSee('cash')){
       const cs = liveCash().filter(c => { const p = party(c.partyId);
         return sHit([p ? p.name : '', c.note, c.method, inRs(c.amount), urDate(c.date), c.date, c.kind === 'pay' ? 'ادائیگی' : 'وصولی', c.by].join(' | '), words); })
         .sort((a, b) => (b.date || '').localeCompare(a.date || '') || b.at - a.at).slice(0, 60);
-      if(cs.length) out.push(`<div class="card"><h3>💵 وصولی / ادائیگی (${cs.length})</h3><div class="list">${cs.map(c => { const p = party(c.partyId);
-        return `<div class="it" onclick="${p ? `App.go('party','${p.id}')` : ''}"><div>${c.kind === 'pay' ? '💸 ادائیگی' : '💵 وصولی'} — <b>${esc(p ? p.name : '')}</b>
-          <div class="muted">${esc(urDate(c.date))} ${c.method ? '• ' + esc(c.method) : ''} ${c.note ? '• ' + esc(c.note) : ''}</div></div><span class="num ${c.kind === 'pay' ? 'amt-out' : 'amt-in'}">${fmt(c.amount)}</span></div>`; }).join('')}</div></div>`);
+      if(cs.length) out.push(`<div class="secHd">💵 وصولی / ادائیگی <span class="num">${cs.length}</span></div><div class="pcList">${cs.map(c => { const p = party(c.partyId);
+        return `<div class="pCard" onclick="App.go('cash','v:${c.id}')"><span class="pAv num ${c.kind === 'pay' ? '' : 'in'}">${int(c.no) || '؟'}</span>
+          <div class="pMid"><b>${esc(p ? p.name : '')}</b><div class="muted">${c.kind === 'pay' ? '💸 ادائیگی' : '💵 وصولی'} • ${esc(urDate(c.date))}${c.method ? ' • ' + esc(c.method) : ''}${c.note ? ' • ' + esc(c.note) : ''}</div></div>
+          <div class="pBal ${c.kind === 'pay' ? 'out' : 'in'}"><span class="num">${fmt(c.amount)}</span><small>${c.kind === 'pay' ? 'بنام' : 'جمع'}</small></div></div>`; }).join('')}</div>`);
     }
-    return out.join('') || '<div class="card"><div class="muted">کچھ نہیں ملا — لکھائی بدل کر دیکھیں</div></div>';
+    return out.join('') || '<div class="card muted">کچھ نہیں ملا — لکھائی بدل کر دیکھیں</div>';
   }
   VIEWS.search = function(){
     return `<div class="pageTitle">🔍 تلاش</div>
-      <div class="card"><div class="f"><input id="sQ" value="${esc(sQuery)}" placeholder="🔍 پرچی نمبر، گاڑی، نام، جنس، فون یا رقم" oninput="App.searchQ(this.value)" autocomplete="off"></div></div>
+      <div class="pzTop"><div class="pzSearch" style="margin-top:0"><input id="sQ" value="${esc(sQuery)}" placeholder="🔍 پرچی نمبر، گاڑی، نام، جنس، فون یا رقم" oninput="App.searchQ(this.value)" autocomplete="off"></div></div>
       <div id="sRes">${searchResults(sQuery)}</div>`;
   };
   AFTER.search = function(){ const i = $('sQ'); if(i){ i.focus(); try{ i.setSelectionRange(i.value.length, i.value.length); }catch(e){} } };
@@ -1246,16 +1249,21 @@
   }
   VIEWS.due = function(){
     const l = dueList(), adv = canSee('zamindar') ? advList() : [];
-    const row = x => `<div class="it ${x.over ? 'overLim' : ''}"><div onclick="App.go('party','${x.p.id}')" style="flex:1;cursor:pointer"><b>${esc(x.p.name)}</b> ${x.over ? '<span class="tag out">⛔ حد سے زیادہ</span>' : ''}
-        <div class="muted">${x.lastRec ? 'آخری وصولی: ' + esc(urDate(x.lastRec)) + ' • ' : 'ابھی کوئی وصولی نہیں • '}<span class="num">${x.d >= 9999 ? '—' : x.d}</span> دن${x.p.limit ? ' • حد: ' + fmt(x.p.limit) : ''}</div></div>
-        <div class="row" style="gap:4px"><span class="num amt-in">${fmt(x.bal)}</span>
-        ${x.p.phone ? `<button class="btn wa sm" onclick="App.remind('${x.p.id}')">💬</button><a class="btn light sm" href="tel:${esc(x.p.phone)}">📞</a>` : `<button class="btn light sm" onclick="App.partyForm('buyer','${x.p.id}')" title="فون لکھیں">📞➕</button>`}</div></div>`;
+    const card = x => `<div class="pCard ${x.over ? 'overLim' : ''}" onclick="App.go('party','${x.p.id}')"><span class="pAv num in">${pNo(x.p) || '؟'}</span>
+        <div class="pMid"><b>${esc(x.p.name)} ${x.over ? '<span class="tag out">⛔ حد سے زیادہ</span>' : ''}</b>
+          <div class="muted">${x.lastRec ? 'آخری وصولی ' + esc(urDate(x.lastRec)) : 'ابھی کوئی وصولی نہیں'} • <span class="num">${x.d >= 9999 ? '—' : x.d}</span> دن${x.p.limit ? ' • حد ' + fmt(x.p.limit) : ''}</div>
+          <div class="dBtns">${x.p.phone ? `<button onclick="event.stopPropagation();App.remind('${x.p.id}')">💬 یاد دہانی</button><a href="tel:${esc(x.p.phone)}" onclick="event.stopPropagation()">📞 فون</a>` : `<button onclick="event.stopPropagation();App.partyForm('buyer','${x.p.id}')">📞➕ فون لکھیں</button>`}</div></div>
+        <div class="pBal in"><span class="num">${fmt(x.bal)}</span><small>لینے ہیں</small></div></div>`;
     const due = l.filter(x => x.due || x.over), rest = l.filter(x => !(x.due || x.over));
+    const sum = a => a.reduce((s, x) => s + x.bal, 0);
     return `<div class="pageTitle">🔔 وصولی کی یاد دہانی</div>
-      <div class="card"><div class="row"><div class="f" style="flex:1"><label>کتنے دن ادائیگی نہ ہو تو یاد دہانی (عام حد؛ ہر خریدار کے کھاتے میں الگ بھی)</label><input inputmode="numeric" value="${int(DB.settings.dueDays) || 7}" onchange="App.setDueDays(this.value)"></div></div></div>
-      <div class="card"><h3>🔴 ادائیگی رکی ہوئی (${due.length}) — <span class="num">${fmt(due.reduce((s, x) => s + x.bal, 0))}</span></h3><div class="list">${due.map(row).join('') || '<div class="muted">کوئی نہیں ✅</div>'}</div></div>
-      ${rest.length ? `<div class="card"><h3>🟢 باقی ادھار (${rest.length}) — <span class="num">${fmt(rest.reduce((s, x) => s + x.bal, 0))}</span></h3><div class="list">${rest.map(row).join('')}</div></div>` : ''}
-      ${adv.length ? `<div class="card"><h3>🧑‍🌾 زمینداروں پر پیشگی (${adv.length}) — <span class="num">${fmt(adv.reduce((s, x) => s - x.bal, 0))}</span></h3><div class="muted">یہ رقم ان کی اگلی پرچی کی صاف رقم سے خود کٹ جائے گی</div><div class="list">${adv.map(x => `<div class="it" onclick="App.go('party','${x.p.id}')"><div><b>${esc(x.p.name)}</b></div><span class="num amt-out">${fmt(-x.bal)}</span></div>`).join('')}</div></div>` : ''}`;
+      <div class="pzTop"><div class="miniSum" style="margin-top:0"><span>🔴 رکی ہوئی <b class="num">${fmt(sum(due))}</b></span><span>🟢 باقی ادھار <b class="num">${fmt(sum(rest))}</b></span>${adv.length ? `<span>🧑‍🌾 پیشگی <b class="num">${fmt(adv.reduce((s, x) => s - x.bal, 0))}</b></span>` : ''}</div>
+        <div class="dueDays">⏰ کتنے دن ادائیگی نہ ہو تو یاد دہانی <input inputmode="numeric" value="${int(DB.settings.dueDays) || 7}" onchange="App.setDueDays(this.value)"> دن <small>(ہر خریدار کے کھاتے میں الگ بھی)</small></div></div>
+      <div class="secHd">🔴 ادائیگی رکی ہوئی <span class="num">${due.length}</span></div>
+      <div class="pcList">${due.map(card).join('') || '<div class="card muted">کوئی نہیں ✅</div>'}</div>
+      ${rest.length ? `<details class="setSec"><summary>🟢 باقی ادھار (${rest.length}) — <span class="num">${fmt(sum(rest))}</span></summary><div class="pcList" style="padding:8px 0">${rest.map(card).join('')}</div></details>` : ''}
+      ${adv.length ? `<details class="setSec"><summary>🧑‍🌾 زمینداروں پر پیشگی (${adv.length})</summary><div class="card"><div class="muted">یہ رقم ان کی اگلی پرچی کی صاف رقم سے خود کٹ جائے گی</div></div>
+        <div class="pcList" style="padding:8px 0">${adv.map(x => `<div class="pCard" onclick="App.go('party','${x.p.id}')"><span class="pAv num">${pNo(x.p) || '؟'}</span><div class="pMid"><b>${esc(x.p.name)}</b><div class="muted">${esc(x.p.place || '')}</div></div><div class="pBal out"><span class="num">${fmt(-x.bal)}</span><small>پیشگی</small></div></div>`).join('')}</div></details>` : ''}`;
   };
   function remind(pid){
     const x = dueList().find(y => y.p.id === pid); if(!x) return;
@@ -1472,10 +1480,12 @@
   VIEWS.reports = function(){
     const rep = rpBuild(RP.tab);
     return `<div class="pageTitle">📊 رپورٹیں</div>
-      <div class="card"><div class="cdChips">${RP_PRE.map(p => `<button class="${RP.preset === p[0] ? 'on' : ''}" onclick="App.rpSet('preset','${p[0]}')">${p[1]}</button>`).join('')}</div>
-        <div class="grid2"><div class="f"><label>سے</label><input type="date" value="${esc(RP.from)}" onchange="App.rpSet('from',this.value)"></div><div class="f"><label>تک</label><input type="date" value="${esc(RP.to)}" onchange="App.rpSet('to',this.value)"></div></div></div>
-      <div class="rpTabs">${RP_TABS.map(t => `<button class="${RP.tab === t[0] ? 'on' : ''}" onclick="App.rpSet('tab','${t[0]}')">${t[1]}</button>`).join('')}</div>
-      <div class="card"><h3>${rep.title}</h3><div class="muted">${rep.noRange ? 'تاریخ سے آزاد' : rpRange()}</div>${rpTable(rep)}
+      <div class="pzTop">
+        <div class="pfRow" style="margin-top:0">${RP_PRE.map(p => `<button class="${RP.preset === p[0] ? 'on' : ''}" onclick="App.rpSet('preset','${p[0]}')">${p[1]}</button>`).join('')}</div>
+        <details class="rpDates" ${RP.preset ? '' : 'open'}><summary>📅 اپنی تاریخیں — <span class="num">${esc(rep.noRange ? 'پچھلے 12 مہینے' : rpRange())}</span></summary>
+          <div class="grid2"><div class="f"><label>سے</label><input type="date" value="${esc(RP.from)}" onchange="App.rpSet('from',this.value)"></div><div class="f"><label>تک</label><input type="date" value="${esc(RP.to)}" onchange="App.rpSet('to',this.value)"></div></div></details></div>
+      <div class="pfRow rpTabs2">${RP_TABS.map(t => `<button class="${RP.tab === t[0] ? 'on' : ''}" onclick="App.rpSet('tab','${t[0]}')">${t[1]}</button>`).join('')}</div>
+      <div class="card" style="margin-top:8px"><h3>${rep.title}</h3><div class="muted">${rep.noRange ? 'تاریخ سے آزاد' : rpRange()}</div>${rpTable(rep)}
         <div class="row" style="margin-top:8px"><button class="btn light" onclick="App.rpPrint()">🖨️ پرنٹ</button><button class="btn wa" onclick="App.rpShare()">📤 تصویر شیئر</button></div></div>`;
   };
   function rpPrint(){ const rep = rpBuild(RP.tab); printDoc('رپورٹ — ' + rep.title, `<h2 style="text-align:center;margin:4px 0">📊 ${esc(rep.title)}</h2><div style="text-align:center">${esc(rep.noRange ? '' : rpRange())}</div><div class="card">${rpTable(rep)}</div>`); }
@@ -1522,15 +1532,18 @@
   let editCh = null;
   VIEWS.charges = function(){
     const ch = chargesList();
-    const list = side => ch.filter(c => c.side === side).map(c => `<div class="chg ${c.on ? '' : 'off'}"><div><div class="n">${esc(c.name)} — <span class="num">${esc(rateText(c))}</span></div>
-        <div class="d">${KINDS[c.kind]} • ${c.income ? 'آڑھتی کی آمدن' : 'آگے ادا ہوتا ہے'}${Object.keys(c.itemRates || {}).length ? ' • جنس وار: ' + Object.keys(c.itemRates).map(k => esc(k) + ' ' + (c.kind === 'percent' ? c.itemRates[k] / 100 + '٪' : fmt(c.itemRates[k]))).join('، ') : ''}</div></div>
-        <div class="row"><label class="muted"><input type="checkbox" ${c.on ? 'checked' : ''} onchange="App.chToggle('${c.id}',this.checked)"> چالو</label><button class="btn light sm" onclick="App.chEdit('${c.id}')">✏️</button></div></div>`).join('') || '<div class="muted">کچھ نہیں</div>';
+    const ico = c => c.kind === 'percent' ? '٪' : c.kind === 'manual' ? '✍️' : c.kind === 'fixed' ? '💵' : c.kind === 'perMaund' || c.kind === 'maund' ? 'من' : 'نگ';
+    const list = side => ch.filter(c => c.side === side).map(c => `<div class="pCard chCard ${c.on ? '' : 'off'}" onclick="App.chEdit('${c.id}')"><span class="pAv ${c.income ? 'in' : ''}">${ico(c)}</span>
+        <div class="pMid"><b>${esc(c.name)}</b><div class="muted">${KINDS[c.kind]} • ${c.income ? '💰 آڑھتی کی آمدن' : '➡️ آگے ادا ہوتا ہے'}</div>
+          ${Object.keys(c.itemRates || {}).length ? `<div class="muted">جنس وار: ${Object.keys(c.itemRates).map(k => esc(k) + ' ' + (c.kind === 'percent' ? c.itemRates[k] / 100 + '٪' : fmt(c.itemRates[k]))).join('، ')}</div>` : ''}</div>
+        <div class="pBal"><span class="num">${esc(rateText(c))}</span><label class="sw" onclick="event.stopPropagation()"><input type="checkbox" ${c.on ? 'checked' : ''} onchange="App.chToggle('${c.id}',this.checked)"><i></i></label></div></div>`).join('') || '<div class="card muted">کچھ نہیں</div>';
+    const n = side => ch.filter(c => c.side === side && c.on).length;
     return `<div class="pageTitle">⚙️ خرچے اور کمیشن<span class="sp"></span><button class="btn gold sm" onclick="App.chEdit('')">➕ نیا</button></div>
       ${editCh ? chForm() : ''}
-      <div class="card"><h3>🧑‍🌾 زمیندار سے کٹنے والے</h3>${list('zamindar')}</div>
-      <div class="card"><h3>🧑‍💼 خریدار سے لیے جانے والے</h3>${list('buyer')}</div>
-      <div class="card"><h3>📋 تیار سانچہ</h3><div class="muted">سانچہ لگانے سے یہ فہرست بدل جائے گی؛ پہلے سے محفوظ پرچیاں نہیں بدلیں گی (ہر پرچی اپنی شرح ساتھ رکھتی ہے)۔</div>
-        <div class="row" style="margin-top:6px">${Object.keys(TEMPLATES).map(k => `<button class="btn light" onclick="App.chTemplate('${k}')">${TEMPLATES[k].label}</button>`).join('')}</div></div>`;
+      <details class="setSec" open><summary>🧑‍🌾 زمیندار سے کٹنے والے <span class="cntPill num">${n('zamindar')}</span></summary><div class="pcList" style="padding:8px 0">${list('zamindar')}</div></details>
+      <details class="setSec" open><summary>🧑‍💼 خریدار سے لیے جانے والے <span class="cntPill num">${n('buyer')}</span></summary><div class="pcList" style="padding:8px 0">${list('buyer')}</div></details>
+      <details class="setSec"><summary>📋 تیار سانچہ</summary><div class="card"><div class="muted">سانچہ لگانے سے یہ فہرست بدل جائے گی؛ پہلے سے محفوظ پرچیاں نہیں بدلیں گی (ہر پرچی اپنی شرح ساتھ رکھتی ہے)۔</div>
+        <div class="row" style="margin-top:6px">${Object.keys(TEMPLATES).map(k => `<button class="btn light" onclick="App.chTemplate('${k}')">${TEMPLATES[k].label}</button>`).join('')}</div></div></details>`;
   };
   function chForm(){
     const c = editCh;
@@ -1564,16 +1577,19 @@
   VIEWS.backup = function(){
     const D = window.AB_DRIVE, on = D && D.connected();
     return `<div class="pageTitle">💾 بیک اپ</div>
-      <div class="card"><h3>☁️ گوگل ڈرائیو پر خودکار بیک اپ</h3>
+      <div class="bkTiles">${D && D.supported ? `<button class="bkTile" onclick="${on ? 'AB_DRIVE.now()' : 'AB_DRIVE.connect()'}"><span>☁️</span>${on ? 'ابھی ڈرائیو پر' : 'ڈرائیو جوڑیں'}</button>` : ''}
+        <button class="bkTile" onclick="App.exportBackup()"><span>📥</span>بیک اپ فائل</button>
+        <button class="bkTile" onclick="document.getElementById('bkFile').click()"><span>📤</span>فائل سے واپس</button></div>
+      <details class="setSec" open><summary>☁️ گوگل ڈرائیو پر خودکار بیک اپ</summary><div class="card"><h3>☁️ گوگل ڈرائیو پر خودکار بیک اپ</h3>
         <div id="driveStatus" class="dstatus"></div>
         <div class="muted">ایک بار جوڑ دیں: دن میں تین بار — <b>صبح 8، دوپہر 2 اور رات 8 بجے</b> — سارا ریکارڈ آپ کی اپنی گوگل ڈرائیو کے فولڈر <span class="num">BKAR Backup</span> میں خود محفوظ ہوگا (فائلیں <span class="num">BKAR…json</span> نام سے)، اور ہر دن کی الگ نقل 90 دن تک رہے گی۔ ایپ صرف اپنی بنائی فائلیں دیکھ سکتی ہے۔</div>
         ${D && D.supported ? `<div class="row" style="margin-top:8px">${on ? `<button class="btn" id="btnDriveNow" onclick="AB_DRIVE.now()">☁️ ابھی محفوظ کریں</button><button class="btn light" onclick="AB_DRIVE.openRestore()">📂 ڈرائیو سے واپس لائیں</button><button class="btn gray sm" onclick="App.driveOff()">الگ کریں</button>` : `<button class="btn gold" onclick="AB_DRIVE.connect()">☁️ گوگل ڈرائیو جوڑیں</button>`}</div>` : ''}
-        <div id="driveFiles" style="margin-top:8px"></div></div>
-      <div class="card"><h3>📥 بیک اپ فائل بنائیں</h3><div class="muted">سارا ریکارڈ (پرچیاں، کھاتے، وصولی، خرچے) ایک فائل میں فون میں محفوظ ہو جائے گا۔ روز ایک بار ضرور بنائیں اور واٹس ایپ یا ای میل پر اپنے پاس بھیج دیں۔</div>
-        <button class="btn wide" style="margin-top:8px" onclick="App.exportBackup()">📥 بیک اپ فائل بنائیں</button></div>
-      <div class="card"><h3>📤 بیک اپ واپس لائیں</h3><div class="muted">صرف آڑھت بک کی بیک اپ فائل لگے گی۔ موجودہ ریکارڈ اس فائل سے بدل جائے گا۔</div>
+        <div id="driveFiles" style="margin-top:8px"></div></div></details>
+      <details class="setSec"><summary>📥 بیک اپ فائل — فون میں</summary><div class="card"><h3>📥 بیک اپ فائل بنائیں</h3><div class="muted">سارا ریکارڈ (پرچیاں، کھاتے، وصولی، خرچے) ایک فائل میں فون میں محفوظ ہو جائے گا۔ روز ایک بار ضرور بنائیں اور واٹس ایپ یا ای میل پر اپنے پاس بھیج دیں۔</div>
+        <button class="btn wide" style="margin-top:8px" onclick="App.exportBackup()">📥 بیک اپ فائل بنائیں</button></div></details>
+      <details class="setSec"><summary>📤 بیک اپ واپس لائیں</summary><div class="card"><h3>📤 بیک اپ واپس لائیں</h3><div class="muted">صرف آڑھت بک کی بیک اپ فائل لگے گی۔ موجودہ ریکارڈ اس فائل سے بدل جائے گا۔</div>
         <input type="file" id="bkFile" accept=".json,application/json" style="display:none" onchange="App.importBackup(this)">
-        <button class="btn light wide" style="margin-top:8px" onclick="document.getElementById('bkFile').click()">📤 فائل چنیں</button></div>
+        <button class="btn light wide" style="margin-top:8px" onclick="document.getElementById('bkFile').click()">📤 فائل چنیں</button></div></details>
       <div class="card plain"><div class="muted">🛡️ ہر تبدیلی کی ایک حفاظتی کاپی فون کے اندر الگ جگہ بھی بنتی ہے؛ ایپ کا ریکارڈ مٹ جائے تو ایپ کھلتے ہی خود واپس آ جاتا ہے۔</div></div>`;
   };
   function snapshot(){
