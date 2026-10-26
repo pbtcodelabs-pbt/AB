@@ -8,8 +8,8 @@
    ===================================================================== */
 (function(){
   'use strict';
-  const APP_VERSION = 'AB2610MO043';
-  const UPDATE_NOTE = 'نئی پرچی سبزی منڈی کے «بل بنائیں» جیسی: اوپر زمیندار چنیں، جنس کے کارڈ پر ہاتھ رکھ کر بکری، نیچے پرچی کی پٹی';
+  const APP_VERSION = 'AB2610MO044';
+  const UPDATE_NOTE = 'کھاتے سبزی منڈی جیسے: کارڈ، چھانٹی، فون / واٹس ایپ / وصولی بٹن؛ کھاتے کا سر اور بڑے بٹن؛ کلاؤڈ جانچ کامیاب، ملازم ڈیوائس کا نام اندراج پر';
   const C = window.ABCalc;
   // ---------- اردو / عربی کی بورڈ کے ہندسے (۰۱۲… / ٠١٢…) لکھتے ہی 0-9 میں — ورنہ رقم، نمبر اور کوڈ نہیں پہچانے جاتے ----------
   document.addEventListener('input', e => {
@@ -116,7 +116,12 @@
   let curUser = null; // { role: 'owner' } یا { role: 'staff', id }
   function ownerUser(){ return { role: 'owner' }; }
   function me(){
-    if(!curUser) return needsLogin() ? null : { role: 'owner', name: DB.settings.owner || 'مالک' };
+    if(!curUser){
+      if(needsLogin()) return null;
+      // پن نہیں لگا: ملازم والی ڈیوائس پر اندراج اسی ڈیوائس کے نام سے (مالک کے نام سے نہیں)
+      if(window.AB_CLOUD && AB_CLOUD.on() && AB_CLOUD.role() === 'staff'){ let n = ''; try{ n = localStorage.getItem('ab_devname') || ''; }catch(e){} return { role: 'owner', name: n || 'ملازم ڈیوائس' }; }
+      return { role: 'owner', name: DB.settings.owner || 'مالک' };
+    }
     if(curUser.role === 'owner') return { role: 'owner', name: DB.settings.owner || 'مالک' };
     const u = staffUsers().find(x => x.id === curUser.id);
     return u ? { role: 'staff', id: u.id, name: u.name, screens: u.screens || [] } : null; // ملازم ہٹا دیا گیا ہو تو باہر
@@ -707,7 +712,7 @@
       if(DB.settings.registered && liveParchis().length && !(await ask('اس ڈیوائس کا موجودہ ریکارڈ بھی آڑھت کے کلاؤڈ میں مل جائے گا۔ جاری رکھیں؟'))) return;
       closeModal();
       const wasRegistered = !!DB.settings.registered; // نیا آلہ ہو تو جڑنے کے بعد سیدھا ہوم
-      if(await AB_CLOUD.join(code, name)){ curUser = null; logIt('آڑھت سے جڑا: ' + (name || 'ملازم')); go(wasRegistered ? 'settings' : 'home'); }
+      if(await AB_CLOUD.join(code, name)){ curUser = null; try{ localStorage.setItem('ab_devname', name || 'ملازم'); }catch(e){} logIt('آڑھت سے جڑا: ' + (name || 'ملازم')); go(wasRegistered ? 'settings' : 'home'); }
     };
   }
   AFTER.backup = function(){ if(window.AB_DRIVE) AB_DRIVE.render(); };
@@ -1060,17 +1065,51 @@
     const list = parties(type).filter(p => !qn || p.name.includes(qn) || (p.phone || '').includes(qn) || String(pNo(p)) === qn)
       .map(p => ({ p, bal: ledger(p.id).bal })).sort((a, b) => Math.abs(b.bal) - Math.abs(a.bal));
     const sum = list.reduce((s, x) => s + (x.bal > 0 ? x.bal : 0), 0);
+    if(!window.__pOld) return partyCards(type, list, sum);
     return `<div class="pageTitle">${type === 'zamindar' ? '🧑‍🌾 زمیندار' : '🧑‍💼 خریدار'} (${parties(type).length})<span class="sp"></span>${type === 'buyer' ? '<button class="btn light sm" onclick="App.go(\'due\')">🔔 یاد دہانی</button>' : ''}<button class="btn gold sm" onclick="App.partyForm('${type}')">➕ نیا ${PT[type]}</button></div>
       <div class="card"><div class="f"><input placeholder="🔍 نام، نمبر یا فون سے تلاش" value="${esc(partySearch)}" oninput="App.psearch(this.value,'${type}')"></div>
         <table class="t" style="margin-top:6px"><tr class="tot"><td>${type === 'zamindar' ? 'کل جو زمینداروں کو دینے ہیں' : 'کل جو خریداروں سے لینے ہیں'}</td><td class="v">${fmt(sum)}</td></tr></table></div>
       <div class="card"><div class="list" id="plist">${list.map(x => `<div class="it" onclick="App.go('party','${x.p.id}')"><div><span class="pnoTag num">${pNo(x.p)}</span> <b>${esc(x.p.name)}</b> <span class="muted">${esc(x.p.place || '')} ${esc(x.p.phone || '')}</span>
         <div class="muted">${balText(type, x.bal)}${type === 'buyer' && x.p.limit && x.bal > x.p.limit ? ' • <span class="tag out">⛔ حد سے زیادہ</span>' : ''}${type === 'zamindar' && x.bal < 0 ? ' • پیشگی باقی' : ''}</div></div><div class="a ${x.bal > 0 ? (type === 'zamindar' ? 'amt-out' : 'amt-in') : ''}">${fmt(Math.abs(x.bal))}</div></div>`).join('') || '<div class="muted">کوئی کھاتہ نہیں — پرچی محفوظ کرنے پر خود بن جاتا ہے</div>'}</div></div>`;
   }
+  // ---------- 👥 کھاتوں کی فہرست — سبزی منڈی کے «گاہک / بیوپاری» جیسی: تلاش + ➕، چھانٹی، کارڈ پر فون / واٹس ایپ / وصولی ----------
+  let partyFilter = 'all';
+  function partyCards(type, list, sum){
+    const z = type === 'zamindar';
+    const shown = list.filter(x => partyFilter === 'all' || (partyFilter === 'due' ? x.bal !== 0 : x.bal === 0));
+    const wa = ph => window.AB_LIC && ph ? AB_LIC.normPhone(ph) : '';
+    return `<div class="pageTitle">${z ? '🧑‍🌾 زمیندار' : '🧑‍💼 خریدار'} <span class="cntPill num">${parties(type).length}</span><span class="sp"></span>${!z ? '<button class="btn light sm" onclick="App.go(\'due\')">🔔 یاد دہانی</button>' : ''}</div>
+      <div class="pzTop">
+        <div class="pzSearch" style="margin-top:0"><input id="pS" value="${esc(partySearch)}" placeholder="🔍 نام، نمبر یا فون…" oninput="App.psearch(this.value,'${type}')"><button onclick="App.partyForm('${type}')" title="نیا ${PT[type]}">+</button></div>
+        <div class="pfRow">${[['all', 'سب'], ['due', 'بقایا والے'], ['zero', 'حساب برابر']].map(f => `<button class="${partyFilter === f[0] ? 'on' : ''}" onclick="App.pfilter('${f[0]}')">${f[1]}</button>`).join('')}
+          <span class="pfSum">${z ? 'کل دینے ہیں' : 'کل لینے ہیں'}: <b class="num">${fmt(sum)}</b></span></div></div>
+      <div class="pcList">${shown.map(x => { const p = x.p, w = wa(p.phone), out = x.bal > 0 ? (z ? 'out' : 'in') : (x.bal < 0 ? (z ? 'in' : 'out') : '');
+        return `<div class="pCard" onclick="App.go('party','${p.id}')"><span class="pAv num">${pNo(p) || '؟'}</span>
+          <div class="pMid"><b>${esc(p.name)}</b><div class="muted">${esc([p.place, p.phone].filter(Boolean).join(' • ')) || '&nbsp;'}${!z && p.limit && x.bal > p.limit ? ' • <span class="tag out">⛔ حد سے زیادہ</span>' : ''}${z && x.bal < 0 ? ' • پیشگی' : ''}</div>
+            <div class="pAct" onclick="event.stopPropagation()">${p.phone ? `<a class="pa" href="tel:${esc(p.phone)}" title="فون">📞</a>` : ''}${w ? `<a class="pa wa" href="https://wa.me/${w}" target="_blank" title="واٹس ایپ">💬</a>` : ''}<button class="pa" onclick="App.go('cash','${z ? 'pay' : 'receive'}:${p.id}')" title="${z ? 'ادائیگی' : 'وصولی'}">${z ? '💸' : '💵'}</button>${!z ? `<button class="pa" onclick="App.dayBill('${p.id}')" title="روز کا بل">🧾</button>` : ''}</div></div>
+          <div class="pBal ${out}"><span class="num">${fmt(Math.abs(x.bal))}</span><small>${balText(type, x.bal)}</small></div></div>`; }).join('') || '<div class="card muted">کوئی کھاتہ نہیں — ➕ سے بنائیں یا پرچی محفوظ کرنے پر خود بن جاتا ہے</div>'}</div>`;
+  }
   VIEWS.zamindar = () => viewParties('zamindar');
   VIEWS.buyer = () => viewParties('buyer');
   VIEWS.party = function(id){
     const p = party(id); if(!p) return '<div class="card">کھاتہ نہیں ملا</div>';
     const L = ledger(id);
+    if(!window.__pOld){
+      const z = p.type === 'zamindar', T = cashTotals(p), w = window.AB_LIC && p.phone ? AB_LIC.normPhone(p.phone) : '';
+      return `<div class="pageTitle">${z ? '🧑‍🌾' : '🧑‍💼'} ${PT[p.type]} کا کھاتہ<span class="sp"></span><button class="btn light sm" onclick="App.go('${p.type}')">↩️ فہرست</button></div>
+        <div class="pHero ${L.bal ? '' : 'zero'}"><span class="pAv num">${pNo(p) || '؟'}</span><div class="pMid"><b>${esc(p.name)}</b>
+          <div class="s">${esc([p.place, p.phone].filter(Boolean).join(' • '))}${p.limit ? ' • ادھار کی حد ' + fmt(p.limit) : ''}</div></div>
+          <div class="pBig"><span class="num">${fmt(Math.abs(L.bal))}</span><small>${balText(p.type, L.bal)}</small></div></div>
+        ${p.limit && L.bal > p.limit ? `<div class="warn">⛔ ادھار حد سے <span class="num">${fmt(L.bal - p.limit)}</span> روپے زیادہ</div>` : ''}
+        <div class="pChips"><div><span>کل جمع</span><b class="num">${fmt(T.jam)}</b></div><div><span>کل بنام</span><b class="num">${fmt(T.banam)}</b></div><div><span>اندراج</span><b class="num">${L.rows.length}</b></div></div>
+        <div class="pBtns">
+          <button onclick="App.go('cash','${z ? 'pay' : 'receive'}:${p.id}')"><span>${z ? '💸' : '💵'}</span>${z ? 'ادائیگی' : 'وصولی'}</button>
+          ${!z ? `<button onclick="App.dayBill('${p.id}')"><span>🧾</span>روز کا بل</button>` : `<button onclick="App.newParchiFor('${p.id}')"><span>📝</span>نئی پرچی</button>`}
+          <button onclick="App.printLedger('${p.id}')"><span>🖨️</span>پرنٹ</button>
+          ${p.phone ? `<a href="tel:${esc(p.phone)}"><span>📞</span>فون</a>` : ''}${w ? `<a href="https://wa.me/${w}" target="_blank"><span>💬</span>واٹس ایپ</a>` : ''}
+          <button onclick="App.partyForm('${p.type}','${p.id}')"><span>✏️</span>بدلیں</button></div>
+        <div class="card"><h3>📖 کھاتہ</h3><div class="tblWrap">${ledgerTable(p, L)}</div></div>`;
+    }
     return `<div class="pageTitle">${p.type === 'zamindar' ? '🧑‍🌾' : '🧑‍💼'} ${esc(p.name)}<span class="sp"></span>
         <button class="btn gold sm" onclick="App.go('cash','${p.type === 'zamindar' ? 'pay' : 'receive'}:${p.id}')">${p.type === 'zamindar' ? '💸 ادائیگی' : '💵 وصولی'}</button>
         ${p.type === 'buyer' ? `<button class="btn light sm" onclick="App.dayBill('${p.id}')">🧾 روز کا بل</button>` : ''}
@@ -1749,6 +1788,8 @@
     logout(){ curUser = null; pinBuf = ''; menu(false); render(); },
     setTheme(k){ try{ localStorage.setItem('ab_theme', k); }catch(e){} applyTheme(k); render(); }, verTap(){ if(window.AB_LIC && AB_LIC.tap()) return; toast('ورژن ' + APP_VERSION); },
     newParchi(){ cur = blankParchi(); pzQ = ''; render(); },
+    newParchiFor(id){ const p = party(id); cur = blankParchi(); pzQ = ''; if(p){ cur.zamindar = p.name; cur.zamindarId = p.id; cur.place = p.place || ''; } go('parchi'); },
+    pfilter(k){ partyFilter = k; render(); },
     bkOpen, bkSave, pzPick, pzCart, bkAmt,
     bkNum(){ const e = $('bkB'), p = e && partyByNo('buyer', e.value); if(p) e.value = p.name; },
     bkBasis(b){ bkState.basis = b; $('bkBn').classList.toggle('on', b === 'nag'); $('bkBm').classList.toggle('on', b === 'maund'); $('bkWw').style.display = b === 'maund' ? '' : 'none'; bkAmt(); },
@@ -1783,7 +1824,7 @@
       modal(`<h3>➕ ہوم پر آئیکن لگائیں</h3><div class="list" style="text-align:right">${rest.map(n => `<div class="it" onclick="App.closeModal();App.homeAddK('${n[0]}')"><div>${n[1]} ${n[2]}</div><span class="num">${navNo(n[0])}</span></div>`).join('') || '<div class="muted">سب آئیکن پہلے سے ہوم پر ہیں</div>'}</div><div class="row" style="justify-content:center;margin-top:8px"><button class="btn gray" onclick="App.closeModal()">بند</button></div>`); },
     homeAddK(k){ homeAdd(k, null); }, menuSort(k){ setHomePref({ menuSort: k }); renderSide(); }, printParchi, printBuyers, delParchi, restoreParchi, shareParchi, shareSend, shareChat, shareSave, thermal, thermalShow, thermalBT, thermalPrint, dayBill, dayBillPrint, dayBillThermal, dayBillFromCash, cashSide,
     setListDate(d){ listDate = d; render(); }, setRozDate(d){ rozDate = d; render(); }, toggleLock,
-    psearch(v, type){ partySearch = v; const pos = v.length; render(); const i = document.querySelector('#view .f input'); if(i){ i.focus(); i.setSelectionRange(pos, pos); } },
+    psearch(v, type){ partySearch = v; const pos = v.length; render(); const i = $('pS') || document.querySelector('#view .f input'); if(i){ i.focus(); i.setSelectionRange(pos, pos); } },
     partyForm, saveParty, printLedger, cashHint, cashNum, saveCash, delCash,
     chEdit(id){ editCh = id ? JSON.parse(JSON.stringify(chargesList().find(x => x.id === id))) : { id: '', name: '', kind: 'percent', rate: 0, side: 'zamindar', income: true, on: true, itemRates: {} }; render(); },
     chCancel(){ editCh = null; render(); }, chSave,
