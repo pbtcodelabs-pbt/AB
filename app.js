@@ -8,7 +8,7 @@
    ===================================================================== */
 (function(){
   'use strict';
-  const APP_VERSION = 'AB2610MO051';
+  const APP_VERSION = 'AB2610MO052';
   const UPDATE_NOTE = '📲 ہوم اسکرین پر انسٹال آسان: اوپر 📲 بٹن (کروم کا اپنا پیغام یا قدم بہ قدم رہنمائی)؛ گول آئیکن کے لیے نیا آئیکن؛ آئیکن دبا کر رکھیں تو نئی پرچی / وصولی / خرچہ';
   const C = window.ABCalc;
   // ---------- اردو / عربی کی بورڈ کے ہندسے (۰۱۲… / ٠١٢…) لکھتے ہی 0-9 میں — ورنہ رقم، نمبر اور کوڈ نہیں پہچانے جاتے ----------
@@ -119,7 +119,7 @@
     if(!curUser){
       if(needsLogin()) return null;
       // پن نہیں لگا: ملازم والی ڈیوائس پر اندراج اسی ڈیوائس کے نام سے (مالک کے نام سے نہیں)
-      if(window.AB_CLOUD && AB_CLOUD.on() && AB_CLOUD.role() === 'staff'){ let n = ''; try{ n = localStorage.getItem('ab_devname') || ''; }catch(e){} return { role: 'owner', name: n || 'ملازم ڈیوائس' }; }
+      if(window.AB_CLOUD && AB_CLOUD.on() && AB_CLOUD.role() === 'staff'){ let n = ''; try{ n = localStorage.getItem('ab_devname') || ''; }catch(e){} return { role: 'staff', id: 'dev', dev: true, name: n || 'ملازم ڈیوائس', screens: STAFF_SCREENS.map(x => x[0]) }; }   // پن کے بغیر بھی ملازم والی حد (کمائی، رپورٹیں، خرچے، بیک اپ نہیں)
       return { role: 'owner', name: DB.settings.owner || 'مالک' };
     }
     if(curUser.role === 'owner') return { role: 'owner', name: DB.settings.owner || 'مالک' };
@@ -130,7 +130,8 @@
   const STAFF_SCREENS = [['parchi', 'نئی پرچی'], ['parchis', 'پرچیاں'], ['zamindar', 'زمیندار'], ['buyer', 'خریدار'], ['cash', 'وصولی / ادائیگی'], ['roznamcha', 'روزنامچہ'], ['exp', 'روز کا خرچہ']];
   function canSee(sc){
     const m = me(); if(!m || m.role === 'owner') return true;
-    if(sc === 'home' || sc === 'search') return true;   // تلاش سب کے لیے؛ نتیجے اجازت کے حساب سے
+    if(sc === 'home' || sc === 'search') return true;
+    if(sc === 'settings' && m.dev) return true;   // ملازم ڈیوائس: صرف کلاؤڈ اور رنگ والی سیٹنگ   // تلاش سب کے لیے؛ نتیجے اجازت کے حساب سے
     if(sc === 'party') return m.screens.includes('zamindar') || m.screens.includes('buyer');
     if(sc === 'due') return m.screens.includes('buyer') || m.screens.includes('cash');
     if(sc === 'stock') return m.screens.includes('parchi') || m.screens.includes('parchis');
@@ -226,7 +227,7 @@
     if(p.opening) rows.push({ date: '', at: p.createdAt || 0, text: 'پچھلا بقایا', amt: p.opening });
     liveParchis().forEach(x => {
       const r = calcParchi(x, x.chargesSnap || chargesList());
-      if(p.type === 'zamindar' && x.zamindarId === pid && (r.lines.length || r.net)) rows.push({ date: x.date, at: x.createdAt, text: 'پرچی نمبر ' + x.no + ' — صاف رقم (' + r.nag + ' نگ)', amt: r.net, parchi: x.id });
+      if(p.type === 'zamindar' && x.zamindarId === pid && (r.lines.length || r.net)) rows.push({ date: x.date, at: x.createdAt, text: 'پرچی نمبر ' + x.no + (x.mode === 'trade' ? ' — مال کی خرید (' + r.trade.nag + ' نگ)' : ' — صاف رقم (' + r.nag + ' نگ)'), amt: r.net, parchi: x.id });
       if(p.type === 'buyer') r.buyers.filter(b => b.id === pid).forEach(b => rows.push({ date: x.date, at: x.createdAt, text: 'پرچی نمبر ' + x.no + ' — مال (' + b.nag + ' نگ، زمیندار ' + (x.zamindar || '') + ')', amt: b.total, parchi: x.id }));
     });
     liveCash().filter(c => c.partyId === pid).forEach(c => rows.push({ date: c.date, at: c.at, text: cashText(c, p.type) + (c.no ? ' (نمبر ' + c.no + ')' : '') + (c.note ? ' — ' + c.note : ''), amt: cashSign(c, p.type) * c.amount, cash: c.id }));
@@ -522,7 +523,7 @@
   // =====================================================================
   let cur = null;
   function blankLine(){ return { item: '', nag: '', grams: '', rate: '', basis: 'nag', buyer: '' }; }
-  function blankParchi(){ return { id: uid(), no: 0, date: today(), zamindar: '', zamindarId: '', place: '', vehicle: '', bilty: '', lines: [], manual: {}, buyerManual: {}, note: '', createdAt: Date.now() }; }
+  function blankParchi(){ return { id: uid(), no: 0, date: today(), zamindar: '', zamindarId: '', place: '', vehicle: '', bilty: '', lines: [], mode: DB.settings.defMode === 'trade' ? 'trade' : '', manual: {}, buyerManual: {}, note: '', createdAt: Date.now() }; }
   // ---------- 🧺 جنس کے کارڈ (سبزی منڈی کے «بل بنائیں» جیسے) ----------
   const ITEM_ICON = { 'آم': '🥭', 'کیلا': '🍌', 'سیب': '🍎', 'کینو': '🍊', 'مالٹا': '🍊', 'سنگترہ': '🍊', 'انگور': '🍇', 'امرود': '🍐', 'ناشپاتی': '🍐', 'خربوزہ': '🍈', 'تربوز': '🍉', 'آڑو': '🍑', 'آلو بخارا': '🍑', 'انار': '🍎', 'لیموں': '🍋', 'کھجور': '🌴', 'آلو': '🥔', 'پیاز': '🧅', 'ٹماٹر': '🍅', 'بھنڈی': '🌿', 'گوبھی': '🥦', 'بند گوبھی': '🥬', 'مٹر': '🫛', 'لہسن': '🧄', 'ادرک': '🫚', 'مرچ': '🌶️', 'شملہ مرچ': '🫑', 'کھیرا': '🥒', 'گاجر': '🥕', 'مولی': '🥕', 'بینگن': '🍆', 'کدو': '🎃', 'پالک': '🥬', 'دھنیا': '🌿', 'گندم': '🌾', 'چاول': '🌾', 'مکئی': '🌽' };
   const ITEM_BASE = ['آم', 'کیلا', 'سیب', 'کینو', 'مالٹا', 'انگور', 'امرود', 'خربوزہ', 'تربوز', 'آلو', 'پیاز', 'ٹماٹر', 'بھنڈی', 'گوبھی', 'مٹر', 'لہسن', 'ادرک', 'مرچ'];
@@ -607,6 +608,7 @@
         <button class="btn light sm" ${nb.next ? `onclick="App.parchiStep('${nb.next.id}')"` : 'disabled'}>⬅️</button>
         <button class="btn gold sm" onclick="App.newParchi()">🆕 نئی</button></div>
       <div class="pzTop">
+        <div class="modeRow"><button class="${p.mode !== 'trade' ? 'on' : ''}" onclick="App.pzMode('')">🤝 کمیشن پر</button><button class="${p.mode === 'trade' ? 'on tr' : ''}" onclick="App.pzMode('trade')">🛒 اپنا مال (خرید فروخت)</button></div>
         <div class="pzRow"><button class="pzTrig ${p.zamindar ? 'on' : ''}" onclick="App.pzPick()"><span>${p.zamindar ? `🧑‍🌾 ${pNo(z) ? '<span class="pnoTag num">' + pNo(z) + '</span> ' : ''}<b>${esc(p.zamindar)}</b>` : '— زمیندار منتخب کریں —'}</span><span class="chev">▾</span></button>
           <button class="pzPlus" onclick="App.pzPick(true)" title="نیا زمیندار">+</button></div>
         <details class="pzMeta" ${p.vehicle || p.bilty || p.note || int(p.cashNow) || p.date !== today() ? 'open' : ''}><summary>🚚 گاڑی، بلٹی، تاریخ، نقد ${p.vehicle ? '— ' + esc(p.vehicle) : ''} ${p.date !== today() ? '— ' + esc(urDate(p.date)) : ''}</summary>
@@ -618,7 +620,7 @@
             <div class="f"><label>نقد (ابھی زمیندار کو دیا)</label><input inputmode="decimal" value="${esc(inRs(p.cashNow))}" placeholder="0" oninput="App.pset('cashNow',this.value)"></div>
             <div class="f"><label>نوٹ</label><input value="${esc(p.note)}" placeholder="اختیاری" oninput="App.pset('note',this.value)"></div>
           </div></details>
-        <details class="pzMeta arrBox" ${st.length || (!p.no && !p.lines.length) ? 'open' : ''}><summary>🚛 مال آمد ${st.length ? '— ' + st.map(x => esc(x.item) + ' <span class="num">' + x.came + '</span>').join('، ') + ' • باقی <span class="num">' + st.reduce((s, x) => s + x.left, 0) + '</span> نگ' : '(گاڑی میں کیا آیا — اختیاری)'}</summary>
+        <details class="pzMeta arrBox" ${st.length || p.mode === 'trade' || (!p.no && !p.lines.length) ? 'open' : ''}><summary>${p.mode === 'trade' ? '🛒 مال آمد (خرید)' + (r.trade && r.trade.buy ? ' — خرید <span class="num">' + fmt(r.trade.buy) + '</span> • خرچے <span class="num">' + fmt(r.trade.exp) + '</span> •' : '') : '🚛 مال آمد'} ${st.length ? '— ' + st.map(x => esc(x.item) + ' <span class="num">' + x.came + '</span>').join('، ') + ' • باقی <span class="num">' + st.reduce((s, x) => s + x.left, 0) + '</span> نگ' : '(گاڑی میں کیا آیا — اختیاری)'}</summary>
           ${st.length ? `<div class="arrList">${st.map(x => `<button class="arrChip ${x.left < 0 ? 'neg' : x.left === 0 ? 'done' : ''}" onclick="App.arrOpen(decodeURIComponent('${encodeURIComponent(x.item)}'))">${itemIcon(x.item)} <b>${esc(x.item)}</b>${x.packing ? ' <small>' + esc(x.packing) + '</small>' : ''}<span>آیا <b class="num">${x.came}</b> • بکا <b class="num">${x.sold}</b> • باقی <b class="num">${x.left}</b></span></button>`).join('')}</div>` : ''}
           <button class="btn light sm" onclick="App.arrOpen('')" style="margin-top:6px">➕ مال آمد لکھیں</button></details>
         <div class="pzSearch"><input id="pzQ" value="${esc(pzQ)}" placeholder="🔍 جنس کا نام لکھیں…" oninput="App.pzSearch(this.value)"><button onclick="App.pzNewItem()" title="نئی جنس">+</button></div>
@@ -680,9 +682,23 @@
       <div class="grid2"><div class="f"><label>جنس</label><input id="arI" list="dlI2" value="${esc(a ? a.item : pzQ)}" placeholder="مثلاً آم" ${a ? 'readonly' : ''}></div>
         <div class="f"><label>کتنے نگ آئے</label><input id="arN" inputmode="numeric" value="${esc(a ? a.nag : '')}" placeholder="0" style="font-size:22px;text-align:center"></div></div>
       <div class="pkChips">${pk.map(x => `<button class="${arrPk === x ? 'on' : ''}" onclick="App.arrPk(this)">${x}</button>`).join('')}</div>
+      ${cur.mode === 'trade' ? `<div class="trGrid">
+        <div class="f"><label>فی نگ خرید</label><input id="arB" inputmode="decimal" value="${a && a.buyRate ? esc(a.buyRate / 100) : ''}" placeholder="0" oninput="App.arrCalc()"></div><div class="trTot"><span>خرید</span><b class="num" id="arBt">0</b></div>
+        <div class="f"><label>فی نگ کرایہ</label><input id="arK" inputmode="decimal" value="${a && a.kir ? esc(a.kir / 100) : ''}" placeholder="0" oninput="App.arrCalc()"></div><div class="trTot"><span>کرایہ</span><b class="num" id="arKt">0</b></div>
+        <div class="f"><label>فی نگ مزدوری</label><input id="arM" inputmode="decimal" value="${a && a.maz ? esc(a.maz / 100) : ''}" placeholder="0" oninput="App.arrCalc()"></div><div class="trTot"><span>مزدوری</span><b class="num" id="arMt">0</b></div>
+        <div class="f"><label>فی نگ پیکنگ</label><input id="arP" inputmode="decimal" value="${a && a.pkc ? esc(a.pkc / 100) : ''}" placeholder="0" oninput="App.arrCalc()"></div><div class="trTot"><span>پیکنگ</span><b class="num" id="arPt">0</b></div></div>
+        <div class="trPay">بیوپاری کو ادائیگی (خرید): <b class="num" id="arPay">0</b> روپے • کل لاگت: <b class="num" id="arCost">0</b></div>` : ''}
       <div class="muted">گاڑی میں جو مال آیا وہ لکھیں؛ بکری لکھتے جائیں تو ہر جنس کے «باقی نگ» خود کم ہوتے رہیں گے۔</div></div>
       <div class="row" style="justify-content:center;margin-top:8px"><button class="btn" onclick="App.arrSave(${a ? 'true' : 'false'})">✅ محفوظ</button>${a ? `<button class="btn gray" onclick="App.arrDel(decodeURIComponent('${encodeURIComponent(a.item)}'))">🗑️ ہٹائیں</button>` : `<button class="btn light" onclick="App.arrSave(false,true)">➕ اور جنس</button>`}<button class="btn gray" onclick="App.closeModal()">بند</button></div>`);
+    if(cur.mode === 'trade'){ const n = $('arN'); if(n) n.addEventListener('input', arrCalc); arrCalc(); }
     setTimeout(() => { const e = $(a ? 'arN' : 'arI'); if(e) e.focus(); }, 60);
+  }
+  // 🛒 خرید فروخت: تعداد × فی نگ = جوڑ (تخلیق سافٹ کی «تفصیل» جیسا)
+  function arrCalc(){
+    if(!$('arB')) return; const n = int($('arN').value);
+    const v = id => n * toPaisa($(id).value), b = v('arB'), k = v('arK'), m = v('arM'), pk = v('arP');
+    $('arBt').textContent = fmt(b); $('arKt').textContent = fmt(k); $('arMt').textContent = fmt(m); $('arPt').textContent = fmt(pk);
+    $('arPay').textContent = fmt(b); $('arCost').textContent = fmt(b + k + m + pk);
   }
   function arrSave(edit, again){
     const item = $('arI').value.trim(), nag = int($('arN').value);
@@ -690,8 +706,9 @@
     if(nag <= 0){ toast('⚠️ نگ لکھیں'); return; }
     cur.arr = arrOf(cur);
     const ex = cur.arr.find(x => x.item.trim() === item);
-    if(ex){ if(edit) ex.nag = nag; else ex.nag = int(ex.nag) + nag; ex.packing = arrPk || ex.packing || ''; }
-    else cur.arr.push({ item, nag, packing: arrPk });
+    const tr = $('arB') ? { buyRate: toPaisa($('arB').value), kir: toPaisa($('arK').value), maz: toPaisa($('arM').value), pkc: toPaisa($('arP').value) } : {};
+    if(ex){ if(edit) ex.nag = nag; else ex.nag = int(ex.nag) + nag; ex.packing = arrPk || ex.packing || ''; Object.assign(ex, tr); }
+    else cur.arr.push(Object.assign({ item, nag, packing: arrPk }, tr));
     closeModal(); toast('🚛 ' + item + ': ' + nag + ' نگ'); render(); if(again) arrOpen('');
   }
   // اوپر زمیندار چننے کی فہرست (سبزی منڈی کے «گاہک منتخب کریں» جیسی)
@@ -705,7 +722,7 @@
   function pzCart(){
     const r = calcParchi(cur, parchiCharges());
     const ch = cur.chargesSnap && cur.no ? cur.chargesSnap : chargesList();
-    const manualCs = ch.filter(c => c.on && c.side === 'zamindar' && c.kind === 'manual');
+    const manualCs = cur.mode === 'trade' ? [] : ch.filter(c => c.on && c.side === 'zamindar' && c.kind === 'manual');   // اپنے مال پر زمیندار کی کٹوتیاں نہیں
     modal(`<div class="sheetHd"><h3>🧾 ${cur.no ? 'پرچی نمبر ' + cur.no : 'نئی پرچی'} — ${esc(cur.zamindar || 'زمیندار؟')}</h3></div>
       <div class="list" style="text-align:right">${cur.lines.map((l, i) => `<div class="it" onclick="App.bkOpen(${i})"><div>${itemIcon(l.item)} <b>${esc(lineFull(l))}</b> → ${esc(l.buyer || '؟')} <span class="muted"><span class="num">${esc(l.nag || (int(l.grams) / 1000) + ' کلو')}</span> × <span class="num">${fmt(int(l.rate))}</span></span></div><span class="num">${fmt(lineAmount(l))}</span></div>`).join('') || '<div class="muted">ابھی کوئی بکری نہیں — جنس کے کارڈ پر ہاتھ رکھیں</div>'}</div>
       ${manualCs.length ? `<div class="grid2" style="text-align:right;margin-top:6px">${manualCs.map(c => `<div class="f"><label>${esc(c.name)} (روپے)</label><input inputmode="decimal" value="${cur.manual[c.id] != null ? esc(inRs(cur.manual[c.id])) : ''}" placeholder="${esc(inRs(c.rate) || '0')}" oninput="App.pman('${c.id}',this.value);App.pzCartRes()"></div>`).join('')}</div>` : ''}
@@ -790,7 +807,16 @@
   }
   function resultHtml(r, p, forPrint){
     const tag = x => forPrint ? '' : `<span class="tag ${x.income ? 'in' : 'out'}">${x.income ? 'آمدن' : 'آگے ادا'}</span>`;
-    let h = `<div class="card"><h3>🧾 زمیندار کی پرچی</h3>
+    let h = r.trade ? `<div class="card"><h3>🛒 اپنا مال — خرید فروخت</h3>
+      <div class="muted">${esc(p.zamindar || 'زمیندار کا نام لکھیں')} ${p.vehicle ? '— گاڑی ' + esc(p.vehicle) : ''}</div>
+      <table class="t"><tr><th>جنس</th><th class="v">نگ</th><th class="v">خرید</th><th class="v">کرایہ</th><th class="v">مزدوری</th><th class="v">پیکنگ</th></tr>
+      ${r.trade.rows.map(x => `<tr><td>${esc(x.item)}</td><td class="v">${x.nag}</td><td class="v">${fmt(x.buy)}</td><td class="v">${fmt(x.kiraya)}</td><td class="v">${fmt(x.mazdoori)}</td><td class="v">${fmt(x.packing)}</td></tr>`).join('') || '<tr><td colspan="6" class="muted">«🛒 مال آمد» میں جنس، نگ اور فی نگ خرید لکھیں</td></tr>'}</table>
+      <table class="t" style="margin-top:6px"><tr><td>🧺 بکری (${r.nag} نگ)</td><td class="v">${fmt(r.gross)}</td></tr>
+      <tr><td>➖ مال کی خرید (${r.trade.nag} نگ)</td><td class="v">${fmt(r.trade.buy)}</td></tr>
+      <tr><td>➖ کرایہ + مزدوری + پیکنگ</td><td class="v">${fmt(r.trade.exp)}</td></tr>
+      <tr class="net"><td>${r.profit >= 0 ? '📈 نفع' : '📉 نقصان'}</td><td class="v">${fmt(Math.abs(r.profit))}</td></tr>
+      ${r.left ? `<tr><td>📦 باقی مال (ابھی نہیں بکا)</td><td class="v">${r.left} نگ</td></tr>` : ''}
+      <tr class="tot"><td>زمیندار کو ادائیگی (خرید)${int(p.cashNow) ? ' — نقد ' + fmt(int(p.cashNow)) + ' دیا' : ''}</td><td class="v">${fmt(r.net - int(p.cashNow))}</td></tr></table></div>` : `<div class="card"><h3>🧾 زمیندار کی پرچی</h3>
       <div class="muted">${esc(p.zamindar || 'زمیندار کا نام لکھیں')} ${p.place ? '— ' + esc(p.place) : ''} ${p.vehicle ? '— گاڑی ' + esc(p.vehicle) : ''}</div>
       <table class="t"><tr><th>کل بکری (${r.nag} نگ)</th><th class="v">${fmt(r.gross)}</th></tr>
       ${r.zCharges.map(x => `<tr><td>➖ ${esc(x.name)} ${tag(x)}</td><td class="v">${fmt(x.amount)}</td></tr>`).join('')}
@@ -900,6 +926,17 @@
   function partyBal(pid){ return pid ? ledger(pid).bal : null; }
   function zamindarSpec(p, r){
     const z = p.zamindarId, bal = partyBal(z);
+    if(r.trade){
+      const cash = int(p.cashNow);
+      return { shop: shopName(), sub: shopSub(), title: 'خرید کی پرچی — نمبر ' + p.no,
+        meta: [['تاریخ', urDate(p.date)], ['زمیندار', p.zamindar + (pNo(party(z)) ? ' (نمبر ' + pNo(party(z)) + ')' : '')], ['گاڑی', p.vehicle || '—'], ...(p.bilty ? [['بلٹی', p.bilty]] : [])],
+        cols: [{ t: 'جنس', w: 3 }, { t: 'نگ', w: 1.4, num: 1 }, { t: 'فی نگ خرید', w: 2 }, { t: 'رقم', w: 2.4, num: 1 }],
+        rows: r.trade.rows.map(x => [x.item, x.nag, fmt(x.nag ? x.buy / x.nag : 0), fmt(x.buy)]),
+        lines: [['مال کی خرید (' + r.trade.nag + ' نگ)', fmt(r.trade.buy), 'tot']].concat(cash ? [['➖ نقد (ابھی دیا)', fmt(cash), '']] : [])
+          .concat([[cash ? 'زمیندار کو باقی ادائیگی (روپے)' : 'زمیندار کو ادائیگی (روپے)', fmt(r.net - cash), 'net']])
+          .concat(bal != null ? [['کھاتے کا کل بقایا — ' + balText('zamindar', bal), fmt(Math.abs(bal)), 'tot']] : []),
+        sub2: shopContacts(), foot: [shopFoot(), urDate(today())].filter(Boolean).join(' • ') };
+    }
     const cash = int(p.cashNow), xc = r.lines.some(l => lineXtra(l)), st = stockOf(p);
     return { shop: shopSub() ? shopName() : shopName(), sub: shopSub(), title: 'زمیندار کی پرچی — نمبر ' + p.no,
       meta: [['تاریخ', urDate(p.date)], ['زمیندار', p.zamindar + (pNo(party(z)) ? ' (نمبر ' + pNo(party(z)) + ')' : '')], ['گاؤں / شہر', p.place || '—'], ['گاڑی', p.vehicle || '—'], ...(p.bilty ? [['بلٹی', p.bilty]] : []), ...(st.length ? [['مال آمد', st.map(x => x.item + ' ' + x.came + (x.left > 0 ? ' (باقی ' + x.left + ')' : '')).join('، ')]] : [])],
@@ -1826,6 +1863,7 @@
   }
   function backupBanner(){
     const D = window.AB_DRIVE;
+    if(isStaff()) return '';   // بیک اپ مالک کا کام
     if(!liveParchis().length && !DB.cash.length) return '';
     if(D && D.connected() && D.supported) return '';
     if(backedUpToday()) return '';
@@ -1838,6 +1876,8 @@
   // =====================================================================
   VIEWS.settings = function(){
     const s = DB.settings;
+    if(isStaff()) return `<div class="pageTitle">🛠️ سیٹنگ</div><div class="card"><div class="muted">یہ ڈیوائس ملازم کی ہے — آڑھت کی معلومات، کمائی، رپورٹیں، خرچے اور بیک اپ صرف مالک کی ڈیوائس پر۔ مالک سیٹنگ ← «مالک کا پن» اور «ملازمین» سے ہر ملازم کا اپنا پن اور اسکرینیں طے کر سکتا ہے۔</div></div>
+      ${cloudCard()}<div class="card"><h3>🎨 رنگ</h3><div class="themesCard">${themePicker()}</div></div><div class="card plain"><div class="muted">ورژن: <span class="num">${APP_VERSION}</span></div></div>`;
     const lg = DB.log.slice(-40).reverse();
     return `<div class="pageTitle">🛠️ سیٹنگ</div>
       <details class="setSec" open><summary>🏪 آڑھت کی معلومات</summary>
@@ -1849,7 +1889,8 @@
         <div class="f"><label>کاروبار کی تفصیل (پرچی پر)</label><input id="sTag" value="${esc(s.tagline == null ? 'سبزی فروٹ کمیشن ایجنٹ' : s.tagline)}" placeholder="مثلاً سبزی فروٹ کمیشن ایجنٹ"></div>
         <div class="f"><label>ٹریڈ مارک</label><input id="sTm" value="${esc(s.trademark)}" placeholder="مثلاً ایچ جی"></div>
         <div class="f"><label>دکان نمبر</label><input id="sNo" value="${esc(s.shopNo)}" placeholder="مثلاً 16"></div>
-        <div class="f"><label>🪙 شروع کا نقد (گلے میں — روپے)</label><input id="sCash" inputmode="decimal" value="${esc(inRs(s.openCash))}" placeholder="0"></div></div>
+        <div class="f"><label>🪙 شروع کا نقد (گلے میں — روپے)</label><input id="sCash" inputmode="decimal" value="${esc(inRs(s.openCash))}" placeholder="0"></div>
+        <div class="f"><label>📝 نئی پرچی کا عام طریقہ</label><select id="sMode"><option value="">🤝 کمیشن پر (آڑھت)</option><option value="trade" ${s.defMode === 'trade' ? 'selected' : ''}>🛒 اپنا مال (خرید فروخت)</option></select></div></div>
         <div class="muted" style="margin-top:6px">📞 پرچی پر نام اور نمبر (سرپرست، شراکت دار…) — زیادہ سے زیادہ 4</div>
         <div class="grid2 wideable">${[0, 1, 2, 3].map(i => { const c = (s.contacts || [])[i] || {}; return `<div class="f"><input id="sCn${i}" value="${esc(c.n)}" placeholder="نام"></div><div class="f"><input id="sCp${i}" inputmode="tel" value="${esc(c.p)}" placeholder="نمبر"></div>`; }).join('')}</div>
         <button class="btn" style="margin-top:8px" onclick="App.saveSettings()">💾 محفوظ</button></div></details>
@@ -1865,7 +1906,7 @@
   };
   function saveSettings(){
     Object.assign(DB.settings, { shop: $('sShop').value.trim() || DB.settings.shop, owner: $('sOwner').value.trim(), phone: $('sPhone').value.trim(), address: $('sAddr').value.trim(),
-      tagline: $('sTag').value.trim(), trademark: $('sTm').value.trim(), shopNo: $('sNo').value.trim(), openCash: toPaisa($('sCash').value),
+      tagline: $('sTag').value.trim(), trademark: $('sTm').value.trim(), shopNo: $('sNo').value.trim(), openCash: toPaisa($('sCash').value), defMode: $('sMode').value,
       contacts: [0, 1, 2, 3].map(i => ({ n: $('sCn' + i).value.trim(), p: $('sCp' + i).value.trim() })).filter(c => c.n || c.p) });
     put('settings'); logIt('آڑھت کی معلومات بدلیں'); render(); toast('✅ محفوظ'); if(window.AB_LIC) AB_LIC.check(false);
   }
@@ -1994,7 +2035,8 @@
     newParchi(){ cur = blankParchi(); pzQ = ''; render(); },
     newParchiFor(id){ const p = party(id); cur = blankParchi(); pzQ = ''; if(p){ cur.zamindar = p.name; cur.zamindarId = p.id; cur.place = p.place || ''; } go('parchi'); },
     pfilter(k){ partyFilter = k; render(); },
-    bkOpen, bkSave, pzPick, pzCart, bkAmt,
+    bkOpen, bkSave, pzPick, pzCart, bkAmt, arrCalc,
+    async pzMode(k){ if(cur.no && (cur.mode || '') !== k && !(await ask('محفوظ پرچی کا طریقہ بدلنا ہے؟ حساب نئے طریقے سے بنے گا۔', 'ہاں، بدلیں'))) return; cur.mode = k; render(); toast(k === 'trade' ? '🛒 اپنا مال: «مال آمد» میں فی نگ خرید، کرایہ، مزدوری، پیکنگ لکھیں' : '🤝 کمیشن پر: بیوپاری کی کٹوتیاں لگیں گی'); },
     bkNum(){ const e = $('bkB'), p = e && partyByNo('buyer', e.value); if(p) e.value = p.name; },
     bkBasis(b){ bkState.basis = b; $('bkBn').classList.toggle('on', b === 'nag'); $('bkBm').classList.toggle('on', b === 'maund'); $('bkWw').style.display = b === 'maund' ? '' : 'none'; bkAmt(); },
     bkPk(el){ const on = el.classList.contains('on'); document.querySelectorAll('.pkChips button').forEach(b => b.classList.remove('on')); if(!on){ el.classList.add('on'); bkState.pk = el.textContent; } else bkState.pk = ''; },

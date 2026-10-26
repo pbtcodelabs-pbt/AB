@@ -108,5 +108,24 @@ eq('fmt پیسے', C.fmt(12345), '123.45');
   eq('خریدار: ہاتھ والا خرچہ', r.buyers[0].total, R(750));
 }
 
+// ---------- 🛒 اپنا مال (خرید فروخت) ----------
+{
+  const ch = charges('sabzi');
+  const p = { mode: 'trade', arr: [{ item: 'آلو', nag: '20', packing: 'بوری', buyRate: R(1000), kir: R(30), maz: R(10), pkc: R(5) }],
+    lines: [{ item: 'آلو', nag: '15', rate: R(1300), basis: 'nag', buyer: 'احمد' }], manual: {} };
+  const r = C.calcParchi(p, ch);
+  eq('خرید: خرید کل', r.trade.buy, R(20000));
+  eq('خرید: کرایہ', r.trade.kiraya, R(600));
+  eq('خرید: مزدوری', r.trade.mazdoori, R(200));
+  eq('خرید: پیکنگ', r.trade.packing, R(100));
+  eq('خرید: کل خرچے', r.trade.exp, R(900));
+  eq('خرید: بیوپاری کو ادائیگی', r.net, R(20000));
+  eq('خرید: بکری', r.gross, R(19500));
+  eq('خرید: زمیندار کی کٹوتی نہیں', r.zTotal, 0);
+  eq('خرید: نفع / نقصان', r.profit, R(19500 - 20000 - 900));
+  eq('خرید: باقی مال', r.left, 5);
+  eq('خرید: خریدار کا کمیشن 1٪ اور لدوائی', r.buyers[0].total, R(19500) + R(195) + R(45));
+  eq('خرید: جوڑ درست', r.check, true);
+}
 console.log((fail ? '❌' : '✅') + ' ' + pass + ' درست، ' + fail + ' غلط');
 process.exit(fail ? 1 : 0);
