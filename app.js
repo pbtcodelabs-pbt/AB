@@ -8,8 +8,8 @@
    ===================================================================== */
 (function(){
   'use strict';
-  const APP_VERSION = 'AB2610MO048';
-  const UPDATE_NOTE = '🚛 مال آمد: گاڑی کا مال پہلے لکھیں، بکری کے ساتھ ہر جنس کے باقی نگ خود؛ نیا صفحہ «مال آمد» میں باقی مال والی گاڑیاں';
+  const APP_VERSION = 'AB2610MO049';
+  const UPDATE_NOTE = '🧾 روز کا خرچہ: رجسٹر جیسا صفحہ — مد، رقم، تفصیل، دن کا میزان، تصویر / پرنٹ؛ گلے اور روزنامچے میں بھی';
   const C = window.ABCalc;
   // ---------- اردو / عربی کی بورڈ کے ہندسے (۰۱۲… / ٠١٢…) لکھتے ہی 0-9 میں — ورنہ رقم، نمبر اور کوڈ نہیں پہچانے جاتے ----------
   document.addEventListener('input', e => {
@@ -24,12 +24,12 @@
   // =====================================================================
   //   ڈیٹا اور حفاظت
   // =====================================================================
-  const KEYS = ['ab_settings', 'ab_charges', 'ab_parties', 'ab_parchis', 'ab_cash', 'ab_log', 'ab_locks'];
-  const DB = { settings: {}, charges: null, parties: [], parchis: [], cash: [], log: [], locks: {} };
+  const KEYS = ['ab_settings', 'ab_charges', 'ab_parties', 'ab_parchis', 'ab_cash', 'ab_log', 'ab_locks', 'ab_exp'];
+  const DB = { settings: {}, charges: null, parties: [], parchis: [], cash: [], log: [], locks: {}, exp: [] };
   function rd(k, d){ try{ const v = JSON.parse(localStorage.getItem(k) || 'null'); return v == null ? d : v; }catch(e){ return d; } }
   function loadAll(){
     DB.settings = rd('ab_settings', {}); DB.charges = rd('ab_charges', null); DB.parties = rd('ab_parties', []);
-    DB.parchis = rd('ab_parchis', []); DB.cash = rd('ab_cash', []); DB.log = rd('ab_log', []); DB.locks = rd('ab_locks', {});
+    DB.parchis = rd('ab_parchis', []); DB.cash = rd('ab_cash', []); DB.log = rd('ab_log', []); DB.locks = rd('ab_locks', {}); DB.exp = rd('ab_exp', []);
     Object.keys(DB.locks).forEach(d => { if(typeof DB.locks[d] !== 'object') DB.locks[d] = { on: !!DB.locks[d] }; }); // پرانی شکل
     if(DB.settings.pin){ DB.settings.pinH = pinHash(DB.settings.pin); delete DB.settings.pin; try{ localStorage.setItem('ab_settings', JSON.stringify(DB.settings)); }catch(e){} } // پرانا سادہ پن → خفیہ شکل
     SYNCED.forEach(n => { seen[n] = new Map(); recs(n).forEach(r => seen[n].set(r.__k, sig(r.v))); });
@@ -37,7 +37,7 @@
   // ---------- 🔄 کئی فون / کمپیوٹر کا ڈیٹا ملانے کی تیاری: ہر ریکارڈ پر «کب بدلا (upd)، کس آلے سے (dev)» کی مہر ----------
   // کوئی بھی ریکارڈ بدلے تو put() خود مہر لگاتا ہے؛ کچھ بھی پکا حذف نہیں ہوتا (deleted نشان) تاکہ حذف بھی دوسرے آلات تک پہنچے
   const DEV = (function(){ let d = null; try{ d = localStorage.getItem('ab_device'); if(!d){ d = 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); localStorage.setItem('ab_device', d); } }catch(e){ d = 'd0'; } return d; })();
-  const SYNCED = ['settings', 'charges', 'parties', 'parchis', 'cash', 'locks'];
+  const SYNCED = ['settings', 'charges', 'parties', 'parchis', 'cash', 'locks', 'exp'];
   const seen = {};
   function recs(n){
     const v = DB[n];
@@ -127,7 +127,7 @@
     return u ? { role: 'staff', id: u.id, name: u.name, screens: u.screens || [] } : null; // ملازم ہٹا دیا گیا ہو تو باہر
   }
   const isStaff = () => { const m = me(); return !!(m && m.role === 'staff'); };
-  const STAFF_SCREENS = [['parchi', 'نئی پرچی'], ['parchis', 'پرچیاں'], ['zamindar', 'زمیندار'], ['buyer', 'خریدار'], ['cash', 'وصولی / ادائیگی'], ['roznamcha', 'روزنامچہ']];
+  const STAFF_SCREENS = [['parchi', 'نئی پرچی'], ['parchis', 'پرچیاں'], ['zamindar', 'زمیندار'], ['buyer', 'خریدار'], ['cash', 'وصولی / ادائیگی'], ['roznamcha', 'روزنامچہ'], ['exp', 'روز کا خرچہ']];
   function canSee(sc){
     const m = me(); if(!m || m.role === 'owner') return true;
     if(sc === 'home' || sc === 'search') return true;   // تلاش سب کے لیے؛ نتیجے اجازت کے حساب سے
@@ -273,11 +273,11 @@
   const NAV = [
     ['home', '🏠', 'ہوم'], ['search', '🔍', 'تلاش'], ['parchi', '📝', 'نئی پرچی'], ['parchis', '📚', 'پرچیاں'], ['stock', '🚛', 'مال آمد'],
     ['zamindar', '🧑‍🌾', 'زمیندار'], ['buyer', '🧑‍💼', 'خریدار'], ['cash', '💵', 'وصولی / ادائیگی'],
-    ['roznamcha', '📖', 'روزنامچہ'], ['due', '🔔', 'یاد دہانی'], ['reports', '📊', 'رپورٹیں'], ['charges', '⚙️', 'خرچے اور کمیشن'], ['backup', '💾', 'بیک اپ'], ['settings', '🛠️', 'سیٹنگ']
+    ['roznamcha', '📖', 'روزنامچہ'], ['exp', '🧾', 'روز کا خرچہ'], ['due', '🔔', 'یاد دہانی'], ['reports', '📊', 'رپورٹیں'], ['charges', '⚙️', 'خرچے اور کمیشن'], ['backup', '💾', 'بیک اپ'], ['settings', '🛠️', 'سیٹنگ']
   ];
   let screen = 'home', arg = null;
   // ---------- ☰ مینو (سبزی منڈی جیسا): نمبر والی رنگین قطاریں، ترتیب «نمبر سے / الف سے»، ⣿ پکڑ کر ہوم پر ----------
-  const NAV_CLR = ['#0f766e', '#4f46e5', '#059669', '#dc2626', '#7c3aed', '#0369a1', '#c026d3', '#ea580c', '#0e7490', '#16a34a', '#be123c', '#ca8a04', '#9a3412', '#475569'];
+  const NAV_CLR = ['#0f766e', '#4f46e5', '#059669', '#dc2626', '#7c3aed', '#0369a1', '#c026d3', '#ea580c', '#0e7490', '#16a34a', '#be123c', '#ca8a04', '#9a3412', '#475569', '#b45309'];
   function renderSide(){
     const m = me(), srt = homePref().menuSort || 'num';
     const L = t => window.AB_LBL ? AB_LBL.L(t) : t;
@@ -409,10 +409,11 @@
       r.zCharges.concat(...r.buyers.map(x => x.charges)).forEach(x => { if(!x.amount) return; const m = x.income ? inc : ex; m[x.name] = (m[x.name] || 0) + x.amount; if(!x.income) exp += x.amount; }); });
     const cs = liveCash().filter(c => inR(c.date));
     const rec = cs.filter(c => c.kind === 'receive').reduce((a, c) => a + c.amount, 0), pay = cs.filter(c => c.kind === 'pay').reduce((a, c) => a + c.amount, 0);
-    const all = liveCash(); const cashHand = int(DB.settings.openCash) + all.filter(c => c.kind === 'receive').reduce((a, c) => a + c.amount, 0) - all.filter(c => c.kind === 'pay').reduce((a, c) => a + c.amount, 0);
+    const all = liveCash(); const dayExp = liveExp().filter(e => inR(e.date)).reduce((a, e) => a + e.amount, 0);
+    const cashHand = int(DB.settings.openCash) + all.filter(c => c.kind === 'receive').reduce((a, c) => a + c.amount, 0) - all.filter(c => c.kind === 'pay').reduce((a, c) => a + c.amount, 0) - liveExp().reduce((a, e) => a + e.amount, 0);
     const bal = type => parties(type).map(p => ({ p, bal: ledger(p.id).bal })).filter(x => x.bal);
     const zs = bal('zamindar'), bs = bal('buyer');
-    return { per, f, t, ps, gross, income, nag, n: ps.length, inc, ex, exp, cs, rec, pay, cashHand, zs, bs,
+    return { per, f, t, ps, gross, income, nag, n: ps.length, inc, ex, exp, dayExp, cs, rec, pay, cashHand, zs, bs,
       payab: zs.reduce((a, x) => a + (x.bal > 0 ? x.bal : 0), 0), recv: bs.reduce((a, x) => a + (x.bal > 0 ? x.bal : 0), 0) };
   }
   function homePref(){ let h = {}; try{ h = JSON.parse(localStorage.getItem('ab_home') || '{}') || {}; }catch(e){} return h; }
@@ -430,7 +431,7 @@
       exp: ['🧑‍🔧 خرچے (مزدوری، کرایہ… آگے ادا)', mapRows(d.ex), tot('کل خرچے', d.exp)],
       rec: ['📥 کیش آیا (جمع)', cashRows(d.cs.filter(c => c.kind === 'receive')), tot('کل جمع', d.rec)],
       pay: ['📤 کیش گیا (بنام)', cashRows(d.cs.filter(c => c.kind === 'pay')), tot('کل بنام', d.pay)],
-      cashh: ['🪙 گلہ (ہاتھ میں نقد)', row('شروع کا نقد (سیٹنگ)', int(DB.settings.openCash)) + row('سب جمع (آئے)', liveCash().filter(c => c.kind === 'receive').reduce((t, c) => t + c.amount, 0)) + row('سب بنام (گئے)', liveCash().filter(c => c.kind === 'pay').reduce((t, c) => t + c.amount, 0)) + row((DPER.find(x => x[0] === d.per) || DPER[0])[1] + ' آئے', d.rec, '', 'amt-in') + row((DPER.find(x => x[0] === d.per) || DPER[0])[1] + ' گئے', d.pay, '', 'amt-out'), tot('ہاتھ میں نقد', d.cashHand)],
+      cashh: ['🪙 گلہ (ہاتھ میں نقد)', row('شروع کا نقد (سیٹنگ)', int(DB.settings.openCash)) + row('سب جمع (آئے)', liveCash().filter(c => c.kind === 'receive').reduce((t, c) => t + c.amount, 0)) + row('سب بنام (گئے)', liveCash().filter(c => c.kind === 'pay').reduce((t, c) => t + c.amount, 0)) + row('🧾 سب روز کے خرچے', liveExp().reduce((t, e) => t + e.amount, 0), "App.go('exp')", 'amt-out') + row((DPER.find(x => x[0] === d.per) || DPER[0])[1] + ' آئے', d.rec, '', 'amt-in') + row((DPER.find(x => x[0] === d.per) || DPER[0])[1] + ' گئے', d.pay, '', 'amt-out'), tot('ہاتھ میں نقد', d.cashHand)],
       z: ['🧑‍🌾 زمینداروں کے بقایا', partyRows(d.zs, 'zamindar'), tot('کل دینے ہیں', d.payab)],
       b: ['🧑‍💼 خریداروں کے بقایا', partyRows(d.bs, 'buyer'), tot('کل لینے ہیں', d.recv)],
       net: ['💼 لینا اور دینا', row('خریداروں سے لینے ہیں', d.recv, "App.dash('b')", 'amt-in') + row('ہاتھ میں نقد', d.cashHand, "App.dash('cashh')", 'amt-in') + row('بیوپاریوں کو دینے ہیں', d.payab, "App.dash('z')", 'amt-out'), tot('فرق (لینا + نقد − دینا)', d.recv + d.cashHand - d.payab)]
@@ -442,7 +443,7 @@
   const VIEWS = {};
   const AFTER = {};
   // ---------- 🏠 ہوم (سبزی منڈی جیسا): چھوٹا ڈیش بورڈ (چھپ سکتا ہے) + اپنی مرضی کے آئیکن (✏️ ہٹائیں / جگہ بدلیں / مینو سے کھینچ کر لائیں) ----------
-  const HOME_DEF = ['parchi', 'parchis', 'stock', 'zamindar', 'buyer', 'cash', 'roznamcha', 'reports', 'search', 'settings'];
+  const HOME_DEF = ['parchi', 'parchis', 'stock', 'zamindar', 'buyer', 'cash', 'roznamcha', 'exp', 'reports', 'search', 'settings'];
   let homeEdit = false;
   function homeItems(){ const h = homePref(); const ok = k => NAV.some(n => n[0] === k) && k !== 'home' && canSee(k); return (Array.isArray(h.items) ? h.items : HOME_DEF).filter(ok); }
   function navNo(k){ return NAV.findIndex(n => n[0] === k); }   // ہوم = 0، باقی 1 سے
@@ -1077,6 +1078,80 @@
   let listQ = '', listPer = 'all';
   // پرچی کا جوڑ (محفوظ ہو تو وہی، ورنہ ابھی گن لیں)
   function ptot(p){ if(p.totals && p.totals.gross != null) return p.totals; const r = calcParchi(p, p.chargesSnap || chargesList()); return { gross: r.gross, net: r.net, income: r.income }; }
+  // ---------- 🧾 روز کا خرچہ (رجسٹر کے صفحے جیسا): مد / تفصیل / رقم؛ دن کا جوڑ؛ گلے (ہاتھ میں نقد) سے کٹتا ہے ----------
+  function liveExp(){ return (DB.exp || []).filter(e => !e.deleted); }
+  const EXP_HEADS = ['چائے', 'کھانا', 'مزدوری', 'منشی', 'تنخواہ', 'کرایہ دکان', 'بجلی', 'پٹرول', 'گاڑی', 'صفائی', 'موبائل بیلنس', 'سٹیشنری', 'چندہ', 'متفرق'];
+  let expDate = '', expEdit = null;
+  function expHeads(){ const s = new Set(); liveExp().slice().reverse().forEach(e => e.head && s.add(e.head)); EXP_HEADS.forEach(h => s.add(h)); return [...s].slice(0, 40); }
+  VIEWS.exp = function(){
+    const d = expDate || today();
+    const ls = liveExp().filter(e => e.date === d).sort((a, b) => (a.at || 0) - (b.at || 0));
+    const tot = ls.reduce((s, e) => s + e.amount, 0), mk = d.slice(0, 7);
+    const mon = liveExp().filter(e => (e.date || '').slice(0, 7) === mk).reduce((s, e) => s + e.amount, 0);
+    const ed = expEdit ? (DB.exp || []).find(e => e.id === expEdit && !e.deleted) : null;
+    const heads = expHeads();
+    return `<div class="pageTitle">🧾 روز کا خرچہ ${isLocked(d) ? '🔒' : ''}<span class="sp"></span><button class="btn light sm" onclick="App.expShare()">📤 تصویر</button><button class="btn light sm" onclick="App.expPrint()">🖨️</button></div>
+      <div class="dayNav"><button onclick="App.expStep(-1)">➡️ پچھلا دن</button><div class="dn"><b>${esc(urDate(d, true))}</b>${d === today() ? ' <span class="tag in">آج</span>' : ''}</div><button onclick="App.expStep(1)" ${d >= today() ? 'disabled' : ''}>اگلا دن ⬅️</button></div>
+      <div class="pzTop">
+        <div class="miniSum" style="margin-top:0"><span>آج کا خرچہ <b class="num">${fmt(tot)}</b></span><span>اندراج <b class="num">${ls.length}</b></span><span>اس مہینے <b class="num">${fmt(mon)}</b></span></div>
+        <div class="expForm">
+          <datalist id="dlEx">${heads.map(h => `<option value="${esc(h)}">`).join('')}</datalist>
+          <input id="exH" list="dlEx" placeholder="مد — مثلاً چائے، مزدوری" value="${esc(ed ? ed.head : '')}" autocomplete="off">
+          <input id="exA" inputmode="decimal" placeholder="رقم" value="${ed ? esc(inRs(ed.amount)) : ''}" onkeydown="if(event.key==='Enter')App.expSave()">
+          <input id="exN" placeholder="تفصیل (اختیاری)" value="${esc(ed ? ed.note || '' : '')}" onkeydown="if(event.key==='Enter')App.expSave()">
+          <button class="btn" onclick="App.expSave()">${ed ? '💾 بدلیں' : '➕ لکھیں'}</button>${ed ? '<button class="btn gray" onclick="App.expCancel()">منسوخ</button>' : ''}
+        </div>
+        <div class="pfRow">${heads.slice(0, 12).map(h => `<button onclick="App.expHead(decodeURIComponent('${encodeURIComponent(h)}'))">${esc(h)}</button>`).join('')}</div></div>
+      <div class="expSheet">
+        <div class="exRow hd"><span class="n">#</span><span class="h">مد / تفصیل</span><span class="a">رقم</span><span class="x"></span></div>
+        ${ls.map((e, i) => `<div class="exRow" onclick="App.expEditOne('${e.id}')"><span class="n num">${i + 1}</span><span class="h"><b>${esc(e.head)}</b>${e.note ? ' <small>' + esc(e.note) + '</small>' : ''}${e.by ? ' <small>👤 ' + esc(e.by) + '</small>' : ''}</span><span class="a num">${fmt(e.amount)}</span><span class="x"><button onclick="event.stopPropagation();App.expDel('${e.id}')" title="ہٹائیں">🗑️</button></span></div>`).join('') || '<div class="exRow"><span class="h muted" style="flex:1">اس دن کا کوئی خرچہ نہیں — اوپر مد اور رقم لکھیں</span></div>'}
+        <div class="exRow tot"><span class="n"></span><span class="h">میزان</span><span class="a num">${fmt(tot)}</span><span class="x"></span></div>
+      </div>`;
+  };
+  AFTER.exp = function(){ const h = $('exH'); if(h && !h.value && !('ontouchstart' in window)) h.focus(); };
+  async function expSave(){
+    if(window.AB_LIC && !AB_LIC.canWrite()) return;
+    const d = expDate || today(), head = $('exH').value.trim(), amount = toPaisa($('exA').value), note = $('exN').value.trim();
+    if(!head){ toast('⚠️ مد لکھیں — مثلاً چائے، مزدوری'); $('exH').focus(); return; }
+    if(amount <= 0){ toast('⚠️ رقم لکھیں'); $('exA').focus(); return; }
+    if(!(await unlockFor(d))) return;
+    if(!Array.isArray(DB.exp)) DB.exp = [];
+    if(expEdit){
+      const e = DB.exp.find(x => x.id === expEdit); if(!e) return;
+      if(!(await ownerOk('پرانا خرچہ بدلنا صرف مالک کا کام ہے — مالک کا پن لکھیں'))) return;
+      logIt('خرچہ بدلا: ' + e.head + ' ' + fmt(e.amount) + ' ← ' + head + ' ' + fmt(amount));
+      Object.assign(e, { head, amount, note }); expEdit = null;
+    } else {
+      const no = DB.exp.reduce((m, e) => Math.max(m, int(e.no)), 0) + 1;
+      DB.exp.push({ id: uid(), no, date: d, head, amount, note, at: Date.now(), by: (me() || {}).name || '' });
+      logIt('روز کا خرچہ: ' + head + ' — ' + fmt(amount) + (note ? ' (' + note + ')' : ''));
+    }
+    if(put('exp')){ toast('✅ ' + head + ': ' + fmt(amount) + ' روپے'); render(); setTimeout(() => { const h = $('exH'); if(h) h.focus(); }, 50); }
+  }
+  async function expDel(id){
+    const e = (DB.exp || []).find(x => x.id === id); if(!e) return;
+    if(!(await ownerOk())) return;
+    if(!(await unlockFor(e.date))) return;
+    if(!(await ask('«' + esc(e.head) + '» — ' + fmt(e.amount) + ' روپے ہٹا دیں؟', 'ہٹائیں'))) return;
+    e.deleted = Date.now(); put('exp'); logIt('خرچہ ہٹایا: ' + e.head + ' ' + fmt(e.amount)); render(); toast('🗑️ ہٹا دیا');
+  }
+  function expSpec(){
+    const d = expDate || today(), ls = liveExp().filter(e => e.date === d).sort((a, b) => (a.at || 0) - (b.at || 0));
+    return { shop: shopName(), sub: shopSub(), title: '🧾 روز کا خرچہ', meta: [['تاریخ', urDate(d, true)], ['اندراج', String(ls.length)]],
+      cols: [{ t: '#', w: 0.7, num: 1 }, { t: 'مد / تفصیل', w: 4.5 }, { t: 'رقم', w: 2.2, num: 1 }],
+      rows: ls.map((e, i) => [String(i + 1), e.head + (e.note ? ' — ' + e.note : ''), fmt(e.amount)]),
+      lines: [['میزان (روپے)', fmt(ls.reduce((s, e) => s + e.amount, 0)), 'net']], sub2: shopContacts(), foot: [shopFoot(), urDate(today())].filter(Boolean).join(' • ') };
+  }
+  async function expShare(){
+    const cv = await AB_RECEIPT.draw(expSpec()); shareCv = { cv, file: 'kharcha-' + (expDate || today()) + '.png' };
+    modal(`<h3>🧾 روز کا خرچہ</h3><img src="${cv.toDataURL('image/png')}" style="width:100%;border-radius:10px;border:1px solid var(--l3)" alt="">
+      <div class="row" style="justify-content:center;margin-top:8px"><button class="btn wa" onclick="App.shareSend()">📤 بھیجیں</button><button class="btn light" onclick="App.shareSave()">⬇️ محفوظ کریں</button><button class="btn gray" onclick="App.closeModal()">بند</button></div>`);
+  }
+  function expPrint(){
+    const sp = expSpec();
+    printDoc('روز کا خرچہ', `<h2 style="text-align:center;margin:4px 0">🧾 روز کا خرچہ — ${esc(sp.meta[0][1])}</h2><div class="card"><table class="t"><tr><th>#</th><th>مد / تفصیل</th><th class="v">رقم</th></tr>
+      ${sp.rows.map(r => `<tr><td>${r[0]}</td><td>${esc(r[1])}</td><td class="v">${r[2]}</td></tr>`).join('')}<tr class="net"><td colspan="2">میزان</td><td class="v">${sp.lines[0][1]}</td></tr></table></div>`);
+  }
   // ---------- 🚛 مال آمد / باقی مال: جن گاڑیوں کا مال ابھی بکنا باقی ----------
   let stockAll = false;
   VIEWS.stock = function(){
@@ -1483,7 +1558,8 @@
       return { title: 'خلاصہ', cols: [['تفصیل', 0], ['رقم / تعداد', 1]], rows: [
         ['پرچیاں', D.length], ['کل نگ', nag], ['کل بکری (روپے)', fmt(gross)], ['زمینداروں سے کٹوتی', fmt(zded)], ['زمینداروں کو صاف رقم', fmt(net)],
         ['خریداروں پر خرچے', fmt(bextra)], ['آگے ادا ہونے والے خرچے', fmt(pass)], ['💰 آڑھتی کی کمائی', fmt(income)],
-        ['خریداروں سے وصولی', fmt(rec)], ['زمینداروں کو ادائیگی', fmt(pay)]], total: null };
+        ['خریداروں سے وصولی', fmt(rec)], ['زمینداروں کو ادائیگی', fmt(pay)],
+        ['🧾 روز کا خرچہ', fmt(liveExp().filter(e => inRange(e.date)).reduce((s, e) => s + e.amount, 0))], ['💼 کمائی − روز کا خرچہ', fmt(income - liveExp().filter(e => inRange(e.date)).reduce((s, e) => s + e.amount, 0))]], total: null };
     }
     if(tab === 'zam' || tab === 'buy'){
       const type = tab === 'zam' ? 'zamindar' : 'buyer', M = {};
@@ -1569,11 +1645,13 @@
     const cs = liveCash().filter(c => c.date === d);
     const rec = cs.filter(c => c.kind === 'receive').reduce((s, c) => s + c.amount, 0), pay = cs.filter(c => c.kind === 'pay').reduce((s, c) => s + c.amount, 0);
     const chip = (cls, lab, v) => `<div class="dbChip ${cls}" style="cursor:default"><span class="l">${lab}</span><span class="v num">${fmt(v)}</span></div>`;
+    const ex = liveExp().filter(e => e.date === d), exT = ex.reduce((s, e) => s + e.amount, 0);
     return `<div class="pageTitle">📖 روزنامچہ ${isLocked(d) ? '🔒' : ''}<span class="sp"></span><button class="btn ${isLocked(d) ? 'light' : 'gold'} sm" onclick="App.toggleLock('${d}')">${isLocked(d) ? '🔓 دن کھولیں' : '🔒 دن بند کریں'}</button></div>
       <div class="dayNav"><button onclick="App.rozStep(-1)">➡️ پچھلا دن</button><div class="dn"><b>${esc(urDate(d, true))}</b>${d === today() ? ' <span class="tag in">آج</span>' : ''}</div><button onclick="App.rozStep(1)" ${d >= today() ? 'disabled' : ''}>اگلا دن ⬅️</button></div>
       <div class="dbx" style="margin-bottom:10px"><div class="dbRow r4">${chip('rd', 'بکری (' + ps.length + ' پرچی، ' + nag + ' نگ)', gross)}${isStaff() ? '' : chip('gr', 'کمائی', income)}${chip('bl', 'جمع (آئے)', rec)}${chip('pk', 'بنام (گئے)', pay)}</div></div>
       <h3 class="secHd">📚 اس دن کی پرچیاں</h3><div class="pcList">${ps.map(p => `<div class="pCard" onclick="App.go('parchi','${p.id}')"><span class="pAv num">${p.no}</span><div class="pMid"><b>${esc(p.zamindar)}</b><div class="muted">${p.vehicle ? '🚚 ' + esc(p.vehicle) : ''}</div></div><div class="pBal"><span class="num">${fmt(ptot(p).gross)}</span><small>صاف ${fmt(ptot(p).net)}</small></div></div>`).join('') || '<div class="card muted">کوئی پرچی نہیں</div>'}</div>
       <h3 class="secHd">💵 اس دن کی وصولی / ادائیگی</h3><div class="pcList">${cs.map(c => { const p = party(c.partyId); return `<div class="pCard" onclick="App.go('cash','v:${c.id}')"><span class="pAv num ${c.kind === 'pay' ? 'out' : 'in'}">${int(c.no)}</span><div class="pMid"><b>${esc(p ? p.name : '')}</b><div class="muted">${p ? esc(cashText(c, p.type)) : ''}${c.note ? ' • ' + esc(c.note) : ''}</div></div><div class="pBal ${c.kind === 'pay' ? 'out' : 'in'}"><span class="num">${fmt(c.amount)}</span><small>${c.kind === 'pay' ? 'بنام' : 'جمع'}</small></div></div>`; }).join('') || '<div class="card muted">کوئی اندراج نہیں</div>'}</div>
+      ${ex.length ? `<h3 class="secHd">🧾 روز کا خرچہ — <span class="num">${fmt(exT)}</span></h3><div class="pcList">${ex.map(e => `<div class="pCard" onclick="App.expDay('${d}')"><span class="pAv num">${int(e.no)}</span><div class="pMid"><b>${esc(e.head)}</b><div class="muted">${esc(e.note || '')}</div></div><div class="pBal out"><span class="num">${fmt(e.amount)}</span></div></div>`).join('')}</div>` : ''}
       <details class="setSec" ${Object.keys(byCharge).length ? '' : ''}><summary>🧮 کٹوتیاں اور خرچے — زمینداروں کی صاف رقم <span class="num">${fmt(net)}</span></summary><div class="card"><table class="t">${Object.keys(byCharge).map(k => `<tr><td>${esc(k)} <span class="tag ${byCharge[k].income ? 'in' : 'out'}">${byCharge[k].income ? 'آمدن' : 'آگے ادا'}</span></td><td class="v">${fmt(byCharge[k].amt)}</td></tr>`).join('') || '<tr><td class="muted">کچھ نہیں</td></tr>'}
         <tr class="tot"><td>زمینداروں کی صاف رقم</td><td class="v">${fmt(net)}</td></tr></table></div></details>`;
   };
@@ -1882,6 +1960,11 @@
     searchQ(v){ sQuery = v; const r = $('sRes'); if(r) r.innerHTML = searchResults(v); },
     logout(){ curUser = null; pinBuf = ''; menu(false); render(); },
     setTheme(k){ try{ localStorage.setItem('ab_theme', k); }catch(e){} applyTheme(k); render(); }, verTap(){ if(window.AB_LIC && AB_LIC.tap()) return; toast('ورژن ' + APP_VERSION); },
+    expSave, expDel, expShare, expPrint,
+    expStep(n){ const x = new Date((expDate || today()) + 'T12:00:00'); x.setDate(x.getDate() + n); expDate = x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0'); expEdit = null; render(); },
+    expDay(d){ expDate = d; expEdit = null; go('exp'); },
+    expHead(h){ const e = $('exH'); if(e){ e.value = h; const a = $('exA'); if(a) a.focus(); } },
+    expEditOne(id){ expEdit = id; render(); window.scrollTo(0, 0); }, expCancel(){ expEdit = null; render(); },
     stockAll(v){ stockAll = !!v; render(); },
     newArrival(){ cur = blankParchi(); go('parchi'); setTimeout(() => App.pzPick(), 80); },
     newParchi(){ cur = blankParchi(); pzQ = ''; render(); },
