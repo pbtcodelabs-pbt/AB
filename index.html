@@ -160,6 +160,32 @@ input,select,textarea{font:inherit;}
 .homeGrid.edit .hIc[data-k] .hb{animation:hWig .35s infinite alternate;}
 @keyframes hWig{from{transform:rotate(-2deg)}to{transform:rotate(2deg)}}
 .hIc.dragging{opacity:.3;}
+/* 📝 نئی پرچی — سبزی منڈی کے «بل بنائیں» جیسی */
+.pzTop{background:var(--l0); border-radius:14px; padding:8px; margin-bottom:10px; box-shadow:0 3px 10px rgba(0,0,0,.18);}
+.pzRow{display:flex; gap:8px;}
+.pzTrig{flex:1; min-width:0; display:flex; justify-content:space-between; align-items:center; gap:6px; border:2px solid var(--l3); background:#fff; border-radius:12px; padding:4px 12px; font:inherit; font-size:18px; color:var(--muted); min-height:48px; text-align:right;}
+.pzTrig.on{color:var(--c5); border-color:var(--c2);} .pzTrig .chev{font-size:16px; color:var(--c3);}
+.pzTrig span:first-child{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.pzPlus,.pzSearch button{flex:0 0 48px; border:none; border-radius:12px; background:linear-gradient(180deg,var(--c1),var(--c3)); color:#fff; font-size:24px; box-shadow:0 3px 0 var(--c5);}
+.pzMeta{margin:8px 0 0;} .pzMeta summary{cursor:pointer; color:var(--c4); font-size:16px;}
+.pzSearch{display:flex; gap:8px; margin-top:8px;}
+.pzSearch input{flex:1; min-width:0; border:2px solid var(--l3); border-radius:12px; padding:4px 12px; font:inherit; font-size:18px; min-height:46px; background:#fff;}
+.itemGrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(92px,1fr)); gap:10px;}
+.itCard{position:relative; border:none; border-radius:16px; background:#fff; padding:8px 4px 6px; display:flex; flex-direction:column; align-items:center; gap:2px; font:inherit; color:var(--c5); box-shadow:0 4px 0 var(--l3),0 6px 12px rgba(0,0,0,.2); cursor:pointer;}
+.itCard:active{transform:translateY(3px); box-shadow:0 1px 0 var(--l3);}
+.itCard .ie{font-size:38px; line-height:1.3;} .itCard .in{font-size:17px; line-height:1.7; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.itCard.has{outline:3px solid var(--gold);}
+.itCard .ic{position:absolute; top:-6px; left:-4px; min-width:26px; height:26px; border-radius:13px; background:var(--c2); color:#fff; font-size:13px; font-weight:bold; line-height:26px; padding:0 6px; border:2px solid #fff;}
+.itCard.new{background:var(--l1); border:2px dashed var(--c2);}
+.pzSpacer{height:70px;}
+.cartBar{position:fixed; bottom:10px; left:12px; right:12px; z-index:40; display:flex; justify-content:space-between; align-items:center; gap:8px; border:2px solid var(--gold); border-radius:16px; padding:6px 16px; font:inherit; font-size:18px; color:#fff; background:linear-gradient(180deg,var(--c3),var(--c5)); box-shadow:0 6px 18px rgba(0,0,0,.45);}
+.cartBar.full{background:linear-gradient(180deg,#16a34a,#14532d);} .cartBar .num{font-family:Tahoma,Arial,sans-serif; font-weight:bold;}
+@media (min-width:900px){ .cartBar{right:calc(250px + 24px);} }
+.pkChips{display:flex; flex-wrap:wrap; gap:6px; margin:6px 0;}
+.pkChips button{border:2px solid var(--l3); background:#fff; color:var(--c4); border-radius:16px; padding:0 12px; font:inherit; font-size:16px; line-height:1.9;}
+.pkChips button.on{background:var(--c2); color:#fff; border-color:var(--c2);}
+.bkAmt{text-align:center; font-size:19px; color:var(--c4); margin-top:6px;} .bkAmt b{font-family:Tahoma,Arial,sans-serif; font-size:24px;}
+#modal .box.wide{max-width:760px;}
 .hIc.ghost{position:fixed; z-index:9999; pointer-events:none; width:72px; opacity:.9; transform:scale(1.1);}
 .hIc.ghost .hb{width:70px; height:70px; display:flex; justify-content:center; border-radius:18px; background:linear-gradient(160deg,var(--c1),var(--c3));} .hIc.ghost .e{font-size:36px; line-height:60px;}
 @media (min-width:700px){ .hIc .hb{width:84px; height:84px;} .hIc .hb .e{font-size:44px; line-height:62px;} .hIc .t{font-size:17px;} .dbChip .v{font-size:17px;} .dbChip .l{font-size:14px;} }
