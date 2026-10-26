@@ -1,13 +1,13 @@
 // ---------- 📒 آڑھت بک (AB) — سروس ورکر ----------
 // ہر ریلیز پر CACHE_VERSION بدلیں (index.html / app.js والے APP_VERSION جیسا)
-const CACHE_VERSION = 'AB2610MO051';
+const CACHE_VERSION = 'AB2610MO052';
 const CACHE_PREFIX = 'arth-book-';
 const CACHE_NAME = CACHE_PREFIX + CACHE_VERSION;
 const FONT_CACHE = CACHE_PREFIX + 'fonts-v1'; // فونٹ کبھی نہیں بدلتے — ہر ریلیز پر دوبارہ نہ اتریں
 
 // ایپ کا ڈھانچہ — ایک بھی فائل نہ ملے تو اپڈیٹ رک جائے اور پرانا چلتا ورژن ہی رہے
 const SHELL = ['./', './index.html', './app.js', './calc.js', './drive.js', './cloud-config.js', './receipt.js', './labels.js', './datewheel.js', './usage.js', './cloud.js', './license.js', './manifest.json'];
-const ICONS = ['./icons/favicon-32.png', './icons/icon-180.png', './icons/icon-192.png', './icons/icon-512.png'];
+const ICONS = ['./icons/favicon-32.png', './icons/icon-180.png', './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-192.png', './icons/icon-maskable-512.png'];
 const FONTS = ['./fonts/JameelNooriNastaleeq-Regular.woff2', './fonts/JameelNooriNastaleeq-Kasheeda.woff2'];
 
 // ---------- غلط جگہ پہرہ: یہ sw.js سبزی منڈی / فروٹ منڈی کی جگہ لگ جائے تو انسٹال ہی نہ ہو ----------
