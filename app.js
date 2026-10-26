@@ -8,8 +8,8 @@
    ===================================================================== */
 (function(){
   'use strict';
-  const APP_VERSION = 'AB2610MO042';
-  const UPDATE_NOTE = 'ہوم سبزی منڈی جیسا: چھوٹا ڈیش بورڈ (چھپ سکتا ہے)، نمبر والے آئیکن، ✏️ سے ہٹائیں / جگہ بدلیں، مینو سے کھینچ کر ہوم پر؛ مینو نمبر یا الف سے';
+  const APP_VERSION = 'AB2610MO043';
+  const UPDATE_NOTE = 'نئی پرچی سبزی منڈی کے «بل بنائیں» جیسی: اوپر زمیندار چنیں، جنس کے کارڈ پر ہاتھ رکھ کر بکری، نیچے پرچی کی پٹی';
   const C = window.ABCalc;
   // ---------- اردو / عربی کی بورڈ کے ہندسے (۰۱۲… / ٠١٢…) لکھتے ہی 0-9 میں — ورنہ رقم، نمبر اور کوڈ نہیں پہچانے جاتے ----------
   document.addEventListener('input', e => {
@@ -164,7 +164,7 @@
   function rs(p){ return '<span class="num">' + fmt(p) + '</span>'; }
   function inRs(p){ return p ? String(p / 100) : ''; }
   function toast(msg){ const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 2600); }
-  function modal(html){ $('modalBox').innerHTML = html; $('modal').classList.add('open'); }
+  function modal(html){ $('modalBox').classList.remove('wide'); $('modalBox').innerHTML = html; $('modal').classList.add('open'); }
   function closeModal(){ $('modal').classList.remove('open'); }
   // ---------- ⏳ کام کی پیش رفت (بیک اپ وغیرہ): پٹی 0 سے 100٪ تک، آخر میں «ٹھیک ہے» والا پیغام ----------
   function progress(title, pct, step){
@@ -514,7 +514,13 @@
   // =====================================================================
   let cur = null;
   function blankLine(){ return { item: '', nag: '', grams: '', rate: '', basis: 'nag', buyer: '' }; }
-  function blankParchi(){ return { id: uid(), no: 0, date: today(), zamindar: '', zamindarId: '', place: '', vehicle: '', bilty: '', lines: [blankLine()], manual: {}, buyerManual: {}, note: '', createdAt: Date.now() }; }
+  function blankParchi(){ return { id: uid(), no: 0, date: today(), zamindar: '', zamindarId: '', place: '', vehicle: '', bilty: '', lines: [], manual: {}, buyerManual: {}, note: '', createdAt: Date.now() }; }
+  // ---------- 🧺 جنس کے کارڈ (سبزی منڈی کے «بل بنائیں» جیسے) ----------
+  const ITEM_ICON = { 'آم': '🥭', 'کیلا': '🍌', 'سیب': '🍎', 'کینو': '🍊', 'مالٹا': '🍊', 'سنگترہ': '🍊', 'انگور': '🍇', 'امرود': '🍐', 'ناشپاتی': '🍐', 'خربوزہ': '🍈', 'تربوز': '🍉', 'آڑو': '🍑', 'آلو بخارا': '🍑', 'انار': '🍎', 'لیموں': '🍋', 'کھجور': '🌴', 'آلو': '🥔', 'پیاز': '🧅', 'ٹماٹر': '🍅', 'بھنڈی': '🌿', 'گوبھی': '🥦', 'بند گوبھی': '🥬', 'مٹر': '🫛', 'لہسن': '🧄', 'ادرک': '🫚', 'مرچ': '🌶️', 'شملہ مرچ': '🫑', 'کھیرا': '🥒', 'گاجر': '🥕', 'مولی': '🥕', 'بینگن': '🍆', 'کدو': '🎃', 'پالک': '🥬', 'دھنیا': '🌿', 'گندم': '🌾', 'چاول': '🌾', 'مکئی': '🌽' };
+  const ITEM_BASE = ['آم', 'کیلا', 'سیب', 'کینو', 'مالٹا', 'انگور', 'امرود', 'خربوزہ', 'تربوز', 'آلو', 'پیاز', 'ٹماٹر', 'بھنڈی', 'گوبھی', 'مٹر', 'لہسن', 'ادرک', 'مرچ'];
+  const itemIcon = n => ITEM_ICON[String(n || '').trim()] || '🧺';
+  function itemCards(){ const used = itemNames(); return used.concat(ITEM_BASE.filter(x => !used.includes(x))); }
+  let pzQ = '';
   function itemNames(){ const s = new Set(); liveParchis().forEach(p => p.lines.forEach(l => l.item && s.add(l.item))); return [...s].slice(0, 300); }
   function lineVals(k, base){ const s = new Set(base); liveParchis().forEach(p => p.lines.forEach(l => l[k] && s.add(l[k]))); return [...s].slice(0, 200).map(n => `<option value="${esc(n)}">`).join(''); }
   // جنس کے ساتھ ورائیٹی، اور پیکنگ / مارکہ (پرچی، بل، تصویر میں)
@@ -534,6 +540,7 @@
     const p = cur, ch = cur.chargesSnap && cur.no ? cur.chargesSnap : chargesList();
     const manualCs = ch.filter(c => c.on && c.side === 'zamindar' && c.kind === 'manual');
     const nb = parchiNbr(p);
+    if(!window.__pzOld) return pzView(p, nb, manualCs);
     return `<div class="pageTitle">📝 ${p.no ? 'پرچی نمبر ' + p.no : 'نئی پرچی'} ${isLocked(p.date) ? '🔒' : ''}<span class="sp"></span>
         <button class="btn light sm" ${nb.prev ? `onclick="App.parchiStep('${nb.prev.id}')" title="پچھلی پرچی نمبر ${nb.prev.no}"` : 'disabled'}>➡️ پچھلی</button>
         <button class="btn light sm" ${nb.next ? `onclick="App.parchiStep('${nb.next.id}')" title="اگلی پرچی نمبر ${nb.next.no}"` : 'disabled'}>اگلی ⬅️</button>
@@ -569,6 +576,96 @@
           <button class="btn light" onclick="App.thermal()">🧾 تھرمل رسید</button></div>
       </div></div>`;
   };
+  // ---------- 📝 نئی پرچی — سبزی منڈی کے «بل بنائیں» جیسی: اوپر بیوپاری، جنس کے کارڈ، نیچے پرچی کی پٹی ----------
+  function pzView(p, nb, manualCs){
+    const z = findParty('zamindar', p.zamindar);
+    const r = calcParchi(p, parchiCharges());
+    const q = (C.en ? C.en(pzQ) : pzQ).trim();
+    const items = itemCards().filter(n => !q || n.includes(q));
+    const inPz = n => p.lines.filter(l => l.item === n).reduce((s, l) => s + int(l.nag), 0);
+    return `<div class="pageTitle">📝 ${p.no ? 'پرچی نمبر ' + p.no : 'نئی پرچی'} ${isLocked(p.date) ? '🔒' : ''}<span class="sp"></span>
+        <button class="btn light sm" ${nb.prev ? `onclick="App.parchiStep('${nb.prev.id}')"` : 'disabled'}>➡️</button>
+        <button class="btn light sm" ${nb.next ? `onclick="App.parchiStep('${nb.next.id}')"` : 'disabled'}>⬅️</button>
+        <button class="btn gold sm" onclick="App.newParchi()">🆕 نئی</button></div>
+      <div class="pzTop">
+        <div class="pzRow"><button class="pzTrig ${p.zamindar ? 'on' : ''}" onclick="App.pzPick()"><span>${p.zamindar ? `🧑‍🌾 ${pNo(z) ? '<span class="pnoTag num">' + pNo(z) + '</span> ' : ''}<b>${esc(p.zamindar)}</b>` : '— زمیندار منتخب کریں —'}</span><span class="chev">▾</span></button>
+          <button class="pzPlus" onclick="App.pzPick(true)" title="نیا زمیندار">+</button></div>
+        <details class="pzMeta" ${p.vehicle || p.bilty || p.note || int(p.cashNow) || p.date !== today() ? 'open' : ''}><summary>🚚 گاڑی، بلٹی، تاریخ، نقد ${p.vehicle ? '— ' + esc(p.vehicle) : ''} ${p.date !== today() ? '— ' + esc(urDate(p.date)) : ''}</summary>
+          <div class="grid2 wideable">
+            <div class="f"><label>تاریخ</label><input type="date" value="${esc(p.date)}" onchange="App.pset('date',this.value)"></div>
+            <div class="f"><label>گاڑی نمبر</label><input value="${esc(p.vehicle)}" placeholder="گاڑی کا نمبر" oninput="App.pset('vehicle',this.value)"></div>
+            <div class="f"><label>بلٹی نمبر</label><input value="${esc(p.bilty)}" placeholder="بلٹی" oninput="App.pset('bilty',this.value)"></div>
+            <div class="f"><label>گاؤں / شہر</label><input value="${esc(p.place)}" placeholder="مثلاً ساہیوال" oninput="App.pset('place',this.value)"></div>
+            <div class="f"><label>نقد (ابھی زمیندار کو دیا)</label><input inputmode="decimal" value="${esc(inRs(p.cashNow))}" placeholder="0" oninput="App.pset('cashNow',this.value)"></div>
+            <div class="f"><label>نوٹ</label><input value="${esc(p.note)}" placeholder="اختیاری" oninput="App.pset('note',this.value)"></div>
+          </div></details>
+        <div class="pzSearch"><input id="pzQ" value="${esc(pzQ)}" placeholder="🔍 جنس کا نام لکھیں…" oninput="App.pzSearch(this.value)"><button onclick="App.pzNewItem()" title="نئی جنس">+</button></div>
+      </div>
+      <div class="itemGrid">${items.map(n => { const c = inPz(n); return `<button class="itCard ${c ? 'has' : ''}" onclick="App.bkOpen(-1,decodeURIComponent('${encodeURIComponent(n)}'))"><span class="ie">${itemIcon(n)}</span><span class="in">${esc(n)}</span>${c ? `<span class="ic num">${c}</span>` : ''}</button>`; }).join('')}
+        ${q && !items.includes(q) ? `<button class="itCard new" onclick="App.bkOpen(-1, document.getElementById('pzQ').value.trim())"><span class="ie">➕</span><span class="in">«${esc(q)}»</span></button>` : ''}</div>
+      <div class="pzSpacer"></div>
+      <button class="cartBar ${r.lines.length ? 'full' : ''}" onclick="App.pzCart()"><span>🧾 ${r.lines.length ? `<span class="num">${r.lines.length}</span> بکری • <span class="num">${r.nag}</span> نگ` : 'پرچی خالی ہے — جنس پر ہاتھ رکھیں'}</span>${r.lines.length ? `<span class="num">${fmt(r.gross)}</span>` : ''}</button>`;
+  }
+  // ایک بکری کا خانہ (پاپ اپ): خریدار، نگ، ریٹ، پیکنگ…
+  function bkOpen(i, item){
+    const l = i >= 0 ? cur.lines[i] : Object.assign(blankLine(), { item: item || '' });
+    if(!String(l.item || '').trim()){ toast('⚠️ جنس کا نام لکھیں'); return; }
+    const last = cur.lines.filter(x => x.item === l.item).pop();
+    const pk = ['پیٹی', 'کریٹ', 'بوری', 'ٹوکری', 'کارٹن', 'جال', 'کھلا'];
+    modal(`<h3>${itemIcon(l.item)} ${esc(l.item)} — ${i >= 0 ? 'بکری بدلیں' : 'بکری لکھیں'}</h3><div style="text-align:right">
+      <datalist id="dlB2">${partyOpts('buyer')}</datalist>
+      <div class="f"><label>خریدار — نام یا کھاتہ نمبر</label><input id="bkB" list="dlB2" value="${esc(l.buyer)}" placeholder="نام یا نمبر" onchange="App.bkNum()"></div>
+      <div class="grid2"><div class="f"><label>نگ</label><input id="bkN" inputmode="numeric" value="${esc(l.nag)}" placeholder="0" oninput="App.bkAmt()" style="font-size:22px;text-align:center"></div>
+        <div class="f"><label>ریٹ (روپے)</label><input id="bkR" inputmode="decimal" value="${l.rate ? esc(l.rate / 100) : last && last.rate ? esc(last.rate / 100) : ''}" placeholder="0" oninput="App.bkAmt()" style="font-size:22px;text-align:center"></div></div>
+      <div class="seg" style="margin:4px 0"><button id="bkBn" class="${l.basis !== 'maund' ? 'on' : ''}" onclick="App.bkBasis('nag')">فی نگ</button><button id="bkBm" class="${l.basis === 'maund' ? 'on' : ''}" onclick="App.bkBasis('maund')">فی من (40 کلو)</button></div>
+      <div class="f" id="bkWw" style="${l.basis === 'maund' ? '' : 'display:none'}"><label>وزن (کلو)</label><input id="bkW" inputmode="decimal" value="${l.grams ? esc(l.grams / 1000) : ''}" placeholder="0" oninput="App.bkAmt()"></div>
+      <div class="pkChips">${pk.map(x => `<button class="${(l.packing || (last && last.packing)) === x ? 'on' : ''}" onclick="App.bkPk(this)">${x}</button>`).join('')}</div>
+      <details class="lx" ${l.variety || l.marka ? 'open' : ''}><summary>📦 ورائیٹی / مارکہ (اختیاری)</summary><div class="grid2">
+        <div class="f"><label>ورائیٹی</label><input id="bkV" value="${esc(l.variety || '')}" placeholder="مثلاً چونسا"></div>
+        <div class="f"><label>مارکہ</label><input id="bkM" value="${esc(l.marka || '')}" placeholder="مال پر لکھا نشان"></div></div></details>
+      <div class="bkAmt" id="bkA"></div></div>
+      <div class="row" style="justify-content:center;margin-top:8px"><button class="btn" onclick="App.bkSave(${i},decodeURIComponent('${encodeURIComponent(l.item)}'),false)">✅ ${i >= 0 ? 'محفوظ' : 'شامل کریں'}</button>
+        ${i >= 0 ? `<button class="btn gray" onclick="App.bkDel(${i})">🗑️ ہٹائیں</button>` : `<button class="btn light" onclick="App.bkSave(-1,decodeURIComponent('${encodeURIComponent(l.item)}'),true)">➕ اور اگلا خریدار</button>`}
+        <button class="btn gray" onclick="App.closeModal()">بند</button></div>`);
+    bkState = { basis: l.basis === 'maund' ? 'maund' : 'nag', pk: l.packing || (last && last.packing) || '' };
+    bkAmt(); setTimeout(() => { const e = $(l.buyer ? 'bkN' : 'bkB'); if(e) e.focus(); }, 60);
+  }
+  let bkState = { basis: 'nag', pk: '' };
+  function bkAmt(){ const el = $('bkA'); if(!el) return; const l = { nag: $('bkN').value, rate: toPaisa($('bkR').value), basis: bkState.basis, grams: toGrams(($('bkW') || {}).value) }; el.innerHTML = 'رقم: <b class="num">' + fmt(lineAmount(l)) + '</b> روپے'; }
+  function bkSave(i, item, again){
+    const name = $('bkB').value.trim(), bp = partyByNo('buyer', name) || findParty('buyer', name);
+    const l = { item, nag: String($('bkN').value).replace(/[^\d]/g, ''), rate: toPaisa($('bkR').value), basis: bkState.basis, grams: bkState.basis === 'maund' ? toGrams($('bkW').value) : '',
+      buyer: bp ? bp.name : name, packing: bkState.pk, variety: $('bkV').value.trim(), marka: $('bkM').value.trim() };
+    if(bp) l.buyerId = bp.id;
+    if(!l.buyer){ toast('⚠️ خریدار کا نام لکھیں'); return; }
+    if(!int(l.nag) && !int(l.grams)){ toast('⚠️ نگ لکھیں'); return; }
+    if(!int(l.rate)){ toast('⚠️ ریٹ لکھیں'); return; }
+    if(i >= 0) cur.lines[i] = Object.assign(cur.lines[i], l); else cur.lines.push(l);
+    closeModal(); toast('✅ ' + l.item + ' — ' + l.buyer + ': ' + fmt(lineAmount(l)));
+    render(); if(again) bkOpen(-1, item); else if(i >= 0) pzCart();
+  }
+  // اوپر زمیندار چننے کی فہرست (سبزی منڈی کے «گاہک منتخب کریں» جیسی)
+  function pzPick(isNew){
+    const list = parties('zamindar').sort((a, b) => int(a.no) - int(b.no));
+    modal(`<h3>🧑‍🌾 زمیندار منتخب کریں</h3><div class="f"><input id="pzZq" placeholder="🔍 نام یا کھاتہ نمبر — نیا نام لکھ کر ✅" oninput="App.pzZf(this.value)" value=""></div>
+      <div class="list pzList" id="pzZl" style="text-align:right;max-height:50vh;overflow:auto">${list.map(x => `<div class="it" data-s="${esc(x.name + ' ' + pNo(x) + ' ' + (x.place || ''))}" onclick="App.pzSetZ('${x.id}')"><div><span class="pnoTag num">${pNo(x)}</span> <b>${esc(x.name)}</b> <span class="muted">${esc(x.place || '')}</span></div></div>`).join('') || '<div class="muted">ابھی کوئی زمیندار نہیں — نام لکھ کر ✅ دبائیں</div>'}</div>
+      <div class="row" style="justify-content:center;margin-top:8px"><button class="btn" onclick="App.pzSetZ(null)">✅ یہ نام لگائیں</button><button class="btn gray" onclick="App.closeModal()">بند</button></div>`);
+    setTimeout(() => { const e = $('pzZq'); if(e) e.focus(); }, 60);
+  }
+  function pzCart(){
+    const r = calcParchi(cur, parchiCharges());
+    const ch = cur.chargesSnap && cur.no ? cur.chargesSnap : chargesList();
+    const manualCs = ch.filter(c => c.on && c.side === 'zamindar' && c.kind === 'manual');
+    modal(`<div class="sheetHd"><h3>🧾 ${cur.no ? 'پرچی نمبر ' + cur.no : 'نئی پرچی'} — ${esc(cur.zamindar || 'زمیندار؟')}</h3></div>
+      <div class="list" style="text-align:right">${cur.lines.map((l, i) => `<div class="it" onclick="App.bkOpen(${i})"><div>${itemIcon(l.item)} <b>${esc(lineFull(l))}</b> → ${esc(l.buyer || '؟')} <span class="muted"><span class="num">${esc(l.nag || (int(l.grams) / 1000) + ' کلو')}</span> × <span class="num">${fmt(int(l.rate))}</span></span></div><span class="num">${fmt(lineAmount(l))}</span></div>`).join('') || '<div class="muted">ابھی کوئی بکری نہیں — جنس کے کارڈ پر ہاتھ رکھیں</div>'}</div>
+      ${manualCs.length ? `<div class="grid2" style="text-align:right;margin-top:6px">${manualCs.map(c => `<div class="f"><label>${esc(c.name)} (روپے)</label><input inputmode="decimal" value="${cur.manual[c.id] != null ? esc(inRs(cur.manual[c.id])) : ''}" placeholder="${esc(inRs(c.rate) || '0')}" oninput="App.pman('${c.id}',this.value);App.pzCartRes()"></div>`).join('')}</div>` : ''}
+      <div id="result" style="text-align:right">${resultHtml(r, cur, false)}</div>
+      <div class="row" style="justify-content:center;margin-top:6px"><button class="btn" onclick="App.closeModal();App.saveParchi()">💾 پرچی محفوظ کریں</button>
+        <button class="btn light" onclick="App.closeModal();App.printParchi()">🖨️ زمیندار کی پرچی</button><button class="btn light" onclick="App.closeModal();App.printBuyers()">🖨️ خریداروں کے بل</button></div>
+      <div class="row" style="justify-content:center;margin-top:6px"><button class="btn wa" onclick="App.shareParchi('z')">📤 زمیندار کو پرچی</button><button class="btn wa" onclick="App.shareParchi('b')">📤 خریدار کو بل</button>
+        <button class="btn light" onclick="App.thermal()">🧾 تھرمل</button><button class="btn gray" onclick="App.closeModal()">بند</button></div>`);
+    $('modalBox').classList.add('wide');
+  }
   AFTER.parchi = function(){ renderResult(); };
   AFTER.settings = function(){ if(window.AB_CLOUD){ AB_CLOUD.render(); if(AB_CLOUD.on() && AB_CLOUD.role() === 'owner') loadMembers(); } };
   function cloudCard(){
@@ -1651,7 +1748,21 @@
     searchQ(v){ sQuery = v; const r = $('sRes'); if(r) r.innerHTML = searchResults(v); },
     logout(){ curUser = null; pinBuf = ''; menu(false); render(); },
     setTheme(k){ try{ localStorage.setItem('ab_theme', k); }catch(e){} applyTheme(k); render(); }, verTap(){ if(window.AB_LIC && AB_LIC.tap()) return; toast('ورژن ' + APP_VERSION); },
-    newParchi(){ cur = blankParchi(); render(); },
+    newParchi(){ cur = blankParchi(); pzQ = ''; render(); },
+    bkOpen, bkSave, pzPick, pzCart, bkAmt,
+    bkNum(){ const e = $('bkB'), p = e && partyByNo('buyer', e.value); if(p) e.value = p.name; },
+    bkBasis(b){ bkState.basis = b; $('bkBn').classList.toggle('on', b === 'nag'); $('bkBm').classList.toggle('on', b === 'maund'); $('bkWw').style.display = b === 'maund' ? '' : 'none'; bkAmt(); },
+    bkPk(el){ const on = el.classList.contains('on'); document.querySelectorAll('.pkChips button').forEach(b => b.classList.remove('on')); if(!on){ el.classList.add('on'); bkState.pk = el.textContent; } else bkState.pk = ''; },
+    bkDel(i){ cur.lines.splice(i, 1); closeModal(); render(); toast('🗑️ بکری ہٹا دی'); if(cur.lines.length) pzCart(); },
+    pzCartRes(){ const el = $('result'); if(el) el.innerHTML = resultHtml(calcParchi(cur, parchiCharges()), cur, false); },
+    pzSearch(v){ pzQ = v; const pos = v.length; render(); const e = $('pzQ'); if(e){ e.focus(); try{ e.setSelectionRange(pos, pos); }catch(er){} } },
+    pzNewItem(){ const v = (($('pzQ') || {}).value || '').trim(); if(v) bkOpen(-1, v); else { toast('✍️ اوپر خانے میں نئی جنس کا نام لکھیں'); const e = $('pzQ'); if(e) e.focus(); } },
+    pzZf(v){ const q = (C.en ? C.en(v) : v).trim(); document.querySelectorAll('#pzZl .it').forEach(it => { it.style.display = !q || it.dataset.s.includes(q) ? '' : 'none'; }); },
+    pzSetZ(id){
+      let p = id ? party(id) : null;
+      if(!p){ const v = (($('pzZq') || {}).value || '').trim(); if(!v){ toast('⚠️ نام لکھیں یا فہرست سے چنیں'); return; } p = partyByNo('zamindar', v) || findParty('zamindar', v); if(!p){ cur.zamindar = v; cur.zamindarId = ''; closeModal(); render(); toast('🆕 نیا زمیندار — پرچی محفوظ ہوتے ہی کھاتہ بن جائے گا'); return; } }
+      cur.zamindar = p.name; cur.zamindarId = p.id; if(!cur.place && p.place) cur.place = p.place; closeModal(); render();
+    },
     async parchiStep(id){
       // نئی (محفوظ نہ ہوئی) پرچی میں کچھ لکھا ہو تو پوچھیں
       if(cur && !cur.no && (String(cur.zamindar || '').trim() || cur.lines.some(l => l.item || l.buyer || l.rate)) && !(await ask('یہ نئی پرچی ابھی محفوظ نہیں ہوئی — چھوڑ کر آگے جائیں؟', 'ہاں، چھوڑ دیں'))) return;
