@@ -8,8 +8,8 @@
    ===================================================================== */
 (function(){
   'use strict';
-  const APP_VERSION = 'AB2610MO044';
-  const UPDATE_NOTE = 'کھاتے سبزی منڈی جیسے: کارڈ، چھانٹی، فون / واٹس ایپ / وصولی بٹن؛ کھاتے کا سر اور بڑے بٹن؛ کلاؤڈ جانچ کامیاب، ملازم ڈیوائس کا نام اندراج پر';
+  const APP_VERSION = 'AB2610MO045';
+  const UPDATE_NOTE = 'وصولی / ادائیگی سبزی منڈی کے انداز پر: بڑے ٹیب، کھاتوں کی فہرست سے چننا، حالیہ اندراج کارڈ میں';
   const C = window.ABCalc;
   // ---------- اردو / عربی کی بورڈ کے ہندسے (۰۱۲… / ٠١٢…) لکھتے ہی 0-9 میں — ورنہ رقم، نمبر اور کوڈ نہیں پہچانے جاتے ----------
   document.addEventListener('input', e => {
@@ -1283,12 +1283,13 @@
         <button class="btn light sm" ${prev ? `onclick="App.go('cash','v:${prev.id}')" title="نمبر ${int(prev.no)}"` : 'disabled'}>➡️ پچھلی</button>
         <button class="btn light sm" ${next ? `onclick="App.go('cash','v:${next.id}')" title="نمبر ${int(next.no)}"` : 'disabled'}>اگلی ⬅️</button>
         <button class="btn gold sm" onclick="App.go('cash','${type === 'zamindar' ? 'pay' : 'receive'}:')">🆕 نئی</button></div>
-      <div class="card">${ed ? '' : `<div class="seg"><button class="${type === 'buyer' ? 'on' : ''}" onclick="App.go('cash','receive:')">🧑‍💼 خریدار</button><button class="${type === 'zamindar' ? 'on' : ''}" onclick="App.go('cash','pay:')">🧑‍🌾 زمیندار</button></div>`}
+      ${ed ? '' : `<div class="cashTabs"><button class="in ${type === 'buyer' ? 'on' : ''}" onclick="App.go('cash','receive:')"><span>💵</span>خریدار سے وصولی</button><button class="out ${type === 'zamindar' ? 'on' : ''}" onclick="App.go('cash','pay:')"><span>💸</span>زمیندار کو ادائیگی</button></div>`}
+      <div class="pzTop cashBox">
         <datalist id="dlP">${partyOpts(type)}</datalist>
         <div class="grid2 wideable">
           <div class="f"><label>نمبر</label><input class="num" value="${ed ? int(ed.no) : nextCashNo()}" disabled></div>
           <div class="f"><label>تاریخ</label><input id="cD" type="date" value="${esc(ed ? ed.date : today())}"></div>
-          <div class="f" style="grid-column:1/-1"><label>${PT[type]} — نام یا کھاتہ نمبر</label><input id="cP" list="dlP" value="${esc(pp ? pp.name : '')}" placeholder="نام یا کھاتہ نمبر" ${ed ? 'disabled' : ''} oninput="App.cashHint('${type}')" onchange="App.cashNum('${type}')"></div>
+          <div class="f" style="grid-column:1/-1"><label>${PT[type]} — نام یا کھاتہ نمبر</label><div class="pzRow"><input id="cP" list="dlP" value="${esc(pp ? pp.name : '')}" placeholder="نام یا کھاتہ نمبر" ${ed ? 'disabled' : ''} oninput="App.cashHint('${type}')" onchange="App.cashNum('${type}')" style="flex:1;min-width:0">${ed ? '' : `<button class="pzPlus" onclick="App.cashPick('${type}')" title="فہرست">▾</button>`}</div></div>
           <div class="f" style="grid-column:1/-1"><label>تفصیل</label><input id="cN" value="${esc(ed ? ed.note || '' : '')}" placeholder="مثلاً نقد، بینک، چیک نمبر…"></div>
           <div class="f"><label>جمع (روپے) — رقم آئی</label><input id="cJ" class="jam" inputmode="decimal" value="${esc(jam)}" placeholder="0" oninput="App.cashSide('J')"></div>
           <div class="f"><label>بنام (روپے) — رقم دی</label><input id="cB" class="banam" inputmode="decimal" value="${esc(banam)}" placeholder="0" oninput="App.cashSide('B')"></div>
@@ -1300,12 +1301,20 @@
           ${ed ? `<button class="btn gray" onclick="App.delCash('${ed.id}')">🗑️ حذف</button>` : ''}
           ${type === 'buyer' ? `<button class="btn light" onclick="App.dayBillFromCash()">🧾 روز کا بل</button>` : ''}</div>
         ${ed && ed.by ? `<div class="muted" style="margin-top:4px">👤 ${esc(ed.by)}${ed.edBy ? ' • بدلا: ' + esc(ed.edBy) : ''}</div>` : ''}</div>
-      <div class="card"><h3>🕘 حالیہ اندراج</h3><div class="list">${recent.map(c => { const p = party(c.partyId), t = p ? p.type : 'buyer';
-        return `<div class="it ${ed && ed.id === c.id ? 'on' : ''}" onclick="App.go('cash','v:${c.id}')"><div><span class="pnoTag num">${int(c.no)}</span> ${c.kind === 'pay' ? '💸 بنام' : '💵 جمع'} — <b>${esc(p ? p.name : '')}</b> <span class="muted">${p ? PT[t] : ''} • ${esc(urDate(c.date))} • ${esc(cashText(c, t))}${c.note ? ' • ' + esc(c.note) : ''}${c.by ? ' • 👤 ' + esc(c.by) : ''}</span></div>
-          <span class="a ${c.kind === 'pay' ? 'amt-out' : 'amt-in'}">${fmt(c.amount)}</span></div>`; }).join('') || '<div class="muted">کوئی اندراج نہیں</div>'}</div></div>`;
+      <h3 class="secHd">🕘 حالیہ اندراج</h3><div class="pcList">${recent.map(c => { const p = party(c.partyId), t = p ? p.type : 'buyer';
+        return `<div class="pCard ${ed && ed.id === c.id ? 'sel' : ''}" onclick="App.go('cash','v:${c.id}')"><span class="pAv num ${c.kind === 'pay' ? 'out' : 'in'}">${int(c.no)}</span>
+          <div class="pMid"><b>${esc(p ? p.name : '')}</b><div class="muted">${p ? PT[t] : ''} • ${esc(urDate(c.date))} • ${esc(cashText(c, t))}${c.note ? ' • ' + esc(c.note) : ''}${c.by ? ' • 👤 ' + esc(c.by) : ''}</div></div>
+          <div class="pBal ${c.kind === 'pay' ? 'out' : 'in'}"><span class="num">${fmt(c.amount)}</span><small>${c.kind === 'pay' ? '💸 بنام' : '💵 جمع'}</small></div></div>`; }).join('') || '<div class="card muted">کوئی اندراج نہیں</div>'}</div>`;
   };
   AFTER.cash = function(){ const p = $('cP'); const a = String(arg || ''); const ed = a.startsWith('v:') ? DB.cash.find(c => c.id === a.slice(2)) : null;
     const t = ed ? ((party(ed.partyId) || {}).type || 'buyer') : (a.startsWith('pay') ? 'zamindar' : 'buyer'); cashHint(t); if(p && !p.value) p.focus(); };
+  function cashPick(type){
+    const list = parties(type).sort((a, b) => int(a.no) - int(b.no));
+    modal(`<h3>${type === 'zamindar' ? '🧑‍🌾' : '🧑‍💼'} ${PT[type]} منتخب کریں</h3><div class="f"><input id="pzZq" placeholder="🔍 نام یا کھاتہ نمبر" oninput="App.pzZf(this.value)"></div>
+      <div class="list" id="pzZl" style="text-align:right;max-height:55vh;overflow:auto">${list.map(x => { const b = ledger(x.id).bal; return `<div class="it" data-s="${esc(x.name + ' ' + pNo(x) + ' ' + (x.place || '') + ' ' + (x.phone || ''))}" onclick="App.cashSetP(decodeURIComponent('${encodeURIComponent(x.name)}'),'${type}')"><div><span class="pnoTag num">${pNo(x)}</span> <b>${esc(x.name)}</b> <span class="muted">${esc(x.place || '')}</span></div><span class="num muted">${b ? fmt(Math.abs(b)) : ''}</span></div>`; }).join('') || '<div class="muted">ابھی کوئی کھاتہ نہیں — نام خانے میں لکھ دیں، کھاتہ خود بن جائے گا</div>'}</div>
+      <div class="row" style="justify-content:center;margin-top:8px"><button class="btn gray" onclick="App.closeModal()">بند</button></div>`);
+    setTimeout(() => { const e = $('pzZq'); if(e) e.focus(); }, 60);
+  }
   function cashSide(w){ const o = $(w === 'J' ? 'cB' : 'cJ'), me_ = $(w === 'J' ? 'cJ' : 'cB'); if(o && me_ && String(me_.value).trim()) o.value = ''; }
   function cashNum(type){ const el = $('cP'), p = el && partyByNo(type, el.value); if(p){ el.value = p.name; cashHint(type); } }
   function cashHint(type){
@@ -1822,7 +1831,7 @@
     homeTap(k){ if(homeEdit) return; go(k); }, homeDel(k){ setHomePref({ items: homeItems().filter(x => x !== k) }); render(); },
     homeAddList(){ const its = homeItems(); const rest = NAV.filter(n => n[0] !== 'home' && canSee(n[0]) && !its.includes(n[0]));
       modal(`<h3>➕ ہوم پر آئیکن لگائیں</h3><div class="list" style="text-align:right">${rest.map(n => `<div class="it" onclick="App.closeModal();App.homeAddK('${n[0]}')"><div>${n[1]} ${n[2]}</div><span class="num">${navNo(n[0])}</span></div>`).join('') || '<div class="muted">سب آئیکن پہلے سے ہوم پر ہیں</div>'}</div><div class="row" style="justify-content:center;margin-top:8px"><button class="btn gray" onclick="App.closeModal()">بند</button></div>`); },
-    homeAddK(k){ homeAdd(k, null); }, menuSort(k){ setHomePref({ menuSort: k }); renderSide(); }, printParchi, printBuyers, delParchi, restoreParchi, shareParchi, shareSend, shareChat, shareSave, thermal, thermalShow, thermalBT, thermalPrint, dayBill, dayBillPrint, dayBillThermal, dayBillFromCash, cashSide,
+    homeAddK(k){ homeAdd(k, null); }, menuSort(k){ setHomePref({ menuSort: k }); renderSide(); }, printParchi, printBuyers, delParchi, restoreParchi, shareParchi, shareSend, shareChat, shareSave, thermal, thermalShow, thermalBT, thermalPrint, dayBill, dayBillPrint, dayBillThermal, dayBillFromCash, cashSide, cashPick, cashSetP(n, t){ closeModal(); const e = $('cP'); if(e){ e.value = n; cashHint(t); const j = $(t === 'zamindar' ? 'cB' : 'cJ'); if(j) j.focus(); } },
     setListDate(d){ listDate = d; render(); }, setRozDate(d){ rozDate = d; render(); }, toggleLock,
     psearch(v, type){ partySearch = v; const pos = v.length; render(); const i = $('pS') || document.querySelector('#view .f input'); if(i){ i.focus(); i.setSelectionRange(pos, pos); } },
     partyForm, saveParty, printLedger, cashHint, cashNum, saveCash, delCash,

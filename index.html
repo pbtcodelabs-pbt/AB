@@ -215,6 +215,16 @@ input,select,textarea{font:inherit;}
 .pBtns{display:grid; grid-template-columns:repeat(auto-fill,minmax(78px,1fr)); gap:8px; margin-bottom:10px;}
 .pBtns button,.pBtns a{display:flex; flex-direction:column; align-items:center; gap:0; border:none; border-radius:14px; padding:6px 2px; background:#fff; color:var(--c4); font:inherit; font-size:14px; line-height:1.7; text-decoration:none; box-shadow:0 4px 0 var(--l3),0 5px 10px rgba(0,0,0,.18);}
 .pBtns span{font-size:24px; line-height:1.3;} .pBtns button:active,.pBtns a:active{transform:translateY(3px); box-shadow:0 1px 0 var(--l3);}
+/* 💵 وصولی / ادائیگی */
+.cashTabs{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px;}
+.cashTabs button{display:flex; align-items:center; justify-content:center; gap:6px; border:none; border-radius:14px; padding:6px; font:inherit; font-size:17px; line-height:1.8; background:rgba(255,255,255,.85); color:var(--c4); box-shadow:0 4px 0 var(--l3);}
+.cashTabs button span{font-size:22px;}
+.cashTabs button.in.on{background:linear-gradient(180deg,#22c55e,#15803d); color:#fff; box-shadow:0 4px 0 #14532d;}
+.cashTabs button.out.on{background:linear-gradient(180deg,var(--c1),var(--c3)); color:#fff; box-shadow:0 4px 0 var(--c5);}
+.cashBox .f input#cJ,.cashBox .f input#cB{font-size:24px; text-align:center; font-family:Tahoma,Arial,sans-serif; font-weight:bold;}
+.secHd{display:inline-block; background:rgba(255,255,255,.92); color:var(--c4); border-radius:12px; padding:0 12px; font-size:18px; margin:12px 2px 6px; font-weight:normal;}
+.pAv.in{background:linear-gradient(160deg,#22c55e,#15803d); box-shadow:0 3px 0 #14532d;}
+.pCard.sel{outline:3px solid var(--gold);}
 .hIc.ghost{position:fixed; z-index:9999; pointer-events:none; width:72px; opacity:.9; transform:scale(1.1);}
 .hIc.ghost .hb{width:70px; height:70px; display:flex; justify-content:center; border-radius:18px; background:linear-gradient(160deg,var(--c1),var(--c3));} .hIc.ghost .e{font-size:36px; line-height:60px;}
 @media (min-width:700px){ .hIc .hb{width:84px; height:84px;} .hIc .hb .e{font-size:44px; line-height:62px;} .hIc .t{font-size:17px;} .dbChip .v{font-size:17px;} .dbChip .l{font-size:14px;} }
