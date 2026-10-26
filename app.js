@@ -8,8 +8,8 @@
    ===================================================================== */
 (function(){
   'use strict';
-  const APP_VERSION = 'AB2610MO047';
-  const UPDATE_NOTE = 'رپورٹیں، خرچے اور کمیشن، بیک اپ، یاد دہانی اور تلاش بھی سبزی منڈی کے انداز پر: کارڈ، بٹن، کھلنے والے حصے';
+  const APP_VERSION = 'AB2610MO048';
+  const UPDATE_NOTE = '🚛 مال آمد: گاڑی کا مال پہلے لکھیں، بکری کے ساتھ ہر جنس کے باقی نگ خود؛ نیا صفحہ «مال آمد» میں باقی مال والی گاڑیاں';
   const C = window.ABCalc;
   // ---------- اردو / عربی کی بورڈ کے ہندسے (۰۱۲… / ٠١٢…) لکھتے ہی 0-9 میں — ورنہ رقم، نمبر اور کوڈ نہیں پہچانے جاتے ----------
   document.addEventListener('input', e => {
@@ -133,6 +133,7 @@
     if(sc === 'home' || sc === 'search') return true;   // تلاش سب کے لیے؛ نتیجے اجازت کے حساب سے
     if(sc === 'party') return m.screens.includes('zamindar') || m.screens.includes('buyer');
     if(sc === 'due') return m.screens.includes('buyer') || m.screens.includes('cash');
+    if(sc === 'stock') return m.screens.includes('parchi') || m.screens.includes('parchis');
     return m.screens.includes(sc);
   }
   // ملازم کے لیے: حذف/پرانی چیز بدلنے پر مالک کا پن
@@ -225,7 +226,7 @@
     if(p.opening) rows.push({ date: '', at: p.createdAt || 0, text: 'پچھلا بقایا', amt: p.opening });
     liveParchis().forEach(x => {
       const r = calcParchi(x, x.chargesSnap || chargesList());
-      if(p.type === 'zamindar' && x.zamindarId === pid) rows.push({ date: x.date, at: x.createdAt, text: 'پرچی نمبر ' + x.no + ' — صاف رقم (' + r.nag + ' نگ)', amt: r.net, parchi: x.id });
+      if(p.type === 'zamindar' && x.zamindarId === pid && (r.lines.length || r.net)) rows.push({ date: x.date, at: x.createdAt, text: 'پرچی نمبر ' + x.no + ' — صاف رقم (' + r.nag + ' نگ)', amt: r.net, parchi: x.id });
       if(p.type === 'buyer') r.buyers.filter(b => b.id === pid).forEach(b => rows.push({ date: x.date, at: x.createdAt, text: 'پرچی نمبر ' + x.no + ' — مال (' + b.nag + ' نگ، زمیندار ' + (x.zamindar || '') + ')', amt: b.total, parchi: x.id }));
     });
     liveCash().filter(c => c.partyId === pid).forEach(c => rows.push({ date: c.date, at: c.at, text: cashText(c, p.type) + (c.no ? ' (نمبر ' + c.no + ')' : '') + (c.note ? ' — ' + c.note : ''), amt: cashSign(c, p.type) * c.amount, cash: c.id }));
@@ -270,7 +271,7 @@
   //   نیویگیشن
   // =====================================================================
   const NAV = [
-    ['home', '🏠', 'ہوم'], ['search', '🔍', 'تلاش'], ['parchi', '📝', 'نئی پرچی'], ['parchis', '📚', 'پرچیاں'],
+    ['home', '🏠', 'ہوم'], ['search', '🔍', 'تلاش'], ['parchi', '📝', 'نئی پرچی'], ['parchis', '📚', 'پرچیاں'], ['stock', '🚛', 'مال آمد'],
     ['zamindar', '🧑‍🌾', 'زمیندار'], ['buyer', '🧑‍💼', 'خریدار'], ['cash', '💵', 'وصولی / ادائیگی'],
     ['roznamcha', '📖', 'روزنامچہ'], ['due', '🔔', 'یاد دہانی'], ['reports', '📊', 'رپورٹیں'], ['charges', '⚙️', 'خرچے اور کمیشن'], ['backup', '💾', 'بیک اپ'], ['settings', '🛠️', 'سیٹنگ']
   ];
@@ -441,7 +442,7 @@
   const VIEWS = {};
   const AFTER = {};
   // ---------- 🏠 ہوم (سبزی منڈی جیسا): چھوٹا ڈیش بورڈ (چھپ سکتا ہے) + اپنی مرضی کے آئیکن (✏️ ہٹائیں / جگہ بدلیں / مینو سے کھینچ کر لائیں) ----------
-  const HOME_DEF = ['parchi', 'parchis', 'zamindar', 'buyer', 'cash', 'roznamcha', 'reports', 'search', 'settings'];
+  const HOME_DEF = ['parchi', 'parchis', 'stock', 'zamindar', 'buyer', 'cash', 'roznamcha', 'reports', 'search', 'settings'];
   let homeEdit = false;
   function homeItems(){ const h = homePref(); const ok = k => NAV.some(n => n[0] === k) && k !== 'home' && canSee(k); return (Array.isArray(h.items) ? h.items : HOME_DEF).filter(ok); }
   function navNo(k){ return NAV.findIndex(n => n[0] === k); }   // ہوم = 0، باقی 1 سے
@@ -525,6 +526,16 @@
   const ITEM_BASE = ['آم', 'کیلا', 'سیب', 'کینو', 'مالٹا', 'انگور', 'امرود', 'خربوزہ', 'تربوز', 'آلو', 'پیاز', 'ٹماٹر', 'بھنڈی', 'گوبھی', 'مٹر', 'لہسن', 'ادرک', 'مرچ'];
   const itemIcon = n => ITEM_ICON[String(n || '').trim()] || '🧺';
   function itemCards(){ const used = itemNames(); return used.concat(ITEM_BASE.filter(x => !used.includes(x))); }
+  // ---------- 🚛 مال آمد: گاڑی کا مال پہلے درج، پھر بکری کے ساتھ «باقی نگ» (p.arr = [{item, nag, packing}]) ----------
+  const arrOf = p => (p && Array.isArray(p.arr) ? p.arr : []).filter(a => a && String(a.item || '').trim());
+  function stockOf(p){
+    // جنس وار: آیا، بکا، باقی
+    const m = {};
+    arrOf(p).forEach(a => { const k = a.item.trim(); (m[k] = m[k] || { item: k, came: 0, sold: 0, packing: a.packing || '' }).came += int(a.nag); });
+    (p.lines || []).forEach(l => { const k = String(l.item || '').trim(); if(m[k]) m[k].sold += int(l.nag); });
+    return Object.values(m).map(x => Object.assign(x, { left: x.came - x.sold }));
+  }
+  const stockLeft = p => stockOf(p).reduce((s, x) => s + Math.max(0, x.left), 0);
   let pzQ = '';
   function itemNames(){ const s = new Set(); liveParchis().forEach(p => p.lines.forEach(l => l.item && s.add(l.item))); return [...s].slice(0, 300); }
   function lineVals(k, base){ const s = new Set(base); liveParchis().forEach(p => p.lines.forEach(l => l[k] && s.add(l[k]))); return [...s].slice(0, 200).map(n => `<option value="${esc(n)}">`).join(''); }
@@ -586,7 +597,8 @@
     const z = findParty('zamindar', p.zamindar);
     const r = calcParchi(p, parchiCharges());
     const q = (C.en ? C.en(pzQ) : pzQ).trim();
-    const items = itemCards().filter(n => !q || n.includes(q));
+    const st = stockOf(p), stN = {}; st.forEach(x => { stN[x.item] = x; });
+    const items = st.map(x => x.item).concat(itemCards().filter(n => !stN[n])).filter(n => !q || n.includes(q));
     const inPz = n => p.lines.filter(l => l.item === n).reduce((s, l) => s + int(l.nag), 0);
     return `<div class="pageTitle">📝 ${p.no ? 'پرچی نمبر ' + p.no : 'نئی پرچی'} ${isLocked(p.date) ? '🔒' : ''}<span class="sp"></span>
         <button class="btn light sm" ${nb.prev ? `onclick="App.parchiStep('${nb.prev.id}')"` : 'disabled'}>➡️</button>
@@ -604,12 +616,15 @@
             <div class="f"><label>نقد (ابھی زمیندار کو دیا)</label><input inputmode="decimal" value="${esc(inRs(p.cashNow))}" placeholder="0" oninput="App.pset('cashNow',this.value)"></div>
             <div class="f"><label>نوٹ</label><input value="${esc(p.note)}" placeholder="اختیاری" oninput="App.pset('note',this.value)"></div>
           </div></details>
+        <details class="pzMeta arrBox" ${st.length || (!p.no && !p.lines.length) ? 'open' : ''}><summary>🚛 مال آمد ${st.length ? '— ' + st.map(x => esc(x.item) + ' <span class="num">' + x.came + '</span>').join('، ') + ' • باقی <span class="num">' + st.reduce((s, x) => s + x.left, 0) + '</span> نگ' : '(گاڑی میں کیا آیا — اختیاری)'}</summary>
+          ${st.length ? `<div class="arrList">${st.map(x => `<button class="arrChip ${x.left < 0 ? 'neg' : x.left === 0 ? 'done' : ''}" onclick="App.arrOpen(decodeURIComponent('${encodeURIComponent(x.item)}'))">${itemIcon(x.item)} <b>${esc(x.item)}</b>${x.packing ? ' <small>' + esc(x.packing) + '</small>' : ''}<span>آیا <b class="num">${x.came}</b> • بکا <b class="num">${x.sold}</b> • باقی <b class="num">${x.left}</b></span></button>`).join('')}</div>` : ''}
+          <button class="btn light sm" onclick="App.arrOpen('')" style="margin-top:6px">➕ مال آمد لکھیں</button></details>
         <div class="pzSearch"><input id="pzQ" value="${esc(pzQ)}" placeholder="🔍 جنس کا نام لکھیں…" oninput="App.pzSearch(this.value)"><button onclick="App.pzNewItem()" title="نئی جنس">+</button></div>
       </div>
-      <div class="itemGrid">${items.map(n => { const c = inPz(n); return `<button class="itCard ${c ? 'has' : ''}" onclick="App.bkOpen(-1,decodeURIComponent('${encodeURIComponent(n)}'))"><span class="ie">${itemIcon(n)}</span><span class="in">${esc(n)}</span>${c ? `<span class="ic num">${c}</span>` : ''}</button>`; }).join('')}
+      <div class="itemGrid">${items.map(n => { const c = inPz(n); return `<button class="itCard ${c ? 'has' : ''}" onclick="App.bkOpen(-1,decodeURIComponent('${encodeURIComponent(n)}'))"><span class="ie">${itemIcon(n)}</span><span class="in">${esc(n)}</span>${stN[n] ? `<span class="ic left num ${stN[n].left <= 0 ? 'zero' : ''}" title="باقی">${stN[n].left}</span>` : c ? `<span class="ic num">${c}</span>` : ''}</button>`; }).join('')}
         ${q && !items.includes(q) ? `<button class="itCard new" onclick="App.bkOpen(-1, document.getElementById('pzQ').value.trim())"><span class="ie">➕</span><span class="in">«${esc(q)}»</span></button>` : ''}</div>
       <div class="pzSpacer"></div>
-      <button class="cartBar ${r.lines.length ? 'full' : ''}" onclick="App.pzCart()"><span>🧾 ${r.lines.length ? `<span class="num">${r.lines.length}</span> بکری • <span class="num">${r.nag}</span> نگ` : 'پرچی خالی ہے — جنس پر ہاتھ رکھیں'}</span>${r.lines.length ? `<span class="num">${fmt(r.gross)}</span>` : ''}</button>`;
+      <button class="cartBar ${r.lines.length || st.length ? 'full' : ''}" onclick="App.pzCart()"><span>🧾 ${r.lines.length ? `<span class="num">${r.lines.length}</span> بکری • <span class="num">${r.nag}</span> نگ${st.length ? ' • باقی <span class="num">' + st.reduce((s, x) => s + x.left, 0) + '</span>' : ''}` : st.length ? '🚛 مال آمد — محفوظ کریں یا بکری لکھیں' : 'پرچی خالی ہے — جنس پر ہاتھ رکھیں'}</span>${r.lines.length ? `<span class="num">${fmt(r.gross)}</span>` : ''}</button>`;
   }
   // ایک بکری کا خانہ (پاپ اپ): خریدار، نگ، ریٹ، پیکنگ…
   function bkOpen(i, item){
@@ -617,7 +632,8 @@
     if(!String(l.item || '').trim()){ toast('⚠️ جنس کا نام لکھیں'); return; }
     const last = cur.lines.filter(x => x.item === l.item).pop();
     const pk = ['پیٹی', 'کریٹ', 'بوری', 'ٹوکری', 'کارٹن', 'جال', 'کھلا'];
-    modal(`<h3>${itemIcon(l.item)} ${esc(l.item)} — ${i >= 0 ? 'بکری بدلیں' : 'بکری لکھیں'}</h3><div style="text-align:right">
+    const sx = stockOf(cur).find(x => x.item === String(l.item).trim());
+    modal(`<h3>${itemIcon(l.item)} ${esc(l.item)} — ${i >= 0 ? 'بکری بدلیں' : 'بکری لکھیں'}</h3>${sx ? `<div class="arrNote">🚛 آیا <b class="num">${sx.came}</b> • بک چکا <b class="num">${sx.sold}</b> • باقی <b class="num">${sx.left + (i >= 0 ? int(l.nag) : 0)}</b> نگ</div>` : ''}<div style="text-align:right">
       <datalist id="dlB2">${partyOpts('buyer')}</datalist>
       <div class="f"><label>خریدار — نام یا کھاتہ نمبر</label><input id="bkB" list="dlB2" value="${esc(l.buyer)}" placeholder="نام یا نمبر" onchange="App.bkNum()"></div>
       <div class="grid2"><div class="f"><label>نگ</label><input id="bkN" inputmode="numeric" value="${esc(l.nag)}" placeholder="0" oninput="App.bkAmt()" style="font-size:22px;text-align:center"></div>
@@ -645,9 +661,36 @@
     if(!l.buyer){ toast('⚠️ خریدار کا نام لکھیں'); return; }
     if(!int(l.nag) && !int(l.grams)){ toast('⚠️ نگ لکھیں'); return; }
     if(!int(l.rate)){ toast('⚠️ ریٹ لکھیں'); return; }
+    { const sx = stockOf(cur).find(x => x.item === String(item).trim());
+      if(sx){ const left = sx.left + (i >= 0 ? int(cur.lines[i].nag) : 0); if(int(l.nag) > left) toast('⚠️ آمد سے زیادہ: باقی ' + left + ' نگ تھے — آمد بدلنی ہو تو «🚛 مال آمد» میں'); } }
     if(i >= 0) cur.lines[i] = Object.assign(cur.lines[i], l); else cur.lines.push(l);
     closeModal(); toast('✅ ' + l.item + ' — ' + l.buyer + ': ' + fmt(lineAmount(l)));
     render(); if(again) bkOpen(-1, item); else if(i >= 0) pzCart();
+  }
+  // 🚛 مال آمد کا خانہ: جنس، نگ، پیکنگ
+  let arrPk = '';
+  function arrOpen(item){
+    const a = item ? arrOf(cur).find(x => x.item.trim() === item) : null;
+    const pk = ['پیٹی', 'کریٹ', 'بوری', 'ٹوکری', 'کارٹن', 'جال', 'کھلا'];
+    arrPk = a ? a.packing || '' : '';
+    modal(`<h3>🚛 مال آمد ${a ? '— ' + esc(a.item) : ''}</h3><div style="text-align:right">
+      <datalist id="dlI2">${itemCards().map(n => `<option value="${esc(n)}">`).join('')}</datalist>
+      <div class="grid2"><div class="f"><label>جنس</label><input id="arI" list="dlI2" value="${esc(a ? a.item : pzQ)}" placeholder="مثلاً آم" ${a ? 'readonly' : ''}></div>
+        <div class="f"><label>کتنے نگ آئے</label><input id="arN" inputmode="numeric" value="${esc(a ? a.nag : '')}" placeholder="0" style="font-size:22px;text-align:center"></div></div>
+      <div class="pkChips">${pk.map(x => `<button class="${arrPk === x ? 'on' : ''}" onclick="App.arrPk(this)">${x}</button>`).join('')}</div>
+      <div class="muted">گاڑی میں جو مال آیا وہ لکھیں؛ بکری لکھتے جائیں تو ہر جنس کے «باقی نگ» خود کم ہوتے رہیں گے۔</div></div>
+      <div class="row" style="justify-content:center;margin-top:8px"><button class="btn" onclick="App.arrSave(${a ? 'true' : 'false'})">✅ محفوظ</button>${a ? `<button class="btn gray" onclick="App.arrDel(decodeURIComponent('${encodeURIComponent(a.item)}'))">🗑️ ہٹائیں</button>` : `<button class="btn light" onclick="App.arrSave(false,true)">➕ اور جنس</button>`}<button class="btn gray" onclick="App.closeModal()">بند</button></div>`);
+    setTimeout(() => { const e = $(a ? 'arN' : 'arI'); if(e) e.focus(); }, 60);
+  }
+  function arrSave(edit, again){
+    const item = $('arI').value.trim(), nag = int($('arN').value);
+    if(!item){ toast('⚠️ جنس کا نام لکھیں'); return; }
+    if(nag <= 0){ toast('⚠️ نگ لکھیں'); return; }
+    cur.arr = arrOf(cur);
+    const ex = cur.arr.find(x => x.item.trim() === item);
+    if(ex){ if(edit) ex.nag = nag; else ex.nag = int(ex.nag) + nag; ex.packing = arrPk || ex.packing || ''; }
+    else cur.arr.push({ item, nag, packing: arrPk });
+    closeModal(); toast('🚛 ' + item + ': ' + nag + ' نگ'); render(); if(again) arrOpen('');
   }
   // اوپر زمیندار چننے کی فہرست (سبزی منڈی کے «گاہک منتخب کریں» جیسی)
   function pzPick(isNew){
@@ -769,13 +812,16 @@
     if(window.AB_LIC && !AB_LIC.canWrite()) return;
     const r = calcParchi(cur, parchiCharges());
     if(!String(cur.zamindar || '').trim()){ toast('⚠️ زمیندار کا نام لکھیں'); return; }
-    if(!r.lines.length){ toast('⚠️ کم از کم ایک بکری لکھیں'); return; }
+    if(!r.lines.length && !arrOf(cur).length){ toast('⚠️ کم از کم ایک بکری یا 🚛 مال آمد لکھیں'); return; }
     if(r.lines.some(l => !String(l.buyer || '').trim())){ toast('⚠️ ہر بکری میں خریدار کا نام لکھیں'); return; }
     if(r.lines.some(l => !int(l.rate))){ toast('⚠️ ہر بکری کا ریٹ لکھیں'); return; }
     if(r.lines.some(l => l.basis === 'maund' && !int(l.grams))){ toast('⚠️ فی من ریٹ والی بکری کا وزن لکھیں'); return; }
     if(!r.check){ toast('⚠️ حساب کا جوڑ نہیں مل رہا'); return; }
     const old = DB.parchis.find(p => p.id === cur.id);
-    if(old && !(await ownerOk('محفوظ پرچی بدلنا صرف مالک کا کام ہے — مالک کا پن لکھیں'))) return;
+    // 🚛 آمد والی پرچی میں صرف نئی بکری جوڑی ہو (پرانی بکری / آمد ویسی ہی) تو ملازم کو مالک کا پن نہیں چاہیے
+    const onlyAdded = (o, n) => { const key = l => JSON.stringify([l.item, l.nag, l.rate, l.basis, l.grams, l.buyer]); const ol = (o.lines || []).map(key), nl = (n.lines || []).map(key);
+      return arrOf(o).length > 0 && JSON.stringify(arrOf(o)) === JSON.stringify(arrOf(n)) && ol.every((k, i) => nl[i] === k) && nl.length > ol.length; };
+    if(old && !onlyAdded(old, cur) && !(await ownerOk('محفوظ پرچی بدلنا صرف مالک کا کام ہے — مالک کا پن لکھیں'))) return;
     if(old && !(await unlockFor(old.date))) return;
     if(!(await unlockFor(cur.date))) return;
     // کھاتے جوڑیں (نیا نام ہو تو نیا کھاتہ)
@@ -852,9 +898,9 @@
   function partyBal(pid){ return pid ? ledger(pid).bal : null; }
   function zamindarSpec(p, r){
     const z = p.zamindarId, bal = partyBal(z);
-    const cash = int(p.cashNow), xc = r.lines.some(l => lineXtra(l));
+    const cash = int(p.cashNow), xc = r.lines.some(l => lineXtra(l)), st = stockOf(p);
     return { shop: shopSub() ? shopName() : shopName(), sub: shopSub(), title: 'زمیندار کی پرچی — نمبر ' + p.no,
-      meta: [['تاریخ', urDate(p.date)], ['زمیندار', p.zamindar + (pNo(party(z)) ? ' (نمبر ' + pNo(party(z)) + ')' : '')], ['گاؤں / شہر', p.place || '—'], ['گاڑی', p.vehicle || '—'], ...(p.bilty ? [['بلٹی', p.bilty]] : [])],
+      meta: [['تاریخ', urDate(p.date)], ['زمیندار', p.zamindar + (pNo(party(z)) ? ' (نمبر ' + pNo(party(z)) + ')' : '')], ['گاؤں / شہر', p.place || '—'], ['گاڑی', p.vehicle || '—'], ...(p.bilty ? [['بلٹی', p.bilty]] : []), ...(st.length ? [['مال آمد', st.map(x => x.item + ' ' + x.came + (x.left > 0 ? ' (باقی ' + x.left + ')' : '')).join('، ')]] : [])],
       cols: [{ t: 'جنس', w: 3 }].concat(xc ? [{ t: 'پیکنگ / مارکہ', w: 2.4 }] : []).concat([{ t: 'خریدار', w: 3 }, { t: 'نگ', w: 1.4, num: 1 }, { t: 'ریٹ', w: 2 }, { t: 'رقم', w: 2.4, num: 1 }]),
       rows: r.lines.map(l => [lineItem(l)].concat(xc ? [lineXtra(l)] : []).concat([l.buyer, l.nag || (l.grams ? (int(l.grams) / 1000) + ' کلو' : ''), fmt(int(l.rate)) + (l.basis === 'maund' ? ' / من' : ''), fmt(lineAmount(l))])),
       // منڈی کی پرچی جیسا: نقد بھی کٹوتیوں میں، پھر ٹوٹل میزان، پھر صاف رقم
@@ -1031,6 +1077,21 @@
   let listQ = '', listPer = 'all';
   // پرچی کا جوڑ (محفوظ ہو تو وہی، ورنہ ابھی گن لیں)
   function ptot(p){ if(p.totals && p.totals.gross != null) return p.totals; const r = calcParchi(p, p.chargesSnap || chargesList()); return { gross: r.gross, net: r.net, income: r.income }; }
+  // ---------- 🚛 مال آمد / باقی مال: جن گاڑیوں کا مال ابھی بکنا باقی ----------
+  let stockAll = false;
+  VIEWS.stock = function(){
+    const ps = liveParchis().filter(p => arrOf(p).length).sort((a, b) => (b.date || '').localeCompare(a.date || '') || b.no - a.no);
+    const open = ps.filter(p => stockLeft(p) > 0), show = stockAll ? ps : open;
+    const tot = {}; open.forEach(p => stockOf(p).forEach(x => { if(x.left > 0) tot[x.item] = (tot[x.item] || 0) + x.left; }));
+    return `<div class="pageTitle">🚛 مال آمد <span class="cntPill num">${open.length}</span><span class="sp"></span><button class="btn gold sm" onclick="App.newArrival()">➕ نئی گاڑی</button></div>
+      <div class="pzTop"><div class="miniSum" style="margin-top:0">${Object.keys(tot).map(k => `<span>${itemIcon(k)} ${esc(k)} <b class="num">${tot[k]}</b></span>`).join('') || '<span>سارا مال بک چکا ✅<b>—</b></span>'}</div>
+        <div class="pfRow"><button class="${stockAll ? '' : 'on'}" onclick="App.stockAll(false)">باقی والی گاڑیاں</button><button class="${stockAll ? 'on' : ''}" onclick="App.stockAll(true)">سب آمد</button></div></div>
+      <div class="pcList">${show.map(p => { const st = stockOf(p), left = stockLeft(p);
+        return `<div class="pCard" onclick="App.go('parchi','${p.id}')"><span class="pAv num">${p.no}</span>
+          <div class="pMid"><b>${esc(p.zamindar)}</b><div class="muted">${esc(urDate(p.date))}${p.vehicle ? ' • 🚚 ' + esc(p.vehicle) : ''}</div>
+            <div class="muted">${st.map(x => itemIcon(x.item) + ' ' + esc(x.item) + ' <span class="num">' + x.sold + '/' + x.came + '</span>').join(' • ')}</div></div>
+          <div class="pBal ${left ? 'out' : 'in'}"><span class="num">${left}</span><small>${left ? 'نگ باقی' : 'سب بک گیا'}</small></div></div>`; }).join('') || '<div class="card muted">کوئی گاڑی نہیں — «➕ نئی گاڑی» سے مال آمد لکھیں</div>'}</div>`;
+  };
   VIEWS.parchis = function(){
     const q = (C.en ? C.en(listQ) : listQ).trim();
     const [pf, pt] = listPer === 'all' || listPer === 'd' ? ['', '9999'] : perRange(listPer);
@@ -1041,7 +1102,7 @@
     let g = 0, inc = 0, nag = 0;
     const rows = live.map(p => { const t = ptot(p); g += t.gross || 0; inc += t.income || 0; const n = p.lines.reduce((s, l) => s + int(l.nag), 0); nag += n;
       return `<div class="pCard" onclick="App.go('parchi','${p.id}')"><span class="pAv num">${p.no}</span>
-        <div class="pMid"><b>${esc(p.zamindar)} ${isLocked(p.date) ? '🔒' : ''}</b><div class="muted">${esc(urDate(p.date))}${p.vehicle ? ' • 🚚 ' + esc(p.vehicle) : ''} • <span class="num">${n}</span> نگ${p.by ? ' • 👤 ' + esc(p.by) : ''}</div>
+        <div class="pMid"><b>${esc(p.zamindar)} ${isLocked(p.date) ? '🔒' : ''}${stockLeft(p) ? ' <span class="leftTag">🚛 باقی <span class="num">' + stockLeft(p) + '</span></span>' : ''}</b><div class="muted">${esc(urDate(p.date))}${p.vehicle ? ' • 🚚 ' + esc(p.vehicle) : ''} • <span class="num">${n}</span> نگ${p.by ? ' • 👤 ' + esc(p.by) : ''}</div>
           <div class="muted">${esc([...new Set(p.lines.map(l => l.item).filter(Boolean))].join('، '))}</div></div>
         <div class="pBal"><span class="num">${fmt(t.gross || 0)}</span><small>صاف ${fmt(t.net || 0)}</small>${canSee('parchi') ? `<button class="pDel" onclick="event.stopPropagation();App.delParchi('${p.id}')" title="ردی میں">🗑️</button>` : ''}</div></div>`; }).join('');
     return `<div class="pageTitle">📚 پرچیاں <span class="cntPill num">${live.length}</span><span class="sp"></span><button class="btn gold sm" onclick="App.go('parchi')">📝 نئی پرچی</button></div>
@@ -1821,6 +1882,8 @@
     searchQ(v){ sQuery = v; const r = $('sRes'); if(r) r.innerHTML = searchResults(v); },
     logout(){ curUser = null; pinBuf = ''; menu(false); render(); },
     setTheme(k){ try{ localStorage.setItem('ab_theme', k); }catch(e){} applyTheme(k); render(); }, verTap(){ if(window.AB_LIC && AB_LIC.tap()) return; toast('ورژن ' + APP_VERSION); },
+    stockAll(v){ stockAll = !!v; render(); },
+    newArrival(){ cur = blankParchi(); go('parchi'); setTimeout(() => App.pzPick(), 80); },
     newParchi(){ cur = blankParchi(); pzQ = ''; render(); },
     newParchiFor(id){ const p = party(id); cur = blankParchi(); pzQ = ''; if(p){ cur.zamindar = p.name; cur.zamindarId = p.id; cur.place = p.place || ''; } go('parchi'); },
     pfilter(k){ partyFilter = k; render(); },
@@ -1828,6 +1891,8 @@
     bkNum(){ const e = $('bkB'), p = e && partyByNo('buyer', e.value); if(p) e.value = p.name; },
     bkBasis(b){ bkState.basis = b; $('bkBn').classList.toggle('on', b === 'nag'); $('bkBm').classList.toggle('on', b === 'maund'); $('bkWw').style.display = b === 'maund' ? '' : 'none'; bkAmt(); },
     bkPk(el){ const on = el.classList.contains('on'); document.querySelectorAll('.pkChips button').forEach(b => b.classList.remove('on')); if(!on){ el.classList.add('on'); bkState.pk = el.textContent; } else bkState.pk = ''; },
+    arrOpen, arrSave, arrPk(b){ arrPk = arrPk === b.textContent ? '' : b.textContent; b.parentNode.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b && !!arrPk)); },
+    arrDel(item){ cur.arr = arrOf(cur).filter(x => x.item.trim() !== item); closeModal(); render(); toast('🗑️ آمد سے ہٹا دی'); },
     bkDel(i){ cur.lines.splice(i, 1); closeModal(); render(); toast('🗑️ بکری ہٹا دی'); if(cur.lines.length) pzCart(); },
     pzCartRes(){ const el = $('result'); if(el) el.innerHTML = resultHtml(calcParchi(cur, parchiCharges()), cur, false); },
     pzSearch(v){ pzQ = v; const pos = v.length; render(); const e = $('pzQ'); if(e){ e.focus(); try{ e.setSelectionRange(pos, pos); }catch(er){} } },
