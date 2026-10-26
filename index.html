@@ -462,6 +462,11 @@ html[data-theme="white"] .themes button{border-color:#d6d3d1;}
 #topbar .dchip.ok{background:rgba(34,197,94,.25);} #topbar .dchip.warn{background:rgba(251,191,36,.35);}
 .bkBanner{background:#fffbeb; border:2px solid #f59e0b; color:#78350f; border-radius:14px; padding:6px 10px; margin-bottom:10px; box-shadow:0 4px 12px rgba(0,0,0,.2);}
 .licStrip{display:flex; align-items:center; justify-content:space-between; gap:8px; border-radius:14px; padding:6px 10px; margin-bottom:10px; cursor:pointer; box-shadow:0 4px 12px rgba(0,0,0,.2); border:2px solid;}
+.licChip{border:1.5px solid; border-radius:12px; padding:0 8px; font:inherit; font-size:13px; line-height:1.9; cursor:pointer; white-space:nowrap; max-width:46vw; overflow:hidden; text-overflow:ellipsis;}
+.licChip.trial{background:rgba(255,255,255,.12); border-color:rgba(253,230,138,.7); color:var(--ttlTx);}
+.licChip.warn{background:var(--gold); border-color:var(--gold); color:var(--c5);}
+.licChip.off{background:var(--bad); border-color:#fff; color:#fff;}
+html[data-theme="white"] .licChip.trial{background:var(--l1); border-color:var(--l3); color:var(--c4);}
 .licStrip.trial{background:#eff6ff; border-color:#60a5fa; color:#1e3a8a;}
 .licStrip.warn{background:#fffbeb; border-color:#f59e0b; color:#78350f;}
 .licStrip.off{background:#fef2f2; border-color:#ef4444; color:#7f1d1d;}
@@ -676,6 +681,7 @@ html[data-theme="white"] .themes button{border-color:#d6d3d1;}
     <button class="ib" id="searchBtn" onclick="App.go('search')" aria-label="تلاش">🔍</button>
     <button class="ib dchip" id="driveChip" onclick="App.go('backup')" aria-label="بیک اپ">☁️</button>
     <span class="sp"></span>
+    <span id="licChip"></span>
     <span id="verBadge" onclick="App.verTap()"></span>
   </div>
 </div>

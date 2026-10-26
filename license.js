@@ -300,7 +300,16 @@
   async function useCode() { if (!takePhone()) return; const c = ($('licCode') || {}).value; if (await activate(c)) host().closeModal(); }
   async function restore() { if (!takePhone()) return; if (await check(true)) { const m = document.querySelector('#modalBox .licState'); if (m) m.innerHTML = statusText(); } }
 
+  // اوپر بٹنوں کی قطار میں باریک پٹی (مالک کا حکم: ہوم پر بڑا ڈبہ نہیں)
+  function chip() {
+    const s = status();
+    if (s.paid && (s.forever || s.days > 5)) return '';
+    const cls = !s.ok ? 'off' : s.paid ? 'warn' : 'trial';
+    const t = !s.ok ? (paidExp() ? '⛔ سبسکرپشن ختم' : '⛔ آزمائش ختم') : s.paid ? `⏳ <span class="num">${s.days}</span> دن باقی` : `🎁 مفت آزمائش <span class="num">${s.days}</span> دن`;
+    return `<button class="licChip ${cls}" onclick="AB_LIC.open()">${t}</button>`;
+  }
   function refresh() {
+    { const c = document.getElementById('licChip'); if (c) c.innerHTML = chip(); }
     document.querySelectorAll('.licState').forEach(el => { el.innerHTML = statusText(); });
     const H = host(); if (H && H.refreshHome) H.refreshHome();
   }
@@ -589,7 +598,7 @@
   window.AB_LIC = {
     pay, payCopy, payFile, paySend,
     prices, pAdd, pDel, pSave, on: subOn,
-    status, statusText, strip, card, canWrite, allowed, overLimit, check, activate, normPhone, tap,
+    status, statusText, strip, chip, card, canWrite, allowed, overLimit, check, activate, normPhone, tap,
     open: openModal, request, useCode, restore, copy, codes, cv, cOff, cDel, shareCodes, printCodes, dev: () => devOpen(),
     start() {
       if (this._on) return; this._on = true;
