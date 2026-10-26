@@ -93,9 +93,22 @@
     return 0;
   }
   // ---------- پوری پرچی کا حساب ----------
+  // ---------- 🛒 اپنا مال (خرید فروخت): مال آمد (p.arr) پر فی نگ خرید (buyRate)، کرایہ (kir)، مزدوری (maz)، پیکنگ (pkc) ----------
+  // بیوپاری کو ادائیگی = خرید؛ کرایہ / مزدوری / پیکنگ = خرچے؛ نفع = بکری − خرید − خرچے
+  function buyRow(b){
+    const n = int(b.nag);
+    const o = { item: b.item || '', nag: n, buy: n * int(b.buyRate), kiraya: n * int(b.kir), mazdoori: n * int(b.maz), packing: n * int(b.pkc) };
+    o.exp = o.kiraya + o.mazdoori + o.packing; return o;
+  }
+  function calcTrade(p){
+    const rows = (p.arr || []).filter(b => b && int(b.nag) > 0).map(buyRow);   // مال آمد کی قطاریں (فی نگ خرید / کرایہ / مزدوری / پیکنگ)
+    const sum = k => rows.reduce((s, r) => s + r[k], 0);
+    return { rows, nag: sum('nag'), buy: sum('buy'), kiraya: sum('kiraya'), mazdoori: sum('mazdoori'), packing: sum('packing'), exp: sum('exp') };
+  }
   function calcParchi(p, charges){
+    const trade = p.mode === 'trade';
     const lines = (p.lines || []).filter(l => int(l.nag) > 0 || int(l.grams) > 0);
-    const active = (charges || []).filter(c => c.on);
+    const active = (charges || []).filter(c => c.on && !(trade && c.side === 'zamindar'));   // اپنے مال پر زمیندار کی کٹوتیاں نہیں
     const gross = lines.reduce((s, l) => s + lineAmount(l), 0);
     const manual = p.manual || {};
     const zCharges = active.filter(c => c.side === 'zamindar').map(c => ({ id: c.id, name: c.name, income: !!c.income, amount: chargeOn(c, lines, manual[c.id]) }));
@@ -120,11 +133,18 @@
     const buyersTotal = buyers.reduce((s, b) => s + b.total, 0);
     // جانچ: خریداروں سے آنے والی رقم = زمیندار کی صاف رقم + سب کٹوتیاں
     const allDed = zTotal + buyers.reduce((s, b) => s + (b.total - b.goods), 0);
+    const nag = lines.reduce((s, l) => s + int(l.nag), 0);
+    if(trade){
+      const t = calcTrade(p), profit = gross - t.buy - t.exp;
+      const bExtra = buyers.reduce((s, b) => s + (b.total - b.goods), 0);
+      return { lines, gross, zCharges: [], zTotal: 0, net: t.buy, buyers, buyersTotal, income: income + profit, nag, trade: t, profit,
+        left: Math.max(0, t.nag - nag), check: buyersTotal === gross + bExtra };
+    }
     const check = (buyersTotal === (gross - zTotal) + allDed);
-    return { lines, gross, zCharges, zTotal, net: gross - zTotal, buyers, buyersTotal, income, nag: lines.reduce((s, l) => s + int(l.nag), 0), check };
+    return { lines, gross, zCharges, zTotal, net: gross - zTotal, buyers, buyersTotal, income, nag, check };
   }
 
-  const API = { KINDS, SIDES, TEMPLATES, en, toPaisa, toGrams, int, rdiv, fmt, rateText, lineAmount, itemRate, chargeOn, calcParchi };
+  const API = { KINDS, SIDES, TEMPLATES, en, toPaisa, toGrams, int, rdiv, fmt, rateText, lineAmount, itemRate, chargeOn, calcParchi, calcTrade, buyRow };
   if(typeof module !== 'undefined' && module.exports){ module.exports = API; }
   root.ABCalc = API;
 })(typeof window !== 'undefined' ? window : globalThis);
