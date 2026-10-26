@@ -1,6 +1,6 @@
 // ---------- 📒 آڑھت بک (AB) — سروس ورکر ----------
 // ہر ریلیز پر CACHE_VERSION بدلیں (index.html / app.js والے APP_VERSION جیسا)
-const CACHE_VERSION = 'AB2610MO045';
+const CACHE_VERSION = 'AB2610MO046';
 const CACHE_PREFIX = 'arth-book-';
 const CACHE_NAME = CACHE_PREFIX + CACHE_VERSION;
 const FONT_CACHE = CACHE_PREFIX + 'fonts-v1'; // فونٹ کبھی نہیں بدلتے — ہر ریلیز پر دوبارہ نہ اتریں

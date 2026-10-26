@@ -225,6 +225,24 @@ input,select,textarea{font:inherit;}
 .secHd{display:inline-block; background:rgba(255,255,255,.92); color:var(--c4); border-radius:12px; padding:0 12px; font-size:18px; margin:12px 2px 6px; font-weight:normal;}
 .pAv.in{background:linear-gradient(160deg,#22c55e,#15803d); box-shadow:0 3px 0 #14532d;}
 .pCard.sel{outline:3px solid var(--gold);}
+/* 📚 پرچیاں / 📖 روزنامچہ / 🛠️ سیٹنگ */
+.pfDate{margin-inline-start:auto; border:2px solid var(--l3); border-radius:12px; padding:0 8px; font:inherit; font-size:15px; min-height:34px; background:#fff; max-width:160px;}
+.miniSum{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;}
+.miniSum span{flex:1; min-width:90px; text-align:center; background:#fff; border:1.5px solid var(--l2); border-radius:12px; font-size:14px; color:var(--muted); line-height:1.8;}
+.miniSum b{display:block; font-family:Tahoma,Arial,sans-serif; color:var(--c4); font-size:16px; line-height:1.4;}
+.pDel{display:block; margin:4px auto 0; border:1.5px solid var(--l3); background:var(--l0); border-radius:9px; width:32px; height:28px; padding:0; font-size:14px;}
+.dayNav{display:flex; align-items:center; gap:6px; margin-bottom:8px;}
+.dayNav button{flex:0 0 auto; border:none; border-radius:12px; padding:2px 10px; font:inherit; font-size:15px; line-height:1.9; background:#fff; color:var(--c4); box-shadow:0 3px 0 var(--l3);}
+.dayNav button:disabled{opacity:.4;}
+.dayNav .dn{flex:1; text-align:center; background:rgba(255,255,255,.92); border-radius:12px; padding:2px 6px; color:var(--c5); font-size:16px; line-height:1.9;}
+.setSec{margin-bottom:10px;}
+.setSec>summary{list-style:none; cursor:pointer; display:flex; align-items:center; gap:8px; padding:8px 14px; border-radius:14px; background:#fff; color:var(--c4); font-size:19px; line-height:1.8; box-shadow:0 4px 0 var(--l3),0 5px 10px rgba(0,0,0,.18);}
+.setSec>summary::-webkit-details-marker{display:none;}
+.setSec>summary::after{content:'▾'; margin-inline-start:auto; color:var(--c2); transition:transform .15s;}
+.setSec[open]>summary{border-radius:14px 14px 0 0; background:linear-gradient(180deg,var(--c1),var(--c3)); color:#fff; box-shadow:none;}
+.setSec[open]>summary::after{color:#fff; transform:rotate(180deg);}
+.setSec>.card{border-radius:0 0 14px 14px; margin-top:0;}
+.setSec>.card>h3:first-child{display:none;}
 .hIc.ghost{position:fixed; z-index:9999; pointer-events:none; width:72px; opacity:.9; transform:scale(1.1);}
 .hIc.ghost .hb{width:70px; height:70px; display:flex; justify-content:center; border-radius:18px; background:linear-gradient(160deg,var(--c1),var(--c3));} .hIc.ghost .e{font-size:36px; line-height:60px;}
 @media (min-width:700px){ .hIc .hb{width:84px; height:84px;} .hIc .hb .e{font-size:44px; line-height:62px;} .hIc .t{font-size:17px;} .dbChip .v{font-size:17px;} .dbChip .l{font-size:14px;} }

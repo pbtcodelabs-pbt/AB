@@ -8,8 +8,8 @@
    ===================================================================== */
 (function(){
   'use strict';
-  const APP_VERSION = 'AB2610MO045';
-  const UPDATE_NOTE = 'وصولی / ادائیگی سبزی منڈی کے انداز پر: بڑے ٹیب، کھاتوں کی فہرست سے چننا، حالیہ اندراج کارڈ میں';
+  const APP_VERSION = 'AB2610MO046';
+  const UPDATE_NOTE = 'پرچیاں، روزنامچہ اور سیٹنگ سبزی منڈی کے انداز پر: تلاش، مدت کے بٹن، کارڈ، دن آگے پیچھے، کھلنے والے حصے';
   const C = window.ABCalc;
   // ---------- اردو / عربی کی بورڈ کے ہندسے (۰۱۲… / ٠١٢…) لکھتے ہی 0-9 میں — ورنہ رقم، نمبر اور کوڈ نہیں پہچانے جاتے ----------
   document.addEventListener('input', e => {
@@ -1028,21 +1028,33 @@
   //   پرچیاں
   // =====================================================================
   let listDate = '';
+  let listQ = '', listPer = 'all';
+  // پرچی کا جوڑ (محفوظ ہو تو وہی، ورنہ ابھی گن لیں)
+  function ptot(p){ if(p.totals && p.totals.gross != null) return p.totals; const r = calcParchi(p, p.chargesSnap || chargesList()); return { gross: r.gross, net: r.net, income: r.income }; }
   VIEWS.parchis = function(){
-    const live = liveParchis().filter(p => !listDate || p.date === listDate).sort((a, b) => (b.date || '').localeCompare(a.date || '') || b.no - a.no);
+    const q = (C.en ? C.en(listQ) : listQ).trim();
+    const [pf, pt] = listPer === 'all' || listPer === 'd' ? ['', '9999'] : perRange(listPer);
+    const live = liveParchis().filter(p => listDate ? p.date === listDate : (p.date >= pf && p.date <= pt))
+      .filter(p => !q || String(p.no) === q || (p.zamindar || '').includes(q) || (p.vehicle || '').includes(q) || p.lines.some(l => (l.buyer || '').includes(q) || (l.item || '').includes(q)))
+      .sort((a, b) => (b.date || '').localeCompare(a.date || '') || b.no - a.no);
     const bin = DB.parchis.filter(p => p.deleted);
-    let g = 0, inc = 0;
-    const rows = live.map(p => { const t = p.totals || {}; g += t.gross || 0; inc += t.income || 0;
-      return `<div class="it" onclick="App.go('parchi','${p.id}')"><div><b>نمبر <span class="num">${p.no}</span> — ${esc(p.zamindar)}</b> ${isLocked(p.date) ? '🔒' : ''}
-        <div class="muted">${esc(urDate(p.date))} ${p.vehicle ? '• گاڑی ' + esc(p.vehicle) : ''} • بکری ${rs(t.gross || 0)} • صاف ${rs(t.net || 0)}${p.by ? ' • 👤 ' + esc(p.by) : ''}</div></div>
-        <button class="btn gray sm" onclick="event.stopPropagation();App.delParchi('${p.id}')">🗑️</button></div>`; }).join('');
-    return `<div class="pageTitle">📚 پرچیاں<span class="sp"></span><button class="btn gold sm" onclick="App.go('parchi')">📝 نئی پرچی</button></div>
-      <div class="card"><div class="row"><div class="f" style="flex:1 1 280px;min-width:0"><label>تاریخ سے چنیں (خالی = سب)</label><input type="date" value="${esc(listDate)}" onchange="App.setListDate(this.value)"></div>
-        ${listDate ? '<button class="btn gray sm" onclick="App.setListDate(\'\')">سب دکھائیں</button>' : ''}</div>
-        <table class="t" style="margin-top:6px"><tr><td>پرچیاں</td><td class="v">${live.length}</td></tr><tr><td>کل بکری</td><td class="v">${fmt(g)}</td></tr><tr class="tot"><td>آڑھتی کی کمائی</td><td class="v">${fmt(inc)}</td></tr></table></div>
-      <div class="card"><div class="list">${rows || '<div class="muted">کوئی پرچی نہیں</div>'}</div></div>
-      ${bin.length ? `<div class="card"><h3>🗑️ ردی کی ٹوکری (${bin.length})</h3><div class="list">${bin.map(p => `<div class="it"><div>نمبر <span class="num">${p.no}</span> — ${esc(p.zamindar)} <span class="muted">${esc(urDate(p.date))}</span></div>
-        <button class="btn light sm" onclick="App.restoreParchi('${p.id}')">↩️ واپس لائیں</button></div>`).join('')}</div></div>` : ''}`;
+    let g = 0, inc = 0, nag = 0;
+    const rows = live.map(p => { const t = ptot(p); g += t.gross || 0; inc += t.income || 0; const n = p.lines.reduce((s, l) => s + int(l.nag), 0); nag += n;
+      return `<div class="pCard" onclick="App.go('parchi','${p.id}')"><span class="pAv num">${p.no}</span>
+        <div class="pMid"><b>${esc(p.zamindar)} ${isLocked(p.date) ? '🔒' : ''}</b><div class="muted">${esc(urDate(p.date))}${p.vehicle ? ' • 🚚 ' + esc(p.vehicle) : ''} • <span class="num">${n}</span> نگ${p.by ? ' • 👤 ' + esc(p.by) : ''}</div>
+          <div class="muted">${esc([...new Set(p.lines.map(l => l.item).filter(Boolean))].join('، '))}</div></div>
+        <div class="pBal"><span class="num">${fmt(t.gross || 0)}</span><small>صاف ${fmt(t.net || 0)}</small>${canSee('parchi') ? `<button class="pDel" onclick="event.stopPropagation();App.delParchi('${p.id}')" title="ردی میں">🗑️</button>` : ''}</div></div>`; }).join('');
+    return `<div class="pageTitle">📚 پرچیاں <span class="cntPill num">${live.length}</span><span class="sp"></span><button class="btn gold sm" onclick="App.go('parchi')">📝 نئی پرچی</button></div>
+      <div class="pzTop">
+        <div class="pzSearch" style="margin-top:0"><input id="lQ" value="${esc(listQ)}" placeholder="🔍 نمبر، زمیندار، خریدار، جنس، گاڑی…" oninput="App.listQ(this.value)"></div>
+        <div class="pfRow">${[['all', 'سب']].concat(DPER).map(x => `<button class="${!listDate && listPer === x[0] ? 'on' : ''}" onclick="App.listPer('${x[0]}')">${x[1]}</button>`).join('')}
+          
+<button class="${listPer === 'd' || listDate ? 'on' : ''}" onclick="App.listPer('d')">📅 تاریخ</button></div>
+        ${listPer === 'd' || listDate ? `<div class="f" style="margin-top:6px"><input type="date" value="${esc(listDate || today())}" onchange="App.setListDate(this.value)"></div>` : ''}
+        <div class="miniSum"><span>بکری <b class="num">${fmt(g)}</b></span><span>نگ <b class="num">${nag}</b></span>${isStaff() ? '' : `<span>کمائی <b class="num">${fmt(inc)}</b></span>`}</div></div>
+      <div class="pcList">${rows || '<div class="card muted">کوئی پرچی نہیں</div>'}</div>
+      ${bin.length ? `<details class="setSec"><summary>🗑️ ردی کی ٹوکری (${bin.length})</summary><div class="card"><div class="list">${bin.map(p => `<div class="it"><div>نمبر <span class="num">${p.no}</span> — ${esc(p.zamindar)} <span class="muted">${esc(urDate(p.date))}</span></div>
+        <button class="btn light sm" onclick="App.restoreParchi('${p.id}')">↩️ واپس لائیں</button></div>`).join('')}</div></div></details>` : ''}`;
   };
   async function delParchi(id){
     const p = DB.parchis.find(x => x.id === id); if(!p) return;
@@ -1485,18 +1497,14 @@
       r.zCharges.concat(...r.buyers.map(b => b.charges)).forEach(x => { byCharge[x.name] = byCharge[x.name] || { amt: 0, income: x.income }; byCharge[x.name].amt += x.amount; }); });
     const cs = liveCash().filter(c => c.date === d);
     const rec = cs.filter(c => c.kind === 'receive').reduce((s, c) => s + c.amount, 0), pay = cs.filter(c => c.kind === 'pay').reduce((s, c) => s + c.amount, 0);
-    return `<div class="pageTitle">📖 روزنامچہ ${isLocked(d) ? '🔒' : ''}</div>
-      <div class="card"><div class="row"><div class="f" style="flex:1 1 280px;min-width:0"><label>تاریخ</label><input type="date" value="${esc(d)}" onchange="App.setRozDate(this.value)"></div>
-        <button class="btn ${isLocked(d) ? 'light' : 'gold'} sm" onclick="App.toggleLock('${d}')">${isLocked(d) ? '🔓 دن کھولیں' : '🔒 دن بند کریں'}</button></div>
-        <div class="muted">${esc(urDate(d, true))}</div></div>
-      <div class="stats"><div class="stat"><div class="l">بکری (${ps.length} پرچی، ${nag} نگ)</div><div class="n">${fmt(gross)}</div></div>
-        <div class="stat g"><div class="l">آڑھتی کی کمائی</div><div class="n">${fmt(income)}</div></div>
-        <div class="stat"><div class="l">وصولی (جمع)</div><div class="n">${fmt(rec)}</div></div>
-        <div class="stat y"><div class="l">ادائیگی (بنام)</div><div class="n">${fmt(pay)}</div></div></div>
-      <div class="card"><h3>🧮 کٹوتیاں اور خرچے</h3><table class="t">${Object.keys(byCharge).map(k => `<tr><td>${esc(k)} <span class="tag ${byCharge[k].income ? 'in' : 'out'}">${byCharge[k].income ? 'آمدن' : 'آگے ادا'}</span></td><td class="v">${fmt(byCharge[k].amt)}</td></tr>`).join('') || '<tr><td class="muted">کچھ نہیں</td></tr>'}
-        <tr class="tot"><td>زمینداروں کی صاف رقم</td><td class="v">${fmt(net)}</td></tr></table></div>
-      <div class="card"><h3>📚 اس دن کی پرچیاں</h3><div class="list">${ps.map(p => `<div class="it" onclick="App.go('parchi','${p.id}')"><div>نمبر <span class="num">${p.no}</span> — ${esc(p.zamindar)}</div><div class="a">${fmt((p.totals || {}).gross || 0)}</div></div>`).join('') || '<div class="muted">کوئی پرچی نہیں</div>'}</div></div>
-      <div class="card"><h3>💵 اس دن کی وصولی / ادائیگی</h3><div class="list">${cs.map(c => { const p = party(c.partyId); return `<div class="it"><div>${c.kind === 'pay' ? '💸 ادائیگی' : '💵 وصولی'} — ${esc(p ? p.name : '')}</div><div class="a ${c.kind === 'pay' ? 'amt-out' : 'amt-in'}">${fmt(c.amount)}</div></div>`; }).join('') || '<div class="muted">کوئی اندراج نہیں</div>'}</div></div>`;
+    const chip = (cls, lab, v) => `<div class="dbChip ${cls}" style="cursor:default"><span class="l">${lab}</span><span class="v num">${fmt(v)}</span></div>`;
+    return `<div class="pageTitle">📖 روزنامچہ ${isLocked(d) ? '🔒' : ''}<span class="sp"></span><button class="btn ${isLocked(d) ? 'light' : 'gold'} sm" onclick="App.toggleLock('${d}')">${isLocked(d) ? '🔓 دن کھولیں' : '🔒 دن بند کریں'}</button></div>
+      <div class="dayNav"><button onclick="App.rozStep(-1)">➡️ پچھلا دن</button><div class="dn"><b>${esc(urDate(d, true))}</b>${d === today() ? ' <span class="tag in">آج</span>' : ''}</div><button onclick="App.rozStep(1)" ${d >= today() ? 'disabled' : ''}>اگلا دن ⬅️</button></div>
+      <div class="dbx" style="margin-bottom:10px"><div class="dbRow r4">${chip('rd', 'بکری (' + ps.length + ' پرچی، ' + nag + ' نگ)', gross)}${isStaff() ? '' : chip('gr', 'کمائی', income)}${chip('bl', 'جمع (آئے)', rec)}${chip('pk', 'بنام (گئے)', pay)}</div></div>
+      <h3 class="secHd">📚 اس دن کی پرچیاں</h3><div class="pcList">${ps.map(p => `<div class="pCard" onclick="App.go('parchi','${p.id}')"><span class="pAv num">${p.no}</span><div class="pMid"><b>${esc(p.zamindar)}</b><div class="muted">${p.vehicle ? '🚚 ' + esc(p.vehicle) : ''}</div></div><div class="pBal"><span class="num">${fmt(ptot(p).gross)}</span><small>صاف ${fmt(ptot(p).net)}</small></div></div>`).join('') || '<div class="card muted">کوئی پرچی نہیں</div>'}</div>
+      <h3 class="secHd">💵 اس دن کی وصولی / ادائیگی</h3><div class="pcList">${cs.map(c => { const p = party(c.partyId); return `<div class="pCard" onclick="App.go('cash','v:${c.id}')"><span class="pAv num ${c.kind === 'pay' ? 'out' : 'in'}">${int(c.no)}</span><div class="pMid"><b>${esc(p ? p.name : '')}</b><div class="muted">${p ? esc(cashText(c, p.type)) : ''}${c.note ? ' • ' + esc(c.note) : ''}</div></div><div class="pBal ${c.kind === 'pay' ? 'out' : 'in'}"><span class="num">${fmt(c.amount)}</span><small>${c.kind === 'pay' ? 'بنام' : 'جمع'}</small></div></div>`; }).join('') || '<div class="card muted">کوئی اندراج نہیں</div>'}</div>
+      <details class="setSec" ${Object.keys(byCharge).length ? '' : ''}><summary>🧮 کٹوتیاں اور خرچے — زمینداروں کی صاف رقم <span class="num">${fmt(net)}</span></summary><div class="card"><table class="t">${Object.keys(byCharge).map(k => `<tr><td>${esc(k)} <span class="tag ${byCharge[k].income ? 'in' : 'out'}">${byCharge[k].income ? 'آمدن' : 'آگے ادا'}</span></td><td class="v">${fmt(byCharge[k].amt)}</td></tr>`).join('') || '<tr><td class="muted">کچھ نہیں</td></tr>'}
+        <tr class="tot"><td>زمینداروں کی صاف رقم</td><td class="v">${fmt(net)}</td></tr></table></div></details>`;
   };
   async function toggleLock(d){
     if(isLocked(d)){ if(!(await unlockFor(d))) return; DB.locks[d] = { on: false }; put('locks'); logIt('دن کھولا: ' + d); toast('🔓 دن کھل گیا'); }
@@ -1676,8 +1684,7 @@
     const s = DB.settings;
     const lg = DB.log.slice(-40).reverse();
     return `<div class="pageTitle">🛠️ سیٹنگ</div>
-      ${cloudCard()}
-      ${window.AB_LIC ? AB_LIC.card() : ''}
+      <details class="setSec" open><summary>🏪 آڑھت کی معلومات</summary>
       <div class="card"><h3>🏪 آڑھت کی معلومات</h3><div class="grid2 wideable">
         <div class="f"><label>آڑھت / دکان کا نام</label><input id="sShop" value="${esc(s.shop)}"></div>
         <div class="f"><label>مالک کا نام</label><input id="sOwner" value="${esc(s.owner)}"></div>
@@ -1689,13 +1696,15 @@
         <div class="f"><label>🪙 شروع کا نقد (گلے میں — روپے)</label><input id="sCash" inputmode="decimal" value="${esc(inRs(s.openCash))}" placeholder="0"></div></div>
         <div class="muted" style="margin-top:6px">📞 پرچی پر نام اور نمبر (سرپرست، شراکت دار…) — زیادہ سے زیادہ 4</div>
         <div class="grid2 wideable">${[0, 1, 2, 3].map(i => { const c = (s.contacts || [])[i] || {}; return `<div class="f"><input id="sCn${i}" value="${esc(c.n)}" placeholder="نام"></div><div class="f"><input id="sCp${i}" inputmode="tel" value="${esc(c.p)}" placeholder="نمبر"></div>`; }).join('')}</div>
-        <button class="btn" style="margin-top:8px" onclick="App.saveSettings()">💾 محفوظ</button></div>
-      <div class="card"><h3>🎨 رنگ</h3><div class="themesCard">${themePicker()}</div><div class="muted">رنگ صرف اس ڈیوائس پر بدلتا ہے؛ ریکارڈ پر کوئی اثر نہیں۔</div></div>
-      <div class="card"><h3>🔒 مالک کا پن</h3><div class="muted">پن لگانے سے ایپ کھلتے وقت پن پوچھے گی، اور بند دن کی تبدیلی بھی صرف اسی سے ہوگی۔ ${hasOwnerPin() ? '✅ پن لگا ہوا ہے' : '❌ ابھی پن نہیں لگا'}</div>
+        <button class="btn" style="margin-top:8px" onclick="App.saveSettings()">💾 محفوظ</button></div></details>
+      ${window.AB_LIC ? `<details class="setSec"><summary>📜 سبسکرپشن</summary>${AB_LIC.card()}</details>` : ''}
+      ${cloudCard() ? `<details class="setSec" ${window.AB_CLOUD && AB_CLOUD.on() ? 'open' : ''}><summary>☁️ کئی ڈیوائسز — کلاؤڈ</summary>${cloudCard()}</details>` : ''}
+      <details class="setSec"><summary>🎨 رنگ</summary><div class="card"><h3>🎨 رنگ</h3><div class="themesCard">${themePicker()}</div><div class="muted">رنگ صرف اس ڈیوائس پر بدلتا ہے؛ ریکارڈ پر کوئی اثر نہیں۔</div></div></details>
+      <details class="setSec"><summary>🔒 مالک کا پن ${hasOwnerPin() ? '✅' : '❌'}</summary><div class="card"><h3>🔒 مالک کا پن</h3><div class="muted">پن لگانے سے ایپ کھلتے وقت پن پوچھے گی، اور بند دن کی تبدیلی بھی صرف اسی سے ہوگی۔ ${hasOwnerPin() ? '✅ پن لگا ہوا ہے' : '❌ ابھی پن نہیں لگا'}</div>
         <div class="row" style="margin-top:6px"><div class="f" style="flex:1"><input id="sPin" type="password" inputmode="numeric" maxlength="8" placeholder="نیا پن (4 سے 8 ہندسے)"></div>
-        <button class="btn" onclick="App.setPin()">💾 پن لگائیں</button>${hasOwnerPin() ? '<button class="btn gray" onclick="App.removePin()">ہٹائیں</button>' : ''}</div></div>
-      ${staffCard()}
-      <div class="card"><h3>📜 تبدیلیوں کا ریکارڈ (آخری 40)</h3><div class="list">${lg.map(x => `<div class="it" style="cursor:default"><div>${esc(x.what)}</div><div class="muted">${esc(urDate(new Date(x.at).toISOString().slice(0, 10)))} ${urTime(x.at)}</div></div>`).join('') || '<div class="muted">کچھ نہیں</div>'}</div></div>
+        <button class="btn" onclick="App.setPin()">💾 پن لگائیں</button>${hasOwnerPin() ? '<button class="btn gray" onclick="App.removePin()">ہٹائیں</button>' : ''}</div></div></details>
+      <details class="setSec"><summary>👥 ملازمین اور اجازتیں</summary>${staffCard()}</details>
+      <details class="setSec"><summary>📜 تبدیلیوں کا ریکارڈ</summary><div class="card"><h3>📜 تبدیلیوں کا ریکارڈ (آخری 40)</h3><div class="list">${lg.map(x => `<div class="it" style="cursor:default"><div>${esc(x.what)}</div><div class="muted">${esc(urDate(new Date(x.at).toISOString().slice(0, 10)))} ${urTime(x.at)}</div></div>`).join('') || '<div class="muted">کچھ نہیں</div>'}</div></div></details>
       <div class="card plain"><div class="muted">ورژن: <span class="num">${APP_VERSION}</span> • سافٹ ویئر: پی بی ٹی کوڈ لیبز</div>${brandHtml()}</div>`;
   };
   function saveSettings(){
@@ -1832,7 +1841,8 @@
     homeAddList(){ const its = homeItems(); const rest = NAV.filter(n => n[0] !== 'home' && canSee(n[0]) && !its.includes(n[0]));
       modal(`<h3>➕ ہوم پر آئیکن لگائیں</h3><div class="list" style="text-align:right">${rest.map(n => `<div class="it" onclick="App.closeModal();App.homeAddK('${n[0]}')"><div>${n[1]} ${n[2]}</div><span class="num">${navNo(n[0])}</span></div>`).join('') || '<div class="muted">سب آئیکن پہلے سے ہوم پر ہیں</div>'}</div><div class="row" style="justify-content:center;margin-top:8px"><button class="btn gray" onclick="App.closeModal()">بند</button></div>`); },
     homeAddK(k){ homeAdd(k, null); }, menuSort(k){ setHomePref({ menuSort: k }); renderSide(); }, printParchi, printBuyers, delParchi, restoreParchi, shareParchi, shareSend, shareChat, shareSave, thermal, thermalShow, thermalBT, thermalPrint, dayBill, dayBillPrint, dayBillThermal, dayBillFromCash, cashSide, cashPick, cashSetP(n, t){ closeModal(); const e = $('cP'); if(e){ e.value = n; cashHint(t); const j = $(t === 'zamindar' ? 'cB' : 'cJ'); if(j) j.focus(); } },
-    setListDate(d){ listDate = d; render(); }, setRozDate(d){ rozDate = d; render(); }, toggleLock,
+    setListDate(d){ listDate = d; render(); }, listPer(k){ listPer = k; listDate = k === 'd' ? today() : ''; render(); },
+    listQ(v){ listQ = v; const pos = v.length; render(); const e = $('lQ'); if(e){ e.focus(); try{ e.setSelectionRange(pos, pos); }catch(er){} } }, setRozDate(d){ rozDate = d; render(); }, rozStep(n){ const x = new Date((rozDate || today()) + 'T12:00:00'); x.setDate(x.getDate() + n); rozDate = x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0'); render(); }, toggleLock,
     psearch(v, type){ partySearch = v; const pos = v.length; render(); const i = $('pS') || document.querySelector('#view .f input'); if(i){ i.focus(); i.setSelectionRange(pos, pos); } },
     partyForm, saveParty, printLedger, cashHint, cashNum, saveCash, delCash,
     chEdit(id){ editCh = id ? JSON.parse(JSON.stringify(chargesList().find(x => x.id === id))) : { id: '', name: '', kind: 'percent', rate: 0, side: 'zamindar', income: true, on: true, itemRates: {} }; render(); },
