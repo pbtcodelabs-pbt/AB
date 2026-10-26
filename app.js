@@ -8,8 +8,8 @@
    ===================================================================== */
 (function(){
   'use strict';
-  const APP_VERSION = 'AB2510SU041';
-  const UPDATE_NOTE = 'ڈیش بورڈ سبزی منڈی جیسا: صافی پوزیشن، آج آئے / گئے، خرچے، گلہ — ہر خانہ دبائیں تو پوری تفصیل؛ نیا نام لکھتے ہی کھاتہ خود بنتا ہے';
+  const APP_VERSION = 'AB2610MO042';
+  const UPDATE_NOTE = 'ہوم سبزی منڈی جیسا: چھوٹا ڈیش بورڈ (چھپ سکتا ہے)، نمبر والے آئیکن، ✏️ سے ہٹائیں / جگہ بدلیں، مینو سے کھینچ کر ہوم پر؛ مینو نمبر یا الف سے';
   const C = window.ABCalc;
   // ---------- اردو / عربی کی بورڈ کے ہندسے (۰۱۲… / ٠١٢…) لکھتے ہی 0-9 میں — ورنہ رقم، نمبر اور کوڈ نہیں پہچانے جاتے ----------
   document.addEventListener('input', e => {
@@ -267,14 +267,21 @@
   const NAV = [
     ['home', '🏠', 'ہوم'], ['search', '🔍', 'تلاش'], ['parchi', '📝', 'نئی پرچی'], ['parchis', '📚', 'پرچیاں'],
     ['zamindar', '🧑‍🌾', 'زمیندار'], ['buyer', '🧑‍💼', 'خریدار'], ['cash', '💵', 'وصولی / ادائیگی'],
-    ['roznamcha', '📖', 'روزنامچہ'], ['reports', '📊', 'رپورٹیں'], ['charges', '⚙️', 'خرچے اور کمیشن'], ['backup', '💾', 'بیک اپ'], ['settings', '🛠️', 'سیٹنگ']
+    ['roznamcha', '📖', 'روزنامچہ'], ['due', '🔔', 'یاد دہانی'], ['reports', '📊', 'رپورٹیں'], ['charges', '⚙️', 'خرچے اور کمیشن'], ['backup', '💾', 'بیک اپ'], ['settings', '🛠️', 'سیٹنگ']
   ];
   let screen = 'home', arg = null;
+  // ---------- ☰ مینو (سبزی منڈی جیسا): نمبر والی رنگین قطاریں، ترتیب «نمبر سے / الف سے»، ⣿ پکڑ کر ہوم پر ----------
+  const NAV_CLR = ['#0f766e', '#4f46e5', '#059669', '#dc2626', '#7c3aed', '#0369a1', '#c026d3', '#ea580c', '#0e7490', '#16a34a', '#be123c', '#ca8a04', '#9a3412', '#475569'];
   function renderSide(){
-    const m = me();
-    $('side').innerHTML = `<div class="brand">📒 آڑھت بک</div>` + (m && needsLogin() ? `<div class="who">${m.role === 'owner' ? '👑' : '👤'} ${esc(m.name)}</div>` : '')
-      + (m ? NAV.filter(n => canSee(n[0])).map(n => `<button class="nav ${screen === n[0] ? 'on' : ''}" onclick="App.go('${n[0]}')"><span class="e">${n[1]}</span>${n[2]}</button>`).join('') : '')
-      + (m && needsLogin() ? `<button class="nav" onclick="App.logout()"><span class="e">🔒</span>تالا / صارف بدلیں</button>` : '');
+    const m = me(), srt = homePref().menuSort || 'num';
+    const L = t => window.AB_LBL ? AB_LBL.L(t) : t;
+    let ls = NAV.map((n, i) => ({ n, i })).filter(x => x.i > 0 && canSee(x.n[0]));
+    if(srt === 'alpha') ls.sort((a, b) => L(a.n[2]).localeCompare(L(b.n[2]), 'ur'));
+    $('side').innerHTML = `<div class="brand">${esc(shopName())}</div>` + (m && needsLogin() ? `<div class="who">${m.role === 'owner' ? '👑' : '👤'} ${esc(m.name)}</div>` : '')
+      + (m ? `<div class="sideSort"><button class="${srt === 'num' ? 'on' : ''}" onclick="App.menuSort('num')">1️⃣ نمبر سے</button><button class="${srt === 'alpha' ? 'on' : ''}" onclick="App.menuSort('alpha')">ا الف سے</button></div>
+        <button class="nav home ${screen === 'home' ? 'on' : ''}" onclick="App.go('home')"><span class="no">🏠</span><span class="tx">ہوم</span></button>`
+        + ls.map(x => `<button class="nav ${screen === x.n[0] ? 'on' : ''}" style="--nc:${NAV_CLR[x.i % NAV_CLR.length]}" onclick="App.go('${x.n[0]}')"><span class="no num">${x.i}</span><span class="e">${x.n[1]}</span><span class="tx">${x.n[2]}</span><span class="dh" title="پکڑ کر ہوم پر لائیں" onpointerdown="App.menuDrag(event,'${x.n[0]}')" onclick="event.stopPropagation()">⣿</span></button>`).join('') : '')
+      + (m && needsLogin() ? `<button class="nav" onclick="App.logout()"><span class="no">🔒</span><span class="tx">تالا / صارف بدلیں</span></button>` : '');
   }
   function go(s, a, fromPop){
     if(!canSee(s)){ toast('🔒 یہ حصہ آپ کے لیے نہیں — مالک سے اجازت لیں'); return; }
@@ -378,70 +385,130 @@
   }
   function balancesSum(type){ let s = 0; parties(type).forEach(p => { const b = ledger(p.id).bal; if(b > 0) s += b; }); return s; }
   // ---------- 📊 ڈیش بورڈ (سبزی منڈی جیسا): ہر خانہ دبائیں تو پوری تفصیل ----------
-  function dashData(date){
-    const ps = liveParchis().filter(p => p.date === date);
+  // ---------- 📊 ڈیش بورڈ (سبزی منڈی جیسا، چھوٹا): مدت — آج / کل / ہفتہ / مہینہ ----------
+  const DPER = [['t', 'آج'], ['y', 'گزشتہ کل'], ['w', 'یہ ہفتہ'], ['m', 'یہ مہینہ']];
+  function perRange(k){
+    const n = new Date(), y = n.getFullYear(), m = n.getMonth(), d = n.getDate();
+    const iso = x => x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0');
+    if(k === 'y'){ const t = iso(new Date(y, m, d - 1)); return [t, t]; }
+    if(k === 'w') return [iso(new Date(y, m, d - 6)), iso(n)];
+    if(k === 'm') return [iso(new Date(y, m, 1)), iso(n)];
+    return [iso(n), iso(n)];
+  }
+  function dashData(per){
+    const [f, t] = perRange(per || 't'); const inR = x => x >= f && x <= t;
+    const ps = liveParchis().filter(p => inR(p.date));
     let gross = 0, income = 0, nag = 0, exp = 0; const inc = {}, ex = {};
     ps.forEach(p => { const r = calcParchi(p, p.chargesSnap || chargesList()); gross += r.gross; income += r.income; nag += r.nag;
       r.zCharges.concat(...r.buyers.map(x => x.charges)).forEach(x => { if(!x.amount) return; const m = x.income ? inc : ex; m[x.name] = (m[x.name] || 0) + x.amount; if(!x.income) exp += x.amount; }); });
-    const cs = liveCash().filter(c => c.date === date);
-    const rec = cs.filter(c => c.kind === 'receive').reduce((t, c) => t + c.amount, 0), pay = cs.filter(c => c.kind === 'pay').reduce((t, c) => t + c.amount, 0);
-    const all = liveCash(); const cashHand = int(DB.settings.openCash) + all.filter(c => c.kind === 'receive').reduce((t, c) => t + c.amount, 0) - all.filter(c => c.kind === 'pay').reduce((t, c) => t + c.amount, 0);
+    const cs = liveCash().filter(c => inR(c.date));
+    const rec = cs.filter(c => c.kind === 'receive').reduce((a, c) => a + c.amount, 0), pay = cs.filter(c => c.kind === 'pay').reduce((a, c) => a + c.amount, 0);
+    const all = liveCash(); const cashHand = int(DB.settings.openCash) + all.filter(c => c.kind === 'receive').reduce((a, c) => a + c.amount, 0) - all.filter(c => c.kind === 'pay').reduce((a, c) => a + c.amount, 0);
     const bal = type => parties(type).map(p => ({ p, bal: ledger(p.id).bal })).filter(x => x.bal);
     const zs = bal('zamindar'), bs = bal('buyer');
-    const payab = zs.reduce((t, x) => t + (x.bal > 0 ? x.bal : 0), 0), recv = bs.reduce((t, x) => t + (x.bal > 0 ? x.bal : 0), 0);
-    return { ps, gross, income, nag, n: ps.length, inc, ex, exp, cs, rec, pay, recN: cs.filter(c => c.kind === 'receive').length, payN: cs.filter(c => c.kind === 'pay').length,
-      cashHand, zs, bs, payab, recv, zN: zs.filter(x => x.bal > 0).length, bN: bs.filter(x => x.bal > 0).length,
-      // الٹے بقایا بھی: زمیندار پر پیشگی = لینے ہیں، خریدار کی پیشگی = دینے ہیں
-      zAdv: zs.reduce((t, x) => t + (x.bal < 0 ? -x.bal : 0), 0), bAdv: bs.reduce((t, x) => t + (x.bal < 0 ? -x.bal : 0), 0),
-      get net(){ return this.recv + this.zAdv + Math.max(this.cashHand, 0) - this.payab - this.bAdv; } };
+    return { per, f, t, ps, gross, income, nag, n: ps.length, inc, ex, exp, cs, rec, pay, cashHand, zs, bs,
+      payab: zs.reduce((a, x) => a + (x.bal > 0 ? x.bal : 0), 0), recv: bs.reduce((a, x) => a + (x.bal > 0 ? x.bal : 0), 0) };
   }
+  function homePref(){ let h = {}; try{ h = JSON.parse(localStorage.getItem('ab_home') || '{}') || {}; }catch(e){} return h; }
+  function setHomePref(o){ try{ localStorage.setItem('ab_home', JSON.stringify(Object.assign(homePref(), o))); }catch(e){} }
   function dash(k){
-    const d = dashData(today());
+    const d = dashData(homePref().per || 't'), perName = (DPER.find(x => x[0] === d.per) || DPER[0])[1];
     const row = (a, v, on, cls) => `<div class="it" ${on ? `onclick="App.closeModal();${on}"` : 'style="cursor:default"'}><div>${a}</div><span class="num ${cls || ''}">${fmt(v)}</span></div>`;
     const tot = (lab, v) => `<table class="t" style="margin-top:6px"><tr class="net"><td>${lab}</td><td class="v">${fmt(v)}</td></tr></table>`;
-    const cashRows = list => list.map(c => { const p = party(c.partyId); return row(`<span class="pnoTag num">${int(c.no)}</span> <b>${esc(p ? p.name : '')}</b> <span class="muted">${p ? PT[p.type] : ''}${c.note ? ' • ' + esc(c.note) : ''}</span>`, c.amount, `App.go('cash','v:${c.id}')`, c.kind === 'pay' ? 'amt-out' : 'amt-in'); }).join('') || '<div class="muted">آج کوئی اندراج نہیں</div>';
+    const cashRows = list => list.map(c => { const p = party(c.partyId); return row(`<span class="pnoTag num">${int(c.no)}</span> <b>${esc(p ? p.name : '')}</b> <span class="muted">${p ? PT[p.type] : ''}${c.note ? ' • ' + esc(c.note) : ''}</span>`, c.amount, `App.go('cash','v:${c.id}')`, c.kind === 'pay' ? 'amt-out' : 'amt-in'); }).join('') || '<div class="muted">اس مدت میں کوئی اندراج نہیں</div>';
     const partyRows = (xs, type) => xs.slice().sort((a, b) => b.bal - a.bal).map(x => row(`<span class="pnoTag num">${pNo(x.p)}</span> <b>${esc(x.p.name)}</b> <span class="muted">${balText(type, x.bal)}</span>`, Math.abs(x.bal), `App.go('party','${x.p.id}')`, (x.bal > 0) === (type === 'buyer') ? 'amt-in' : 'amt-out')).join('') || '<div class="muted">کوئی بقایا نہیں</div>';
-    const mapRows = m => Object.keys(m).sort((a, b) => m[b] - m[a]).map(n => row(esc(n), m[n])).join('') || '<div class="muted">آج کچھ نہیں</div>';
+    const mapRows = m => Object.keys(m).sort((a, b) => m[b] - m[a]).map(n => row(esc(n), m[n])).join('') || '<div class="muted">اس مدت میں کچھ نہیں</div>';
     const T = {
-      sale: ['🧺 آج کی بکری', d.ps.map(p => row(`پرچی <span class="num">${p.no}</span> — <b>${esc(p.zamindar)}</b> <span class="muted">${esc(p.vehicle || '')}</span>`, (p.totals || {}).gross || calcParchi(p, p.chargesSnap || chargesList()).gross, `App.go('parchi','${p.id}')`)).join('') || '<div class="muted">آج کوئی پرچی نہیں</div>', tot('کل بکری (' + d.nag + ' نگ)', d.gross)],
-      income: ['💰 آج کی کمائی', mapRows(d.inc), tot('کل کمائی', d.income)],
-      exp: ['🧑‍🔧 آج کے خرچے (آگے ادا ہوتے ہیں)', mapRows(d.ex), tot('کل خرچے', d.exp)],
-      rec: ['📥 آج پیسے آئے (جمع)', cashRows(d.cs.filter(c => c.kind === 'receive')), tot('کل جمع', d.rec)],
-      pay: ['📤 آج پیسے گئے (بنام)', cashRows(d.cs.filter(c => c.kind === 'pay')), tot('کل بنام', d.pay)],
-      cashh: ['🪙 گلہ (ہاتھ میں نقد)', row('شروع کا نقد (سیٹنگ)', int(DB.settings.openCash)) + row('سب جمع (آئے)', liveCash().filter(c => c.kind === 'receive').reduce((t, c) => t + c.amount, 0)) + row('سب بنام (گئے)', liveCash().filter(c => c.kind === 'pay').reduce((t, c) => t + c.amount, 0)) + row('آج آئے', d.rec, '', 'amt-in') + row('آج گئے', d.pay, '', 'amt-out'), tot('ہاتھ میں نقد', d.cashHand)],
+      sale: ['🧺 بکری', d.ps.map(p => row(`پرچی <span class="num">${p.no}</span> — <b>${esc(p.zamindar)}</b> <span class="muted">${esc(p.vehicle || '')}</span>`, (p.totals || {}).gross || calcParchi(p, p.chargesSnap || chargesList()).gross, `App.go('parchi','${p.id}')`)).join('') || '<div class="muted">اس مدت میں کوئی پرچی نہیں</div>', tot('کل بکری (' + d.nag + ' نگ)', d.gross)],
+      income: ['💰 کمائی (منافع)', mapRows(d.inc), tot('کل کمائی', d.income)],
+      exp: ['🧑‍🔧 خرچے (مزدوری، کرایہ… آگے ادا)', mapRows(d.ex), tot('کل خرچے', d.exp)],
+      rec: ['📥 کیش آیا (جمع)', cashRows(d.cs.filter(c => c.kind === 'receive')), tot('کل جمع', d.rec)],
+      pay: ['📤 کیش گیا (بنام)', cashRows(d.cs.filter(c => c.kind === 'pay')), tot('کل بنام', d.pay)],
+      cashh: ['🪙 گلہ (ہاتھ میں نقد)', row('شروع کا نقد (سیٹنگ)', int(DB.settings.openCash)) + row('سب جمع (آئے)', liveCash().filter(c => c.kind === 'receive').reduce((t, c) => t + c.amount, 0)) + row('سب بنام (گئے)', liveCash().filter(c => c.kind === 'pay').reduce((t, c) => t + c.amount, 0)) + row((DPER.find(x => x[0] === d.per) || DPER[0])[1] + ' آئے', d.rec, '', 'amt-in') + row((DPER.find(x => x[0] === d.per) || DPER[0])[1] + ' گئے', d.pay, '', 'amt-out'), tot('ہاتھ میں نقد', d.cashHand)],
       z: ['🧑‍🌾 زمینداروں کے بقایا', partyRows(d.zs, 'zamindar'), tot('کل دینے ہیں', d.payab)],
       b: ['🧑‍💼 خریداروں کے بقایا', partyRows(d.bs, 'buyer'), tot('کل لینے ہیں', d.recv)],
-      net: ['💼 صافی پوزیشن', row('خریداروں سے لینے ہیں', d.recv, "App.dash('b')", 'amt-in') + (d.zAdv ? row('زمینداروں پر پیشگی (لینے ہیں)', d.zAdv, "App.dash('z')", 'amt-in') : '') + row('گلہ (ہاتھ میں نقد)', Math.max(d.cashHand, 0), "App.dash('cashh')", 'amt-in')
-        + row('زمینداروں کو دینے ہیں', d.payab, "App.dash('z')", 'amt-out') + (d.bAdv ? row('خریداروں کی پیشگی (دینے ہیں)', d.bAdv, "App.dash('b')", 'amt-out') : ''), tot(d.net >= 0 ? 'آپ کے حق میں' : 'آپ کے ذمے', Math.abs(d.net))]
+      net: ['💼 لینا اور دینا', row('خریداروں سے لینے ہیں', d.recv, "App.dash('b')", 'amt-in') + row('ہاتھ میں نقد', d.cashHand, "App.dash('cashh')", 'amt-in') + row('بیوپاریوں کو دینے ہیں', d.payab, "App.dash('z')", 'amt-out'), tot('فرق (لینا + نقد − دینا)', d.recv + d.cashHand - d.payab)]
     }[k];
     if(!T) return;
-    modal(`<h3>${T[0]}</h3><div class="muted" style="margin-bottom:4px">${esc(urDate(today(), true))} — کسی نام پر دبائیں تو اس کا کھاتہ / پرچی کھلے</div><div class="list" style="text-align:right;max-height:55vh;overflow:auto">${T[1]}</div>${T[2]}
+    modal(`<h3>${T[0]}</h3><div class="muted" style="margin-bottom:4px">${['z', 'b', 'cashh'].includes(k) ? 'اب تک' : perName + (d.f === d.t ? ' — ' + esc(urDate(d.f)) : ' — ' + esc(urDate(d.f)) + ' سے ' + esc(urDate(d.t)))} — کسی نام پر دبائیں تو اس کا کھاتہ / پرچی کھلے</div><div class="list" style="text-align:right;max-height:55vh;overflow:auto">${T[1]}</div>${T[2]}
       <div class="row" style="justify-content:center;margin-top:8px"><button class="btn gray" onclick="App.closeModal()">بند</button></div>`);
   }
   const VIEWS = {};
   const AFTER = {};
+  // ---------- 🏠 ہوم (سبزی منڈی جیسا): چھوٹا ڈیش بورڈ (چھپ سکتا ہے) + اپنی مرضی کے آئیکن (✏️ ہٹائیں / جگہ بدلیں / مینو سے کھینچ کر لائیں) ----------
+  const HOME_DEF = ['parchi', 'parchis', 'zamindar', 'buyer', 'cash', 'roznamcha', 'reports', 'search', 'settings'];
+  let homeEdit = false;
+  function homeItems(){ const h = homePref(); const ok = k => NAV.some(n => n[0] === k) && k !== 'home' && canSee(k); return (Array.isArray(h.items) ? h.items : HOME_DEF).filter(ok); }
+  function navNo(k){ return NAV.findIndex(n => n[0] === k); }   // ہوم = 0، باقی 1 سے
   VIEWS.home = function(){
-    const t = totalsFor(today());
-    const tiles = [['parchis', '📚', 'پرچیاں'], ['zamindar', '🧑‍🌾', 'زمیندار'], ['buyer', '🧑‍💼', 'خریدار'], ['cash', '💵', 'وصولی / ادائیگی'], ['roznamcha', '📖', 'روزنامچہ'], ['reports', '📊', 'رپورٹیں'], ['charges', '⚙️', 'خرچے اور کمیشن'], ['backup', '💾', 'بیک اپ'], ['settings', '🛠️', 'سیٹنگ']];
-    const d = dashData(today());
-    const card = (k, cls, ico, lab, val, sub) => `<button class="stat dash ${cls}" onclick="App.dash('${k}')"><div class="l">${ico} ${lab}</div><div class="n">${fmt(val)}</div>${sub ? `<div class="s">${sub}</div>` : ''}<span class="more">تفصیل ◂</span></button>`;
-    return `<div class="pageTitle">🏠 ${esc(urDate(today(), true))}</div>${window.AB_LIC ? AB_LIC.strip() : ''}${backupBanner()}${dueBanner()}
-      ${isStaff() ? '' : `<button class="netHero ${d.net < 0 ? 'neg' : ''}" onclick="App.dash('net')"><div class="l">💼 آپ کی صافی پوزیشن (لینا − دینا)</div><div class="n">${fmt(Math.abs(d.net))} <small>روپے ${d.net >= 0 ? '📈 آپ کے حق میں' : '📉 آپ کے ذمے'}</small></div>
-        <div class="s">لینا ${fmt(d.recv + d.zAdv + Math.max(d.cashHand, 0))} (کھاتوں پر + گلہ) − دینا ${fmt(d.payab + d.bAdv)} (کھاتوں کا)</div></button>`}
-      <div class="stats">
-        ${card('sale', '', '🧺', 'آج کی بکری', d.gross, `<span class="num">${d.n}</span> پرچی • <span class="num">${d.nag}</span> نگ`)}
-        ${isStaff() ? '' : card('income', 'g', '💰', 'آج کی کمائی', d.income, 'کمیشن وغیرہ')}
-        ${card('rec', 'g', '📥', 'آج پیسے آئے (جمع)', d.rec, `<span class="num">${d.recN}</span> اندراج`)}
-        ${card('pay', 'y', '📤', 'آج پیسے گئے (بنام)', d.pay, `<span class="num">${d.payN}</span> اندراج`)}
-        ${card('exp', 'y', '🧑‍🔧', 'آج کے خرچے (مزدوری، کرایہ…)', d.exp, 'جو آگے ادا ہوتے ہیں')}
-        ${isStaff() ? '' : card('cashh', d.cashHand < 0 ? 'r' : 'g', '🪙', 'گلہ (ہاتھ میں نقد)', d.cashHand, 'سب جمع − سب بنام')}
-        ${card('z', 'y', '🧑‍🌾', 'زمینداروں کو دینے ہیں', d.payab, `<span class="num">${d.zN}</span> کھاتے`)}
-        ${card('b', '', '🧑‍💼', 'خریداروں سے لینے ہیں', d.recv, `<span class="num">${d.bN}</span> کھاتے`)}
-      </div>
-      <div class="tiles">${canSee('parchi') ? `<button class="tile big" onclick="App.go('parchi')"><span class="e">📝</span>نئی پرچی (گاڑی کی آمد)</button>` : ''}
-        ${tiles.filter(x => canSee(x[0])).map(x => `<button class="tile" onclick="App.go('${x[0]}')"><span class="e">${x[1]}</span>${x[2]}</button>`).join('')}</div>`;
+    const h = homePref(), cols = Math.min(5, Math.max(1, int(h.cols) || (window.innerWidth >= 700 ? 5 : 3))), its = homeItems();
+    let dashHtml = '';
+    if(!isStaff()){
+      if(h.dashOff) dashHtml = `<button class="dbShow" onclick="App.dashToggle()">👁️ ڈیش بورڈ دکھائیں</button>`;
+      else {
+        const d = dashData(h.per || 't');
+        const chip = (k, cls, lab, v) => `<button class="dbChip ${cls}" onclick="App.dash('${k}')"><span class="l">${lab}</span><span class="v num">${fmt(v)}</span></button>`;
+        dashHtml = `<div class="dbx"><button class="dbEye" onclick="App.dashToggle()" title="ڈیش بورڈ چھپائیں">🙈</button>
+          <div class="dbRow r3">${chip('z', 'or', 'بیوپاریوں کو دینے', d.payab)}${chip('b', 'pu', 'خریداروں سے لینے', d.recv)}${chip('cashh', 'gd', 'ہاتھ میں نقد', d.cashHand)}</div>
+          <div class="dbPer">${DPER.map(x => `<button class="${(h.per || 't') === x[0] ? 'on' : ''}" onclick="App.dashPer('${x[0]}')">${x[1]}</button>`).join('')}</div>
+          <div class="dbRow r4">${chip('sale', 'rd', 'بکری', d.gross)}${chip('income', 'gr', 'کمائی', d.income)}${chip('rec', 'bl', 'کیش آیا', d.rec)}${chip('pay', 'pk', 'کیش گیا', d.pay)}</div></div>`;
+      }
+    }
+    return `${window.AB_LIC ? AB_LIC.strip() : ''}${backupBanner()}${dueBanner()}${dashHtml}
+      <div class="homeBar"><span class="muted">فی لائن</span>${[1, 2, 3, 4, 5].map(n => `<button class="${n === cols ? 'on' : ''}" onclick="App.homeCols(${n})">${n}</button>`).join('')}<span class="sp"></span>
+        <button class="hbEdit ${homeEdit ? 'on' : ''}" onclick="App.homeEditT()" title="آئیکن ترتیب دیں">${homeEdit ? '✅' : '✏️'}</button></div>
+      ${homeEdit ? '<div class="muted" style="text-align:center;margin:-2px 0 6px">✖ سے ہٹائیں • آئیکن پکڑ کر کھینچیں تو جگہ بدلے • مینو (☰) سے ⣿ پکڑ کر یہاں لائیں یا ➕</div>' : ''}
+      <div class="homeGrid ${homeEdit ? 'edit' : ''}" id="homeGrid" style="--cols:${cols}">${its.map(k => { const n = NAV[navNo(k)];
+        return `<div class="hIc" data-k="${k}"><button class="hb" onclick="App.homeTap('${k}')"><span class="e">${n[1]}</span><span class="no num">${navNo(k)}</span></button><span class="t">${n[2]}</span>${homeEdit ? `<button class="hx" onclick="App.homeDel('${k}')">✖</button>` : ''}</div>`; }).join('')}
+        ${homeEdit ? `<div class="hIc add"><button class="hb" onclick="App.homeAddList()"><span class="e">➕</span></button><span class="t">آئیکن لگائیں</span></div>` : ''}</div>`;
   };
-
+  AFTER.home = function(){ if(homeEdit) gridDrag(); };
+  // ✏️ ترتیب: آئیکن پکڑ کر کھینچیں تو جگہ بدلے
+  function gridDrag(){
+    const g = $('homeGrid'); if(!g) return;
+    g.querySelectorAll('.hIc[data-k]').forEach(el => {
+      el.querySelector('.hb').addEventListener('pointerdown', e => {
+        const k = el.dataset.k, sx = e.clientX, sy = e.clientY; let ghost = null;
+        const mv = ev => {
+          if(!ghost && Math.hypot(ev.clientX - sx, ev.clientY - sy) < 8) return;
+          ev.preventDefault();
+          if(!ghost){ ghost = el.cloneNode(true); ghost.classList.add('ghost'); document.body.appendChild(ghost); el.classList.add('dragging'); }
+          ghost.style.left = (ev.clientX - 36) + 'px'; ghost.style.top = (ev.clientY - 36) + 'px';
+        };
+        const up = ev => {
+          window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up);
+          if(!ghost) return; ghost.remove(); el.classList.remove('dragging');
+          const t = document.elementFromPoint(ev.clientX, ev.clientY); const to = t && t.closest && t.closest('.hIc[data-k]');
+          if(to && to.dataset.k !== k){ const its = homeItems(); const a = its.indexOf(k), b2 = its.indexOf(to.dataset.k); its.splice(a, 1); its.splice(b2, 0, k); setHomePref({ items: its }); render(); }
+        };
+        window.addEventListener('pointermove', mv, { passive: false }); window.addEventListener('pointerup', up);
+      });
+    });
+  }
+  // ☰ مینو کے ⣿ سے آئیکن کھینچ کر ہوم پر
+  function menuDrag(e, k){
+    e.preventDefault(); e.stopPropagation();
+    const sx = e.clientX, sy = e.clientY; let ghost = null; const n = NAV[navNo(k)];
+    const mv = ev => {
+      if(!ghost && Math.hypot(ev.clientX - sx, ev.clientY - sy) < 6) return;
+      ev.preventDefault();
+      if(!ghost){ menu(false); if(screen !== 'home') go('home'); ghost = document.createElement('div'); ghost.className = 'hIc ghost'; ghost.innerHTML = `<span class="hb"><span class="e">${n[1]}</span></span><span class="t">${n[2]}</span>`; document.body.appendChild(ghost); }
+      ghost.style.left = (ev.clientX - 36) + 'px'; ghost.style.top = (ev.clientY - 36) + 'px';
+    };
+    const up = ev => {
+      window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up);
+      if(!ghost){ return; } ghost.remove();
+      const t = document.elementFromPoint(ev.clientX, ev.clientY);
+      if(t && t.closest && t.closest('#view')){ homeAdd(k, t.closest('.hIc[data-k]')); }
+    };
+    window.addEventListener('pointermove', mv, { passive: false }); window.addEventListener('pointerup', up);
+  }
+  function homeAdd(k, before){
+    const its = homeItems().filter(x => x !== k);
+    const i = before ? its.indexOf(before.dataset.k) : -1;
+    if(i >= 0) its.splice(i, 0, k); else its.push(k);
+    setHomePref({ items: its }); toast('✅ «' + NAV[navNo(k)][2] + '» ہوم پر لگ گیا'); if(screen === 'home') render(); else go('home');
+  }
   // =====================================================================
   //   نئی پرچی
   // =====================================================================
@@ -1597,7 +1664,13 @@
     pman(id, v){ if(String(v).trim() === '') delete cur.manual[id]; else cur.manual[id] = toPaisa(v); renderResult(); },
     addLine(){ const last = cur.lines[cur.lines.length - 1] || {}; cur.lines.push(Object.assign(blankLine(), { item: last.item || '', basis: last.basis || 'nag' })); render(); },
     delLine(i){ cur.lines.splice(i, 1); render(); },
-    dash, saveParchi, printParchi, printBuyers, delParchi, restoreParchi, shareParchi, shareSend, shareChat, shareSave, thermal, thermalShow, thermalBT, thermalPrint, dayBill, dayBillPrint, dayBillThermal, dayBillFromCash, cashSide,
+    dash, menuDrag, saveParchi,
+    dashToggle(){ setHomePref({ dashOff: !homePref().dashOff }); render(); }, dashPer(k){ setHomePref({ per: k }); render(); },
+    homeCols(n){ setHomePref({ cols: n }); render(); }, homeEditT(){ homeEdit = !homeEdit; render(); },
+    homeTap(k){ if(homeEdit) return; go(k); }, homeDel(k){ setHomePref({ items: homeItems().filter(x => x !== k) }); render(); },
+    homeAddList(){ const its = homeItems(); const rest = NAV.filter(n => n[0] !== 'home' && canSee(n[0]) && !its.includes(n[0]));
+      modal(`<h3>➕ ہوم پر آئیکن لگائیں</h3><div class="list" style="text-align:right">${rest.map(n => `<div class="it" onclick="App.closeModal();App.homeAddK('${n[0]}')"><div>${n[1]} ${n[2]}</div><span class="num">${navNo(n[0])}</span></div>`).join('') || '<div class="muted">سب آئیکن پہلے سے ہوم پر ہیں</div>'}</div><div class="row" style="justify-content:center;margin-top:8px"><button class="btn gray" onclick="App.closeModal()">بند</button></div>`); },
+    homeAddK(k){ homeAdd(k, null); }, menuSort(k){ setHomePref({ menuSort: k }); renderSide(); }, printParchi, printBuyers, delParchi, restoreParchi, shareParchi, shareSend, shareChat, shareSave, thermal, thermalShow, thermalBT, thermalPrint, dayBill, dayBillPrint, dayBillThermal, dayBillFromCash, cashSide,
     setListDate(d){ listDate = d; render(); }, setRozDate(d){ rozDate = d; render(); }, toggleLock,
     psearch(v, type){ partySearch = v; const pos = v.length; render(); const i = document.querySelector('#view .f input'); if(i){ i.focus(); i.setSelectionRange(pos, pos); } },
     partyForm, saveParty, printLedger, cashHint, cashNum, saveCash, delCash,
