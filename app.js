@@ -8,8 +8,8 @@
    ===================================================================== */
 (function(){
   'use strict';
-  const APP_VERSION = 'AB2610MO049';
-  const UPDATE_NOTE = '🧾 روز کا خرچہ: رجسٹر جیسا صفحہ — مد، رقم، تفصیل، دن کا میزان، تصویر / پرنٹ؛ گلے اور روزنامچے میں بھی';
+  const APP_VERSION = 'AB2610MO050';
+  const UPDATE_NOTE = 'مفت آزمائش کا بڑا ڈبہ ہٹا — اب اوپر بٹنوں کے ساتھ باریک سی پٹی؛ ہوم پر جگہ کھلی';
   const C = window.ABCalc;
   // ---------- اردو / عربی کی بورڈ کے ہندسے (۰۱۲… / ٠١٢…) لکھتے ہی 0-9 میں — ورنہ رقم، نمبر اور کوڈ نہیں پہچانے جاتے ----------
   document.addEventListener('input', e => {
@@ -311,6 +311,7 @@
   function render(){
     renderSide();
     $('ttl').textContent = shopName();
+    { const c = $('licChip'); if(c) c.innerHTML = window.AB_LIC && DB.settings.registered ? AB_LIC.chip() : ''; }
     { const st = DB.settings, ph = st.phone ? String(st.phone).trim() : '';
       $('ttlSub').innerHTML = DB.settings.registered ? [st.owner ? '👤 ' + esc(st.owner) : '', ph ? '📞 <span class="num">' + esc(/^0\d{10}$/.test(ph) ? ph.slice(0, 4) + '-' + ph.slice(4) : ph) + '</span>' : ''].filter(Boolean).map(x => '<span>' + x + '</span>').join('') : ''; }
     fitTitle();
@@ -461,7 +462,7 @@
           <div class="dbRow r4">${chip('sale', 'rd', 'بکری', d.gross)}${chip('income', 'gr', 'کمائی', d.income)}${chip('rec', 'bl', 'کیش آیا', d.rec)}${chip('pay', 'pk', 'کیش گیا', d.pay)}</div></div>`;
       }
     }
-    return `${window.AB_LIC ? AB_LIC.strip() : ''}${backupBanner()}${dueBanner()}${dashHtml}
+    return `${backupBanner()}${dueBanner()}${dashHtml}
       <div class="homeBar"><span class="muted">فی لائن</span>${[1, 2, 3, 4, 5].map(n => `<button class="${n === cols ? 'on' : ''}" onclick="App.homeCols(${n})">${n}</button>`).join('')}<span class="sp"></span>
         <button class="hbEdit ${homeEdit ? 'on' : ''}" onclick="App.homeEditT()" title="آئیکن ترتیب دیں">${homeEdit ? '✅' : '✏️'}</button></div>
       ${homeEdit ? '<div class="muted" style="text-align:center;margin:-2px 0 6px">✖ سے ہٹائیں • آئیکن پکڑ کر کھینچیں تو جگہ بدلے • مینو (☰) سے ⣿ پکڑ کر یہاں لائیں یا ➕</div>' : ''}
