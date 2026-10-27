@@ -97,7 +97,9 @@ input,select,textarea{font:inherit;}
 .tbBtns .sp{flex:1;}
 #topbar .tbBtns .ib{width:36px; height:32px; font-size:16px; border-radius:10px;}
 /* فون پر بڑا سر اوپر چپکا نہ رہے — نیچے جاتے ہی اسکرین کھلی */
-@media (max-width:899px){ #topbar{position:relative;} }
+@media (max-width:899px){ #topbar{position:relative;} .tbBtns{flex-wrap:wrap; row-gap:5px;} }
+/* چھوٹے فون پر بٹن کچھ چھوٹے، تاکہ قطار اسکرین سے باہر نہ جائے */
+@media (max-width:420px){ .tbBtns{gap:4px;} #topbar .tbBtns .ib{width:32px;} }
 @media (min-width:900px){
   #topbar{flex-direction:row; align-items:center;}
   .hdCap{flex:1; min-width:0; order:2;}
@@ -693,6 +695,7 @@ html[data-theme="white"] .licChip.trial{background:var(--l1); border-color:var(-
     <button class="ib" id="menuBtn" onclick="App.menu(true)" aria-label="مینو">☰</button>
     <button class="ib" id="searchBtn" onclick="App.go('search')" aria-label="تلاش">🔍</button>
     <button class="ib" id="instBtn" onclick="App.installApp()" aria-label="فون میں انسٹال کریں" title="فون میں انسٹال کریں" style="display:none">📲</button>
+    <button class="ib" id="shareAppBtn" onclick="App.shareApp()" aria-label="ایپ دوست کو بھیجیں" title="ایپ دوست کو بھیجیں (واٹس ایپ)">📤</button>
     <button class="ib dchip" id="driveChip" onclick="App.go('backup')" aria-label="بیک اپ">☁️</button>
     <span class="sp"></span>
     <span id="licChip"></span>

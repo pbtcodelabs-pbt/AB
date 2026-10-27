@@ -8,8 +8,8 @@
    ===================================================================== */
 (function(){
   'use strict';
-  const APP_VERSION = 'AB2610MO052';
-  const UPDATE_NOTE = '📲 ہوم اسکرین پر انسٹال آسان: اوپر 📲 بٹن (کروم کا اپنا پیغام یا قدم بہ قدم رہنمائی)؛ گول آئیکن کے لیے نیا آئیکن؛ آئیکن دبا کر رکھیں تو نئی پرچی / وصولی / خرچہ';
+  const APP_VERSION = 'AB2710TU053';
+  const UPDATE_NOTE = '📤 اوپر شیئر بٹن اور مینو میں «ایپ دوست کو بھیجیں»: السلام علیکم والا پیغام اور انسٹال کا لنک سیدھا واٹس ایپ میں';
   const C = window.ABCalc;
   // ---------- اردو / عربی کی بورڈ کے ہندسے (۰۱۲… / ٠١٢…) لکھتے ہی 0-9 میں — ورنہ رقم، نمبر اور کوڈ نہیں پہچانے جاتے ----------
   document.addEventListener('input', e => {
@@ -288,6 +288,7 @@
       + (m ? `<div class="sideSort"><button class="${srt === 'num' ? 'on' : ''}" onclick="App.menuSort('num')">1️⃣ نمبر سے</button><button class="${srt === 'alpha' ? 'on' : ''}" onclick="App.menuSort('alpha')">ا الف سے</button></div>
         <button class="nav home ${screen === 'home' ? 'on' : ''}" onclick="App.go('home')"><span class="no">🏠</span><span class="tx">ہوم</span></button>`
         + ls.map(x => `<button class="nav ${screen === x.n[0] ? 'on' : ''}" style="--nc:${NAV_CLR[x.i % NAV_CLR.length]}" onclick="App.go('${x.n[0]}')"><span class="no num">${x.i}</span><span class="e">${x.n[1]}</span><span class="tx">${x.n[2]}</span><span class="dh" title="پکڑ کر ہوم پر لائیں" onpointerdown="App.menuDrag(event,'${x.n[0]}')" onclick="event.stopPropagation()">⣿</span></button>`).join('') : '')
+      + `<button class="nav" onclick="App.shareApp()"><span class="no">📤</span><span class="tx">ایپ دوست کو بھیجیں (واٹس ایپ)</span></button>`
       + (m && needsLogin() ? `<button class="nav" onclick="App.logout()"><span class="no">🔒</span><span class="tx">تالا / صارف بدلیں</span></button>` : '');
   }
   function go(s, a, fromPop){
@@ -2000,6 +2001,14 @@
       <div class="muted" style="margin-top:6px">✅ انسٹال کے بعد ایپ ہوم اسکرین کے آئیکن سے پوری اسکرین پر کھلے گی، انٹرنیٹ کے بغیر بھی چلے گی، اور ہر نیا ورژن خود آ جائے گا۔ آپ کا ریکارڈ وہی رہے گا۔</div></div>
       <div class="row" style="justify-content:center;margin-top:8px"><button class="btn" onclick="App.closeModal()">👍 ٹھیک ہے</button></div>`);
   }
+  // ---------- 📤 ایپ دوست کو بھیجیں: السلام علیکم والا پیغام + انسٹال کا لنک سیدھا واٹس ایپ میں ----------
+  const APP_LINK = 'https://pbtcodelabs-pbt.github.io/AB/';
+  function shareApp(){
+    const msg = 'السلام علیکم! 🌹\n\n*آڑھت بک* — منڈی کا مکمل حساب کتاب سافٹ ویئر (پرچی، بکری، کمیشن، کھاتے، وصولی / ادائیگی، روزنامچہ، رپورٹیں)۔\n\n👇 یہ لنک *کروم* میں کھولیں:\n' + APP_LINK
+      + '\n\nپھر اوپر 📲 بٹن دبا کر «انسٹال» کریں — آڑھت بک فوراً فون میں آ جائے گی۔ موبائل، ٹیبلٹ اور کمپیوٹر سب پر چلتی ہے۔\n🎁 14 دن مفت\n\nرابطہ: پی بی ٹی کوڈ لیبز 0320-6793793';
+    menu(false);
+    window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
+  }
   function registerSW(){
     if(!('serviceWorker' in navigator) || window.__APP_WRONG_REPO) return;
     let refreshing = false;
@@ -2019,7 +2028,7 @@
   //   عوامی بٹن
   // =====================================================================
   window.App = {
-    go, menu, register, pinKey, closeModal, staffForm, installApp,
+    go, menu, register, pinKey, closeModal, staffForm, installApp, shareApp,
     rpSet(k, v){ if(k === 'preset') rpPreset(v); else { RP[k] = v; if(k !== 'tab') RP.preset = ''; } render(); }, rpPrint, rpShare,
     remind, setDueDays(v){ DB.settings.dueDays = int(v) || 7; put('settings'); render(); },
     searchQ(v){ sQuery = v; const r = $('sRes'); if(r) r.innerHTML = searchResults(v); },
