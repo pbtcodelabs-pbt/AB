@@ -8,8 +8,8 @@
    ===================================================================== */
 (function(){
   'use strict';
-  const APP_VERSION = 'AB2710TU055';
-  const UPDATE_NOTE = '📤 ایپ شیئر کرنے پر خوبصورت پوسٹر (آئیکن، نستعلیق) + پیغام ساتھ؛ نمبر درست شکل میں';
+  const APP_VERSION = 'AB2710TU056';
+  const UPDATE_NOTE = '💵 وصولی / ادائیگی پر ✏️ بدلیں اور 🗑️ حذف (تنبیہ + مالک کا پن)؛ 🗜️ فون اور کلاؤڈ میں جگہ کی بچت — پرانا ریکارڈ خود اندرونی الماری میں، سب ویسے ہی دکھتا ہے';
   const C = window.ABCalc;
   // ---------- اردو / عربی کی بورڈ کے ہندسے (۰۱۲… / ٠١٢…) لکھتے ہی 0-9 میں — ورنہ رقم، نمبر اور کوڈ نہیں پہچانے جاتے ----------
   document.addEventListener('input', e => {
@@ -53,12 +53,101 @@
   }
   function put(name){
     if(SYNCED.includes(name)) stamp(name);
-    const k = 'ab_' + name;
-    try{ localStorage.setItem(k, JSON.stringify(DB[name])); }
-    catch(e){ toast('⚠️ محفوظ نہیں ہو سکا — فون میں جگہ کم ہے، بیک اپ لے کر پرانا ریکارڈ ہٹائیں'); return false; }
+    const ok = lsPut(name);
     safeCopy();
     if(SYNCED.includes(name)){ try{ window.dispatchEvent(new Event('ab-data-changed')); }catch(e){} } // گوگل ڈرائیو کا خودکار بیک اپ
+    if(!ok){
+      // جگہ بھر گئی: کوئی پیغام نہیں — پرانا محفوظ ریکارڈ فون کی اندرونی الماری میں منتقل کر کے دوبارہ کوشش (ریکارڈ ایپ میں ویسے ہی دکھتا ہے)
+      archRun(true).then(() => { if(!lsPut(name)) toast('⚠️ محفوظ نہیں ہو سکا — فون میں جگہ کم ہے، بیک اپ ضرور لیں'); });
+      return true;
+    }
+    archSoon();
     return true;
+  }
+  // localStorage میں صرف «چالو» حصہ؛ الماری والے (پرانے، محفوظ شدہ) ریکارڈ IndexedDB abArch_v1 میں — یادداشت (DB) میں سب کچھ رہتا ہے
+  function lsVal(name){
+    const A = ARCH[name], v = DB[name];
+    if(!A || !A.size || !Array.isArray(v)) return JSON.stringify(v);
+    return JSON.stringify(v.filter(r => !(r && A.get(r.id) === r.upd)));
+  }
+  function lsPut(name){ try{ localStorage.setItem('ab_' + name, lsVal(name)); return true; }catch(e){ return false; } }
+
+  // =====================================================================
+  //   🗄️ فون کی جگہ (AB2710TU056 — فروٹ منڈی والا خیال، آڑھت کے حساب سے)
+  //   ویب سائٹ کی جگہ (سب ایپس کی مشترک، تقریباً 50 لاکھ حروف) 45٪ سے بھر جائے تو 90 دن سے پرانی پرچیاں / اندراج / خرچے
+  //   جو کلاؤڈ میں پہنچ چکے ہوں (یا اس کے بعد بیک اپ بن چکا ہو) اور جن کا مال باقی نہ ہو، خاموشی سے فون کی اندرونی الماری
+  //   (IndexedDB، بہت بڑی جگہ) میں چلے جاتے ہیں۔ کچھ مٹتا نہیں: ایپ کھلتے ہی واپس یادداشت میں — کھاتے، رپورٹیں، روزنامچہ،
+  //   بیک اپ اور کلاؤڈ سب پہلے جیسے، انٹرنیٹ کے بغیر بھی۔ کوئی پیغام نہیں آتا۔
+  // =====================================================================
+  const ARCH_DB = 'abArch_v1', ARCH_N = ['parchis', 'cash', 'exp'], ARCH_DAYS = 90, LS_LIMIT = 5000000, ARCH_AT = 0.45;
+  const ARCH = { parchis: new Map(), cash: new Map(), exp: new Map() };   // شناخت → upd (الماری میں کس حالت میں ہے)
+  let archReady = false, archT = null, archBusy = null;
+  function aidb(){ return new Promise((res, rej) => { const r = indexedDB.open(ARCH_DB, 1); r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); }
+  function lsUsed(){ return window.abLsUsed ? window.abLsUsed() : 0; }
+  // ایپ کھلتے ہی الماری کا ریکارڈ یادداشت میں (فون والا نیا ہو تو وہی رہتا ہے)
+  async function archLoad(){
+    ARCH_N.forEach(n => ARCH[n].clear());
+    let cnt = 0; try{ cnt = +localStorage.getItem('ab_arch_n') || 0; }catch(e){}
+    try{
+      const db = await aidb();
+      const vals = await new Promise(res => { const out = {}; const tx = db.transaction('kv', 'readonly'); const s = tx.objectStore('kv');
+        ARCH_N.forEach(n => { const r = s.get(n); r.onsuccess = () => { if(r.result) out[n] = r.result; }; }); tx.oncomplete = () => res(out); tx.onerror = () => res(out); });
+      ARCH_N.forEach(n => {
+        let list = []; try{ list = JSON.parse(vals[n] || '[]') || []; }catch(e){}
+        if(!list.length) return;
+        if(!Array.isArray(DB[n])) DB[n] = [];
+        const have = new Set(DB[n].map(r => r && r.id));
+        list.forEach(r => { if(!r || !r.id || have.has(r.id)) return; DB[n].push(r); ARCH[n].set(r.id, r.upd); if(!seen[n]) seen[n] = new Map(); seen[n].set(r.id, sig(r)); });
+      });
+      archReady = true;
+    }catch(e){ archReady = !cnt; }   // الماری نہ کھلے اور اس میں کچھ ہو تو نیا کچھ منتقل نہیں ہوگا
+  }
+  function archSoon(){ clearTimeout(archT); archT = setTimeout(() => archRun(false), 8000); }
+  function savedAt(){   // آخری بار پورا ریکارڈ کہیں محفوظ ہوا (بیک اپ فائل یا ڈرائیو)
+    let t = +DB.settings.lastBackup || 0;
+    try{ const D = window.AB_DRIVE, d = D && D.lastBackup() && Date.parse(D.lastBackup()); if(d > t && !D.pending()) t = d; }catch(e){}
+    return t;
+  }
+  function archRun(force){
+    if(archBusy) return archBusy;
+    archBusy = (async () => {
+      let moved = 0;
+      try{
+        if(!archReady || !DB.settings.registered) return 0;
+        if(!force && lsUsed() < LS_LIMIT * ARCH_AT) return 0;
+        const cd = new Date(); cd.setDate(cd.getDate() - ARCH_DAYS); const cut = isoOf(cd);
+        const cloud = window.AB_CLOUD && AB_CLOUD.on() && AB_CLOUD.pushedAt, sv = savedAt();
+        const safe = (n, r) => r && r.id && r.upd && (r.date || '') && r.date < cut && ARCH[n].get(r.id) !== r.upd &&
+          ((cloud && AB_CLOUD.pushedAt(n, r.id) >= r.upd) || sv > r.upd);
+        const cand = [];
+        ARCH_N.forEach(n => (DB[n] || []).forEach(r => { if(safe(n, r) && !(n === 'parchis' && !r.deleted && stockLeft(r) > 0)) cand.push({ n, r }); }));
+        if(!cand.length) return 0;
+        cand.sort((a, b) => a.r.date.localeCompare(b.r.date));
+        const db = await aidb();
+        for(let i = 0; i < cand.length; i += 300){
+          const part = cand.slice(i, i + 300), names = new Set(part.map(x => x.n));
+          part.forEach(x => ARCH[x.n].set(x.r.id, x.r.upd));
+          await new Promise((res, rej) => { const tx = db.transaction('kv', 'readwrite'); const s = tx.objectStore('kv');
+            names.forEach(n => s.put(JSON.stringify(DB[n].filter(r => r && ARCH[n].get(r.id) === r.upd)), n));
+            tx.oncomplete = res; tx.onerror = () => rej(tx.error); tx.onabort = () => rej(tx.error); })
+            .catch(e => { part.forEach(x => ARCH[x.n].delete(x.r.id)); throw e; });   // الماری میں نہ لکھا جا سکے تو فون سے کچھ نہیں ہٹتا
+          names.forEach(n => lsPut(n));
+          moved += part.length;
+          if(!force && lsUsed() < LS_LIMIT * ARCH_AT) break;
+        }
+        try{ localStorage.setItem('ab_arch_n', String(ARCH_N.reduce((s, n) => s + ARCH[n].size, 0))); }catch(e){}
+        safeCopy();
+      }catch(e){ console.warn('archive', e); }
+      return moved;
+    })().finally(() => { archBusy = null; });
+    return archBusy;
+  }
+  // بیک اپ سے سارا ریکارڈ آیا: الماری خالی (ضرورت ہو تو دوبارہ خود بھرے گی)
+  async function archClear(){
+    ARCH_N.forEach(n => ARCH[n].clear());
+    try{ localStorage.removeItem('ab_arch_n'); }catch(e){}
+    try{ const db = await aidb(); await new Promise(res => { const tx = db.transaction('kv', 'readwrite'); tx.objectStore('kv').clear(); tx.oncomplete = res; tx.onerror = res; }); }catch(e){}
+    archReady = true;
   }
   // ---------- IndexedDB حفاظتی کاپی ----------
   const SAFE_DB = 'abSafe_v1';
@@ -68,7 +157,7 @@
     clearTimeout(safeT);
     safeT = setTimeout(async () => {
       try{ const db = await idb(); const tx = db.transaction('kv', 'readwrite'); const s = tx.objectStore('kv');
-        KEYS.forEach(k => { const v = localStorage.getItem(k); if(v != null) s.put(v, k); }); s.put(Date.now(), '__at'); }catch(e){}
+        KEYS.forEach(k => { const n = k.slice(3), v = n in DB ? lsVal(n) : localStorage.getItem(k); if(v != null) s.put(v, k); }); s.put(Date.now(), '__at'); }catch(e){}
     }, 400);
   }
   async function safeRestoreIfEmpty(){
@@ -230,7 +319,7 @@
       if(p.type === 'zamindar' && x.zamindarId === pid && (r.lines.length || r.net)) rows.push({ date: x.date, at: x.createdAt, text: 'پرچی نمبر ' + x.no + (x.mode === 'trade' ? ' — مال کی خرید (' + r.trade.nag + ' نگ)' : ' — صاف رقم (' + r.nag + ' نگ)'), amt: r.net, parchi: x.id });
       if(p.type === 'buyer') r.buyers.filter(b => b.id === pid).forEach(b => rows.push({ date: x.date, at: x.createdAt, text: 'پرچی نمبر ' + x.no + ' — مال (' + b.nag + ' نگ، زمیندار ' + (x.zamindar || '') + ')', amt: b.total, parchi: x.id }));
     });
-    liveCash().filter(c => c.partyId === pid).forEach(c => rows.push({ date: c.date, at: c.at, text: cashText(c, p.type) + (c.no ? ' (نمبر ' + c.no + ')' : '') + (c.note ? ' — ' + c.note : ''), amt: cashSign(c, p.type) * c.amount, cash: c.id }));
+    liveCash().filter(c => c.partyId === pid).forEach(c => rows.push({ date: c.date, at: c.at, text: cashText(c, p.type) + (c.no ? ' (نمبر ' + c.no + ')' : '') + (c.note ? ' — ' + c.note : ''), amt: cashSign(c, p.type) * c.amount, cash: c.id, edAt: c.edAt || 0 }));
     rows.sort((a, b) => (a.date || '').localeCompare(b.date || '') || a.at - b.at);
     let bal = 0; rows.forEach(r => { bal += r.amt; r.bal = bal; });
     return { rows, bal };
@@ -1307,16 +1396,18 @@
         <table class="t"><tr class="net"><td>${balText(p.type, L.bal)}</td><td class="v">${fmt(Math.abs(L.bal))}</td></tr></table></div>
       <div class="card"><h3>📖 کھاتہ</h3><div class="tblWrap">${ledgerTable(p, L)}</div></div>`;
   };
-  function ledgerTable(p, L){
+  function ledgerTable(p, L, print){
     const z = p.type === 'zamindar';
+    // ✏️ / 🗑️ وصولی / ادائیگی کے اندراج پر (پرنٹ میں نہیں؛ پرچی کے ساتھ والا نقد پرچی سے بدلتا ہے)
+    const act = r => print || !r.cash || String(r.cash).startsWith('pc_') ? '' : `<span class="rAct"><button title="بدلیں" onclick="event.stopPropagation();App.go('cash','v:${r.cash}')">✏️</button><button title="حذف" onclick="event.stopPropagation();App.delCash('${r.cash}')">🗑️</button></span>`;
     // منشی کی زبان: زمیندار کو مال کی رقم «جمع»، ادائیگی «بنام»؛ خریدار پر مال «بنام»، وصولی «جمع»
     return `<table class="t"><tr><th>تاریخ</th><th>تفصیل</th><th class="v">${z ? 'جمع' : 'بنام'}</th><th class="v">${z ? 'بنام' : 'جمع'}</th><th class="v">بقایا</th></tr>
-      ${L.rows.map(r => `<tr ${r.parchi ? `onclick="App.go('parchi','${r.parchi}')" style="cursor:pointer"` : ''}><td>${esc(urDate(r.date))}</td><td>${esc(r.text)}</td>
+      ${L.rows.map(r => `<tr ${r.parchi ? `onclick="App.go('parchi','${r.parchi}')" style="cursor:pointer"` : r.cash && !print ? `onclick="App.go('cash','v:${r.cash}')" style="cursor:pointer"` : ''}><td>${esc(urDate(r.date))}</td><td>${esc(r.text)}${r.edAt && !print ? ' <span class="edTag">✏️ بدلا گیا</span>' : ''}${act(r)}</td>
         <td class="v">${r.amt > 0 ? fmt(r.amt) : ''}</td><td class="v">${r.amt < 0 ? fmt(-r.amt) : ''}</td><td class="v">${fmt(r.bal)}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">ابھی کوئی اندراج نہیں</td></tr>'}</table>`;
   }
   function printLedger(id){
     const p = party(id); const L = ledger(id);
-    printDoc('کھاتہ — ' + p.name, `<h3 style="text-align:center">${PT[p.type]} کا کھاتہ: ${esc(p.name)}${pNo(p) ? ' (نمبر <span class="num">' + pNo(p) + '</span>)' : ''} ${p.place ? '— ' + esc(p.place) : ''}</h3>${ledgerTable(p, L)}
+    printDoc('کھاتہ — ' + p.name, `<h3 style="text-align:center">${PT[p.type]} کا کھاتہ: ${esc(p.name)}${pNo(p) ? ' (نمبر <span class="num">' + pNo(p) + '</span>)' : ''} ${p.place ? '— ' + esc(p.place) : ''}</h3>${ledgerTable(p, L, true)}
       <table class="t" style="margin-top:8px"><tr class="net"><td>${balText(p.type, L.bal)}</td><td class="v">${fmt(Math.abs(L.bal))}</td></tr></table>`);
   }
   function partyForm(type, id){
@@ -1498,8 +1589,9 @@
         ${ed && ed.by ? `<div class="muted" style="margin-top:4px">👤 ${esc(ed.by)}${ed.edBy ? ' • بدلا: ' + esc(ed.edBy) : ''}</div>` : ''}</div>
       <h3 class="secHd">🕘 حالیہ اندراج</h3><div class="pcList">${recent.map(c => { const p = party(c.partyId), t = p ? p.type : 'buyer';
         return `<div class="pCard ${ed && ed.id === c.id ? 'sel' : ''}" onclick="App.go('cash','v:${c.id}')"><span class="pAv num ${c.kind === 'pay' ? 'out' : 'in'}">${int(c.no)}</span>
-          <div class="pMid"><b>${esc(p ? p.name : '')}</b><div class="muted">${p ? PT[t] : ''} • ${esc(urDate(c.date))} • ${esc(cashText(c, t))}${c.note ? ' • ' + esc(c.note) : ''}${c.by ? ' • 👤 ' + esc(c.by) : ''}</div></div>
-          <div class="pBal ${c.kind === 'pay' ? 'out' : 'in'}"><span class="num">${fmt(c.amount)}</span><small>${c.kind === 'pay' ? '💸 بنام' : '💵 جمع'}</small></div></div>`; }).join('') || '<div class="card muted">کوئی اندراج نہیں</div>'}</div>`;
+          <div class="pMid"><b>${esc(p ? p.name : '')}</b><div class="muted">${p ? PT[t] : ''} • ${esc(urDate(c.date))} • ${esc(cashText(c, t))}${c.note ? ' • ' + esc(c.note) : ''}${c.by ? ' • 👤 ' + esc(c.by) : ''}${c.edAt ? ' <span class="edTag">✏️ بدلا گیا</span>' : ''}</div></div>
+          <div class="pBal ${c.kind === 'pay' ? 'out' : 'in'}"><span class="num">${fmt(c.amount)}</span><small>${c.kind === 'pay' ? '💸 بنام' : '💵 جمع'}</small></div>
+          ${String(c.id).startsWith('pc_') ? '' : `<span class="cAct"><button title="بدلیں" onclick="event.stopPropagation();App.go('cash','v:${c.id}')">✏️</button><button title="حذف" onclick="event.stopPropagation();App.delCash('${c.id}')">🗑️</button></span>`}</div>`; }).join('') || '<div class="card muted">کوئی اندراج نہیں</div>'}</div>`;
   };
   AFTER.cash = function(){ const p = $('cP'); const a = String(arg || ''); const ed = a.startsWith('v:') ? DB.cash.find(c => c.id === a.slice(2)) : null;
     const t = ed ? ((party(ed.partyId) || {}).type || 'buyer') : (a.startsWith('pay') ? 'zamindar' : 'buyer'); cashHint(t); if(p && !p.value) p.focus(); };
@@ -1548,10 +1640,16 @@
     go('cash', (type === 'zamindar' ? 'pay' : 'receive') + ':' + p.id);
   }
   async function delCash(id){
-    const c = DB.cash.find(x => x.id === id); if(!c) return;
-    if(!(await ownerOk())) return;
+    const c = DB.cash.find(x => x.id === id && !x.deleted); if(!c) return;
+    if(String(c.id).startsWith('pc_')){ toast('⚠️ یہ نقد پرچی نمبر کے ساتھ لکھا ہے — پرچی کھول کر بدلیں'); return; }
+    if(window.AB_LIC && !AB_LIC.canWrite()) return;
+    const p = party(c.partyId), t = p ? p.type : 'buyer';
+    // ⚠️ پہلے پوری تفصیل کے ساتھ تنبیہ، پھر مالک کا پن (مالک خود ہو تب بھی، اگر پن لگا ہو — کھلے فون پر کوئی اور نہ مٹا سکے)
+    if(!(await ask(`⚠️ <b>اندراج حذف کریں؟</b><br>نمبر <span class="num">${int(c.no) || '—'}</span> • ${esc(p ? p.name : '')} • ${esc(urDate(c.date))}<br>${esc(cashText(c, t))}: <b class="num">${fmt(c.amount)}</b> روپے<br><span class="muted">یہ رقم کھاتے کے بقایا سے نکل جائے گی۔ (ردی میں رہے گا — تبدیلیوں کے ریکارڈ میں نام کے ساتھ)</span>`, '🗑️ حذف کریں'))) return;
+    if(isStaff()){ if(!(await ownerOk('اندراج حذف کرنا صرف مالک کا کام ہے — مالک کا پن لکھیں'))) return; }
+    else if(hasOwnerPin() && !(await pinPrompt('اندراج حذف کرنے کے لیے مالک کا پن لکھیں'))) return;
     if(!(await unlockFor(c.date))) return;
-    if(!(await ask('یہ اندراج (' + fmt(c.amount) + ' روپے) ہٹا دیں؟ کھاتے سے نکل جائے گا۔'))) return;
+    c.delBy = (me() || {}).name || '';
     c.deleted = Date.now(); put('cash'); logIt('اندراج' + (c.no ? ' نمبر ' + c.no : '') + ' ہٹایا: ' + fmt(c.amount), c.id);
     if(screen === 'cash' && String(arg || '') === 'v:' + id){ const p = party(c.partyId); go('cash', (p && p.type === 'zamindar' ? 'pay' : 'receive') + ':' + (p ? p.id : '')); } else render();
   }
@@ -1773,6 +1871,7 @@
   function snapshot(){
     const data = { appKind: 'AB', app: 'آڑھت بک', version: APP_VERSION, at: new Date().toISOString(), data: {} };
     KEYS.forEach(k => { data.data[k] = localStorage.getItem(k); });
+    ARCH_N.forEach(n => { if(ARCH[n].size) data.data['ab_' + n] = JSON.stringify(DB[n]); });   // 🗄️ الماری والا پرانا ریکارڈ بھی پورا بیک اپ میں
     // مالک کی بیک اپ: نئے آلے پر لگا کر کلاؤڈ سے جڑ کر خود دوبارہ مالک (ملازم کی بیک اپ میں نہیں)
     try{ const op = window.AB_CLOUD && AB_CLOUD.ownerPack(); if(op) data.cloudOwner = op; }catch(e){}
     return data;
@@ -1784,8 +1883,9 @@
     let np = 0; try{ np = (JSON.parse(b.data.ab_parchis || '[]') || []).filter(p => !p.deleted).length; }catch(e){}
     if(!(await ask('بیک اپ: «' + esc(st.shop || '') + '» — ' + esc(b.at ? b.at.slice(0, 10) : '') + ' — ' + np + ' پرچیاں۔ موجودہ ریکارڈ اس سے بدل جائے گا۔ جاری رکھیں؟', 'واپس لائیں'))) return false;
     try{ const db = await idb(); const tx = db.transaction('kv', 'readwrite'); const s = tx.objectStore('kv'); KEYS.forEach(k => { const v = localStorage.getItem(k); if(v != null) s.put(v, 'before_import_' + k); }); }catch(e){}
+    await archClear();
     KEYS.forEach(k => { if(b.data[k] != null) localStorage.setItem(k, b.data[k]); else localStorage.removeItem(k); });
-    loadAll(); safeCopy(); if(window.AB_LBL) AB_LBL.install(); logIt('بیک اپ واپس لایا گیا (' + (b.at || '') + ')'); curUser = ownerUser(); go('home'); toast('✅ بیک اپ واپس آ گیا');
+    loadAll(); safeCopy(); archSoon(); if(window.AB_LBL) AB_LBL.install(); logIt('بیک اپ واپس لایا گیا (' + (b.at || '') + ')'); curUser = ownerUser(); go('home'); toast('✅ بیک اپ واپس آ گیا');
     // مالک کی بیک اپ اور یہ آلہ کلاؤڈ سے نہیں جڑا: جڑ کر دوبارہ مالک بنیں
     if(b.cloudOwner && window.AB_CLOUD && !AB_CLOUD.on() && navigator.onLine){
       if(await ask('یہ بیک اپ کلاؤڈ والی آڑھت کے مالک کا ہے۔ یہ ڈیوائس آڑھت سے جوڑ کر دوبارہ مالک بنا دیں؟', 'جوڑیں اور مالک بنیں')){
@@ -1846,7 +1946,7 @@
         changed.add(c);
       });
       if(!changed.size) return 0;
-      changed.forEach(c => { try{ localStorage.setItem('ab_' + c, JSON.stringify(DB[c])); }catch(e){} });
+      changed.forEach(c => lsPut(c));
       safeCopy();
       if(changed.has('settings') && window.AB_LBL) AB_LBL.install();   // دوسری ڈیوائس سے بدلے الفاظ
       // لکھتے ہوئے فارم کو نہ مٹائیں — صرف دیکھنے والی اسکرینیں تازہ
@@ -2195,6 +2295,7 @@
     $('verBadge').textContent = APP_VERSION; applyTheme(curTheme());
     const restored = await safeRestoreIfEmpty();
     loadAll();
+    await archLoad();
     if(window.AB_LBL) AB_LBL.install();
     try{ history.replaceState({ s: 'home', a: null }, ''); }catch(e){}
     // ہوم اسکرین کے آئیکن کو دبا کر رکھنے والے شارٹ کٹ (manifest): #parchi / #cash / #exp
@@ -2202,6 +2303,8 @@
     render();
     if(restored) toast('🛡️ ریکارڈ حفاظتی کاپی سے واپس آ گیا');
     if(DB.settings.registered) safeCopy();
+    // پرانے ورژن کا بڑا (بغیر دبا) ریکارڈ ایک بار دبا دیں؛ پھر جگہ دیکھیں
+    setTimeout(() => { KEYS.forEach(k => { try{ const v = localStorage.getItem(k); if(v && v.length >= 20000) localStorage.setItem(k, v); }catch(e){} }); archRun(false); }, 4000);
     showUpdated();
     registerSW();
     if(window.AB_CLOUD) AB_CLOUD.start();

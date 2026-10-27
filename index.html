@@ -24,9 +24,95 @@ try{ var __t = localStorage.getItem('AB::ab_theme'); if(__t && __t !== 'red') do
   var lenDesc = Object.getOwnPropertyDescriptor(SP, 'length');
   function rawKeys(store){ var out = [], n = lenDesc.get.call(store); for(var i = 0; i < n; i++){ out.push(k0.call(store, i)); } return out; }
   function mine(store){ return rawKeys(store).filter(function(k){ return k && k.indexOf(P) === 0; }).map(function(k){ return k.slice(P.length); }); }
-  SP.getItem = function(k){ return g.call(this, P + k); };
-  SP.setItem = function(k, v){ return st.call(this, P + k, v); };
-  SP.removeItem = function(k){ return rm.call(this, P + k); };
+  // 🗜️ (AB2710TU056، فروٹ منڈی والا): 20 ہزار حروف سے بڑی چیز فون میں دبا کر (کئی گنا چھوٹی) — پڑھتے وقت خود کھلتی ہے، باقی کوڈ کو پتا بھی نہیں چلتا
+  //   ہر دبایا ٹکڑا لکھنے سے پہلے واپس کھول کر جانچا جاتا ہے؛ جو ٹکڑا نہ بدلا اس کا دبا روپ دوبارہ استعمال (ایپ سست نہ ہو)
+  function lzPack(s){
+    var out = [], buf = 0, blen = 0;
+    function put(v, w){ while(w > 0){ var n = w > 15 ? 15 : w; w -= n; buf = (buf << n) | ((v / Math.pow(2, w)) & ((1 << n) - 1)); blen += n; if(blen >= 15){ blen -= 15; out.push(String.fromCharCode(((buf >>> blen) & 0x7fff) + 32)); buf &= (1 << blen) - 1; } } }
+    var dict = new Map(), next = 2, w = '';
+    function code(c){ var b = 1; while((1 << b) <= next) b++; put(c, b); }
+    for(var i = 0; i < s.length; i++){
+      var c = s[i];
+      if(!dict.has(c)){ if(w){ code(dict.get(w)); dict.set(w + c, next++); w = ''; } code(0); put(c.charCodeAt(0), 16); dict.set(c, next++); continue; }
+      var wc = w + c;
+      if(dict.has(wc)) w = wc; else { code(dict.get(w)); dict.set(wc, next++); w = c; }
+    }
+    if(w){ code(dict.get(w)); next++; }
+    code(1);
+    if(blen > 0) out.push(String.fromCharCode(((buf << (15 - blen)) & 0x7fff) + 32));
+    return out.join('');
+  }
+  function lzUnpack(z){
+    var pos = 0, buf = 0, blen = 0;
+    function get(w){ var v = 0; while(w > 0){ if(blen === 0){ if(pos >= z.length) throw new Error('lz eof'); buf = z.charCodeAt(pos++) - 32; blen = 15; } var n = w < blen ? w : blen; blen -= n; w -= n; v = v * Math.pow(2, n) + ((buf >>> blen) & ((1 << n) - 1)); } return v; }
+    var d = [null, null], out = [], prev = null;
+    for(;;){
+      var nx = d.length + (prev !== null ? 1 : 0), b = 1; while((1 << b) <= nx) b++;
+      var k = get(b);
+      if(k === 1) break;
+      if(k === 0){ var ch = String.fromCharCode(get(16)); if(prev !== null) d.push(prev + ch); d.push(ch); out.push(ch); prev = null; continue; }
+      var e;
+      if(k < d.length) e = d[k]; else if(k === d.length && prev !== null) e = prev + prev[0]; else throw new Error('lz bad');
+      if(prev !== null) d.push(prev + e[0]);
+      out.push(e); prev = e;
+    }
+    return out.join('');
+  }
+  function lzH(s){ var h1 = 0x811c9dc5, h2 = 0x1b873593; for(var i = 0; i < s.length; i++){ var c = s.charCodeAt(i); h1 = Math.imul(h1 ^ c, 16777619); h2 = Math.imul(h2 ^ c, 2246822519) + i; } return s.length.toString(36) + '.' + (h1 >>> 0).toString(36) + '.' + (h2 >>> 0).toString(36); }
+  // لمبی فہرست (پرچیاں، اندراج) ریکارڈ کی حد پر ٹکڑوں میں — ٹکڑے کی جگہ مواد سے طے ہوتی ہے، اس لیے ایک ریکارڈ بدلنے پر صرف اس کا ٹکڑا دوبارہ دبتا ہے
+  function lzChunks(s){
+    if(s.length < 90000) return [s];
+    var out = [], st0 = 0, i = s.indexOf('},{', st0 + 30000);
+    while(i !== -1){
+      var p = i + 2, len = p - st0, h = 0;
+      for(var j = p; j < p + 40 && j < s.length; j++) h = (Math.imul(h, 31) + s.charCodeAt(j)) | 0;
+      if((len >= 30000 && (h & 7) === 0) || len >= 150000){ out.push(s.slice(st0, p)); st0 = p; i = s.indexOf('},{', st0 + 30000); }
+      else i = s.indexOf('},{', i + 3);
+    }
+    out.push(s.slice(st0));
+    return out;
+  }
+  var LZ = { chunks: {}, raw: {}, json: {} };
+  function lzEncode(key, json){
+    var old = LZ.chunks[key] || new Map(), nm = new Map(), out = [];
+    lzChunks(json).forEach(function(part){
+      var h = lzH(part), z = old.get(h);
+      if(z === undefined){ z = lzPack(part); if(lzUnpack(z) !== part) throw new Error('lz verify'); }
+      nm.set(h, z); out.push(z);
+    });
+    LZ.chunks[key] = nm;
+    return '\u0002L' + out.join('\u0001');
+  }
+  function lzDecode(key, raw){
+    var m = new Map();
+    var parts = raw.slice(2).split('\u0001').map(function(z){ var p = lzUnpack(z); m.set(lzH(p), z); return p; });
+    LZ.chunks[key] = m;
+    return parts.join('');
+  }
+  var isZ = function(v){ return typeof v === 'string' && v.charCodeAt(0) === 2 && v.charAt(1) === 'L'; };
+  SP.getItem = function(k){
+    var raw = g.call(this, P + k);
+    if(!isZ(raw) || this !== window.localStorage) return raw;
+    if(LZ.raw[k] === raw && typeof LZ.json[k] === 'string') return LZ.json[k];
+    var j = lzDecode(k, raw); LZ.raw[k] = raw; LZ.json[k] = j;
+    return j;
+  };
+  SP.setItem = function(k, v){
+    v = String(v);
+    if(this === window.localStorage){
+      if(LZ.json[k] === v && LZ.raw[k] !== undefined && g.call(this, P + k) === LZ.raw[k]) return; // کچھ نہیں بدلا
+      var out = v;
+      if(v.length >= 20000){ try{ out = lzEncode(k, v); }catch(e){ out = v; } }
+      st.call(this, P + k, out);
+      if(out !== v){ LZ.raw[k] = out; LZ.json[k] = v; } else { delete LZ.raw[k]; delete LZ.json[k]; }
+      return;
+    }
+    return st.call(this, P + k, v);
+  };
+  // پوری ویب سائٹ کی جگہ (حد سب ایپس کی مشترک، تقریباً 50 لاکھ حروف) — دبی ہوئی اصل لمبائی سے
+  window.abLsUsed = function(){ var t = 0, ls = window.localStorage; try{ rawKeys(ls).forEach(function(k){ var v = g.call(ls, k); t += k.length + (v ? v.length : 0); }); }catch(e){} return t; };
+  window.AB_LZ = { pack: lzPack, unpack: lzUnpack, encode: lzEncode, isZ: isZ };
+  SP.removeItem = function(k){ if(this === window.localStorage){ delete LZ.raw[k]; delete LZ.json[k]; } return rm.call(this, P + k); };
   SP.key = function(i){ var a = mine(this); return i < a.length ? a[i] : null; };
   SP.clear = function(){ var self = this; mine(this).forEach(function(k){ rm.call(self, P + k); }); };
   Object.defineProperty(SP, 'length', { get: function(){ return mine(this).length; }, configurable: true });
@@ -205,6 +291,12 @@ input,select,textarea{font:inherit;}
 .pAct{display:flex; gap:6px; margin-top:3px;}
 .pAct .pa{width:34px; height:30px; border-radius:9px; border:1.5px solid var(--l3); background:var(--l0); font-size:16px; display:inline-flex; align-items:center; justify-content:center; text-decoration:none; padding:0;}
 .pAct .pa.wa{border-color:#86efac; background:#f0fdf4;}
+.cAct,.rAct{display:inline-flex; gap:4px; flex:0 0 auto;} .rAct{margin-inline-start:6px; vertical-align:middle;}
+.cAct button,.rAct button{border:1px solid var(--l3); background:var(--l0); border-radius:10px; width:32px; height:30px; padding:0; font-size:15px; line-height:1; cursor:pointer;}
+.cAct{flex-direction:column;} .rAct button{width:28px; height:26px; font-size:13px;}
+.cAct button:hover,.rAct button:hover{background:var(--l1);}
+.edTag{display:inline-block; font-size:11px; line-height:1.5; padding:0 6px; border-radius:8px; background:#fef3c7; color:#92400e; border:1px solid #fcd34d;}
+@media (min-width:700px){ .cAct{flex-direction:row;} }
 .pBal{flex:0 0 auto; text-align:center; min-width:84px;} .pBal .num{display:block; font-family:Tahoma,Arial,sans-serif; font-weight:bold; font-size:18px; color:var(--muted);}
 .pBal small{font-size:12px; color:var(--muted);}
 .pBal.in .num{color:var(--good);} .pBal.out .num{color:var(--bad);}

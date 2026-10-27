@@ -15,6 +15,30 @@
   const PUSHED_KEY = 'ab_cloud_pushed'; // کون سا ریکارڈ کس upd تک بھیجا جا چکا
   const PAGE = 300;
 
+  // ---------- 🗜️ (AB2710TU056، فروٹ منڈی والا): کلاؤڈ کے ایک ریکارڈ کی حد 1MB — 150KB سے بڑا ریکارڈ دبا کر (j خالی، z میں) ----------
+  //   ہر دبایا ریکارڈ بھیجنے سے پہلے واپس کھول کر جانچا جاتا ہے؛ جانچ ناکام ہو تو عام شکل میں
+  const CZ_MIN = 150000, CZ_A = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+  function to64(z){
+    const out = []; let buf = 0, bl = 0;
+    for (let i = 0; i < z.length; i++) { buf = (buf << 15) | ((z.charCodeAt(i) - 32) & 0x7fff); bl += 15; while (bl >= 6) { bl -= 6; out.push(CZ_A[(buf >>> bl) & 63]); } buf &= (1 << bl) - 1; }
+    if (bl > 0) out.push(CZ_A[(buf << (6 - bl)) & 63]);
+    return out.join('');
+  }
+  function from64(t, n){
+    const out = []; let buf = 0, bl = 0;
+    for (let i = 0; i < t.length && out.length < n; i++) { buf = (buf << 6) | CZ_A.indexOf(t[i]); bl += 6; if (bl >= 15) { bl -= 15; out.push(String.fromCharCode(((buf >>> bl) & 0x7fff) + 32)); } buf &= (1 << bl) - 1; }
+    return out.join('');
+  }
+  function czPack(s){
+    const Z = window.AB_LZ; if (!Z || s.length < CZ_MIN) return '';
+    try { const z = Z.pack(s), t = to64(z), v = z.length + ':' + t; return czUnpack(v) === s ? v : ''; } catch (e) { return ''; }
+  }
+  function czUnpack(v){ const i = v.indexOf(':'); return window.AB_LZ.unpack(from64(v.slice(i + 1), +v.slice(0, i))); }
+  function recJson(f){
+    if (f.z && f.z.stringValue) { try { return czUnpack(f.z.stringValue); } catch (e) { return ''; } }
+    return f.j ? f.j.stringValue : '';
+  }
+
   const host = () => window.AB_HOST;
   const toast = m => host() && host().toast(m);
   let meta = {}, pushed = {};
@@ -171,7 +195,7 @@
       docs.forEach(f => {
         const u = +f.u.integerValue;
         if (u > maxU) maxU = u;
-        let rec = null; try { rec = JSON.parse(f.j.stringValue); } catch (e) {}
+        let rec = null; try { rec = JSON.parse(recJson(f)); } catch (e) {}
         if (rec) list.push({ c: f.c.stringValue, k: f.k.stringValue, u, rec });
         pushed[f.c.stringValue + '__' + f.k.stringValue] = Math.max(pushed[f.c.stringValue + '__' + f.k.stringValue] || 0, u);
       });
@@ -188,8 +212,12 @@
     const todo = all.filter(x => x.u && !(pushed[x.c + '__' + x.k] >= x.u));
     for (let i = 0; i < todo.length; i += 400) {
       const part = todo.slice(i, i + 400);
-      const writes = part.map(x => ({ update: { name: docName(`shops/${meta.shopId}/records/${x.c}__${x.k}`), fields: {
-        c: S(x.c), k: S(x.k), u: I(x.u), d: S(x.d || ''), j: S(JSON.stringify(x.rec)) } } }));
+      const writes = part.map(x => {
+        const j = JSON.stringify(x.rec), z = czPack(j);
+        const fields = { c: S(x.c), k: S(x.k), u: I(x.u), d: S(x.d || ''), j: S(z ? '' : j) };
+        if (z) fields.z = S(z);
+        return { update: { name: docName(`shops/${meta.shopId}/records/${x.c}__${x.k}`), fields } };
+      });
       await fs(`${BASE.replace(/\/documents$/, '')}/documents:commit`, { method: 'POST', body: JSON.stringify({ writes }) });
       part.forEach(x => { pushed[x.c + '__' + x.k] = x.u; });
       savePushed();
@@ -258,6 +286,7 @@
     ownerKey: () => (meta.role === 'owner' && meta.ownerKey) || '',
     // مالک کی بیک اپ فائل میں: نئے آلے پر بیک اپ لگا کر خود جڑ کر دوبارہ مالک
     ownerPack: () => (meta.on && meta.role === 'owner' && meta.ownerKey) ? { code: joinCode(), ownerKey: meta.ownerKey } : null,
+    pushedAt: (c, k) => pushed[c + '__' + k] || 0,   // فون کی جگہ (app.js): یہ ریکارڈ کس upd تک کلاؤڈ میں پہنچ چکا
     on: () => !!meta.on, role: () => meta.role || '', uid: () => meta.uid || '', code: joinCode,
     start() { if (meta.on) sync(false); },
     fs, base: BASE   // سبسکرپشن (license.js) اسی گمنام شناخت سے پڑھتی ہے
