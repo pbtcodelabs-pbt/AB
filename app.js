@@ -8,8 +8,8 @@
    ===================================================================== */
 (function(){
   'use strict';
-  const APP_VERSION = 'AB2710TU054';
-  const UPDATE_NOTE = '📤 شیئر کا پیغام مکمل: سلام، تعارف، لنک، انسٹال کے 3 قدم، 14 دن مفت، اور رائے / مشورہ بھیجنے کی گزارش';
+  const APP_VERSION = 'AB2710TU055';
+  const UPDATE_NOTE = '📤 ایپ شیئر کرنے پر خوبصورت پوسٹر (آئیکن، نستعلیق) + پیغام ساتھ؛ نمبر درست شکل میں';
   const C = window.ABCalc;
   // ---------- اردو / عربی کی بورڈ کے ہندسے (۰۱۲… / ٠١٢…) لکھتے ہی 0-9 میں — ورنہ رقم، نمبر اور کوڈ نہیں پہچانے جاتے ----------
   document.addEventListener('input', e => {
@@ -2001,10 +2001,11 @@
       <div class="muted" style="margin-top:6px">✅ انسٹال کے بعد ایپ ہوم اسکرین کے آئیکن سے پوری اسکرین پر کھلے گی، انٹرنیٹ کے بغیر بھی چلے گی، اور ہر نیا ورژن خود آ جائے گا۔ آپ کا ریکارڈ وہی رہے گا۔</div></div>
       <div class="row" style="justify-content:center;margin-top:8px"><button class="btn" onclick="App.closeModal()">👍 ٹھیک ہے</button></div>`);
   }
-  // ---------- 📤 ایپ دوست کو بھیجیں: السلام علیکم والا پیغام + انسٹال کا لنک سیدھا واٹس ایپ میں ----------
+  // ---------- 📤 ایپ دوست کو بھیجیں: 9:16 پوسٹر (آئیکن، نستعلیق) + السلام علیکم والا پیغام اور انسٹال لنک — واٹس ایپ میں ----------
   const APP_LINK = 'https://pbtcodelabs-pbt.github.io/AB/';
-  function shareApp(){
-    const msg = [
+  const DEV_NO = '03206793793'; // بغیر ڈیش — واٹس ایپ میں دائیں سے بائیں الٹا نہ ہو
+  function appMsg(){
+    return [
       'السلام علیکم ورحمۃ اللہ وبرکاتہ! 🌹', '',
       'آپ کے لیے *آڑھت بک* — منڈی کا مکمل حساب کتاب سافٹ ویئر: پرچی، بکری، کمیشن، کھاتے، وصولی / ادائیگی، روزنامچہ، روز کا خرچہ، رپورٹیں۔ موبائل، ٹیبلٹ اور کمپیوٹر سب پر چلتی ہے۔', '',
       '👇 *یہ لنک دبائیں:*', APP_LINK, '',
@@ -2018,12 +2019,80 @@
       '⚠️ کوئی مشکل یا غلطی آئے تو بھی بتائیں',
       '💡 کوئی نیا مشورہ یا تجویز ہو تو وہ بھی بھیجیں',
       'تاکہ ہم اسے آپ کے لیے اچھے سے اچھا اور آسان سے آسان بنا سکیں۔', '',
-      '💬 رائے / مشورہ سیدھا واٹس ایپ پر: https://wa.me/923206793793',
-      '📞 پی بی ٹی کوڈ لیبز — 0320-6793793'
+      '💬 رائے / مشورہ سیدھا واٹس ایپ پر:', 'https://wa.me/92' + DEV_NO.slice(1), '',
+      '📞 پی بی ٹی کوڈ لیبز:', DEV_NO
     ].join('\n');
-    menu(false);
-    window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
   }
+  async function appPoster(){
+    try{ await Promise.all([document.fonts.load("40px 'Noori'"), document.fonts.load("80px 'NooriKasheeda'")]); }catch(e){}
+    const icon = await new Promise(res => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = 'icons/icon-512.png'; });
+    const W = 1080, H = 1920, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+    const c = cv.getContext('2d'), U = "'Noori', serif", K = "'NooriKasheeda', 'Noori', serif", E = "'Segoe UI', Roboto, Arial, sans-serif";
+    const rr = (x, y, w, h, r) => { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); };
+    const txt = (t, x, y, font, col, dir) => { c.font = font; c.fillStyle = col; c.direction = dir || 'rtl'; c.textAlign = 'center'; c.fillText(t, x, y); };
+    // پس منظر: گہرا سرخ، اوپر روشنی، سنہری کنارہ
+    let g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#7f1d1d'); g.addColorStop(.45, '#991b1b'); g.addColorStop(1, '#450a0a');
+    c.fillStyle = g; c.fillRect(0, 0, W, H);
+    g = c.createRadialGradient(W / 2, 330, 40, W / 2, 330, 620); g.addColorStop(0, 'rgba(255,215,120,.35)'); g.addColorStop(1, 'rgba(255,215,120,0)');
+    c.fillStyle = g; c.fillRect(0, 0, W, H);
+    c.lineWidth = 10; c.strokeStyle = '#fbbf24'; rr(26, 26, W - 52, H - 52, 46); c.stroke();
+    c.lineWidth = 2; c.strokeStyle = 'rgba(251,191,36,.55)'; rr(46, 46, W - 92, H - 92, 34); c.stroke();
+    txt('السلام علیکم ورحمۃ اللہ وبرکاتہ', W / 2, 150, `46px ${U}`, '#fde68a');
+    // آئیکن: سفید ابھرا ڈبہ
+    c.save(); c.shadowColor = 'rgba(0,0,0,.45)'; c.shadowBlur = 40; c.shadowOffsetY = 14; c.fillStyle = '#fff'; rr(W / 2 - 170, 210, 340, 340, 76); c.fill(); c.restore();
+    if(icon){ c.save(); rr(W / 2 - 150, 230, 300, 300, 62); c.clip(); c.drawImage(icon, W / 2 - 150, 230, 300, 300); c.restore(); }
+    c.save(); c.shadowColor = 'rgba(0,0,0,.6)'; c.shadowBlur = 18; c.shadowOffsetY = 6;
+    g = c.createLinearGradient(0, 600, 0, 760); g.addColorStop(0, '#fff7cc'); g.addColorStop(.5, '#fbbf24'); g.addColorStop(1, '#d97706');
+    txt('آڑھت بک', W / 2, 735, `150px ${K}`, g); c.restore();
+    txt('منڈی کا مکمل حساب کتاب سافٹ ویئر', W / 2, 840, `54px ${U}`, '#fff');
+    // خوبیاں: دو کالم کیپسول
+    const F = [['📝', 'پرچی و بکری'], ['🤝', 'کمیشن و خرچے'], ['👥', 'کھاتے'], ['💵', 'وصولی / ادائیگی'], ['📖', 'روزنامچہ'], ['📊', 'رپورٹیں'], ['☁️', 'کلاؤڈ و بیک اپ'], ['🖨️', 'پرنٹ و واٹس ایپ']];
+    F.forEach((f, i) => {
+      const cw = 440, ch = 92, x = i % 2 ? 90 : W - 90 - cw, y = 900 + Math.floor(i / 2) * 112;
+      c.save(); c.shadowColor = 'rgba(0,0,0,.35)'; c.shadowBlur = 14; c.shadowOffsetY = 6; c.fillStyle = 'rgba(255,255,255,.12)'; rr(x, y, cw, ch, 46); c.fill(); c.restore();
+      c.lineWidth = 2; c.strokeStyle = 'rgba(253,230,138,.7)'; rr(x, y, cw, ch, 46); c.stroke();
+      c.font = `44px ${E}`; c.direction = 'ltr'; c.textAlign = 'center'; c.fillStyle = '#fff'; c.fillText(f[0], x + cw - 56, y + 62);
+      c.font = `42px ${U}`; c.direction = 'rtl'; c.textAlign = 'right'; c.fillText(f[1], x + cw - 104, y + 60);
+    });
+    txt('📱 موبائل  •  ٹیبلٹ  •  کمپیوٹر', W / 2, 1385, `44px ${U}`, '#fde68a');
+    // 14 دن مفت: سنہری پٹی
+    c.save(); c.shadowColor = 'rgba(0,0,0,.4)'; c.shadowBlur = 20; c.shadowOffsetY = 8;
+    g = c.createLinearGradient(0, 1420, 0, 1530); g.addColorStop(0, '#fde68a'); g.addColorStop(1, '#f59e0b'); c.fillStyle = g; rr(170, 1420, W - 340, 110, 55); c.fill(); c.restore();
+    txt('🎁  14 دن بالکل مفت', W / 2, 1497, `62px ${K}`, '#7f1d1d');
+    // انسٹال کے قدم
+    txt('لنک دبائیں  ←  کروم میں کھولیں  ←  📲 انسٹال', W / 2, 1610, `44px ${U}`, '#fff');
+    // لنک کا سفید ڈبہ
+    c.fillStyle = '#fff'; rr(110, 1650, W - 220, 96, 30); c.fill();
+    txt('pbtcodelabs-pbt.github.io/AB', W / 2, 1714, `bold 46px ${E}`, '#991b1b', 'ltr');
+    // نیچے ڈویلپر
+    const fu = `46px ${U}`, fe = `bold 50px ${E}`, gap = 34;
+    c.font = fu; const wu = c.measureText('رابطہ: پی بی ٹی کوڈ لیبز').width; c.font = fe; const we = c.measureText(DEV_NO).width;
+    const x0 = (W - wu - we - gap) / 2;
+    txt(DEV_NO, x0 + we / 2, 1830, fe, '#fff', 'ltr');
+    txt('رابطہ: پی بی ٹی کوڈ لیبز', x0 + we + gap + wu / 2, 1832, fu, '#fde68a');
+    return cv;
+  }
+  let posterCv = null;
+  async function shareApp(){
+    menu(false); toast('⏳ پوسٹر بن رہا ہے…');
+    posterCv = await appPoster(); $('toast').classList.remove('show');
+    modal(`<h3>📤 آڑھت بک دوست کو بھیجیں</h3>
+      <div style="text-align:center"><img src="${posterCv.toDataURL('image/png')}" style="height:min(52vh,560px);max-width:100%;border-radius:14px;box-shadow:0 6px 18px rgba(0,0,0,.35)"></div>
+      <div class="muted" style="margin:6px 0;text-align:center">پوسٹر کے ساتھ السلام علیکم والا پورا پیغام اور انسٹال کا لنک جائے گا</div>
+      <button class="btn wa" style="width:100%;font-size:19px;padding:12px" onclick="App.shareAppSend()">📤 پوسٹر + پیغام واٹس ایپ پر بھیجیں</button>
+      <div class="row" style="justify-content:center;margin-top:6px">
+        <button class="btn light" onclick="App.shareAppText()">💬 صرف پیغام</button>
+        <button class="btn light" onclick="App.shareAppSave()">⬇️ پوسٹر محفوظ</button><button class="btn gray" onclick="App.closeModal()">بند</button></div>`);
+  }
+  async function shareAppSend(){
+    if(posterCv && await AB_RECEIPT.share(posterCv, 'Aarhat-Book.png', appMsg())) return;
+    // کمپیوٹر وغیرہ جہاں تصویر سیدھی شیئر نہیں ہوتی: پوسٹر محفوظ + واٹس ایپ میں پیغام (پوسٹر 📎 سے لگائیں)
+    if(posterCv) AB_RECEIPT.download(posterCv, 'Aarhat-Book.png');
+    toast('⬇️ پوسٹر محفوظ ہو گیا — واٹس ایپ میں 📎 سے ساتھ لگائیں');
+    shareAppText();
+  }
+  function shareAppText(){ window.open('https://wa.me/?text=' + encodeURIComponent(appMsg()), '_blank'); }
+  function shareAppSave(){ if(posterCv){ AB_RECEIPT.download(posterCv, 'Aarhat-Book.png'); toast('⬇️ پوسٹر محفوظ'); } }
   function registerSW(){
     if(!('serviceWorker' in navigator) || window.__APP_WRONG_REPO) return;
     let refreshing = false;
@@ -2043,7 +2112,7 @@
   //   عوامی بٹن
   // =====================================================================
   window.App = {
-    go, menu, register, pinKey, closeModal, staffForm, installApp, shareApp,
+    go, menu, register, pinKey, closeModal, staffForm, installApp, shareApp, shareAppSend, shareAppText, shareAppSave,
     rpSet(k, v){ if(k === 'preset') rpPreset(v); else { RP[k] = v; if(k !== 'tab') RP.preset = ''; } render(); }, rpPrint, rpShare,
     remind, setDueDays(v){ DB.settings.dueDays = int(v) || 7; put('settings'); render(); },
     searchQ(v){ sQuery = v; const r = $('sRes'); if(r) r.innerHTML = searchResults(v); },
