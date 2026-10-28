@@ -31,8 +31,43 @@
   try { meta = JSON.parse(localStorage.getItem(META_KEY) || '{}') || {}; } catch (e) { meta = {}; }
   const saveMeta = () => { try { localStorage.setItem(META_KEY, JSON.stringify(meta)); } catch (e) {} };
 
-  let token = null, tokenExp = 0, tokenClient = null, busy = false, waitTap = false;
+  let token = null, tokenExp = 0, tokenClient = null, busy = false;
   const hasToken = () => token && Date.now() < tokenExp - 60000;
+
+  // ---------- 📲 گوگل کی اجازت اسی صفحے پر (AB2810WE057) ----------
+  // پہلے اجازت الگ پاپ اپ / ٹیب میں کھلتی تھی؛ فون پر وہ ٹیب جواب واپس نہیں لا پاتا تھا اور ویب سائٹ کا مین صفحہ کھل جاتا تھا۔
+  // اب یہی صفحہ گوگل پر جاتا ہے اور اجازت لے کر سیدھا آڑھت بک (REDIRECT — گوگل کنسول میں «Authorised redirect URIs» میں درج) پر واپس،
+  // پھر جو کام دبایا تھا (بیک اپ / واپس لانا) خود مکمل۔ اجازت (ٹوکن) ایک گھنٹہ اسی ڈیوائس پر یاد رہتی ہے۔
+  const REDIRECT = 'https://pbtcodelabs-pbt.github.io/AB/';
+  const USE_REDIRECT = location.origin === 'https://pbtcodelabs-pbt.github.io';
+  const INTENT_KEY = 'ab_drive_intent';
+  const LOAD_AT = Date.now();
+  if (meta.tok && meta.tokExp > Date.now() + 60000) { token = meta.tok; tokenExp = meta.tokExp; }
+  function goAuth(act, silent) {
+    const st = Math.random().toString(36).slice(2) + Date.now().toString(36);
+    try { sessionStorage.setItem(INTENT_KEY, JSON.stringify({ act, st, silent: !!silent })); } catch (e) {}
+    const q = new URLSearchParams({ client_id: CLIENT_ID, redirect_uri: REDIRECT, response_type: 'token', scope: SCOPE, include_granted_scopes: 'true', state: st });
+    if (silent) q.set('prompt', 'none'); else if (!meta.email) q.set('prompt', 'consent');
+    if (meta.email) q.set('login_hint', meta.email);
+    location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + q.toString();
+    return new Promise(() => {});   // صفحہ گوگل پر جا رہا ہے
+  }
+  // گوگل سے واپسی: پتے کے # میں ٹوکن — لے کر پتا صاف
+  function takeReturn() {
+    const h = location.hash || '';
+    if (!/(^#|&)(access_token|error)=/.test(h)) return null;
+    const p = new URLSearchParams(h.slice(1));
+    let it = null;
+    try { it = JSON.parse(sessionStorage.getItem(INTENT_KEY) || 'null'); sessionStorage.removeItem(INTENT_KEY); } catch (e) {}
+    try { history.replaceState(history.state, '', location.pathname + location.search); } catch (e) {}
+    if (!it || p.get('state') !== it.st) return null;
+    if (p.get('access_token')) {
+      token = p.get('access_token'); tokenExp = Date.now() + (Number(p.get('expires_in')) || 3600) * 1000;
+      meta.tok = token; meta.tokExp = tokenExp; saveMeta();
+    } else it.err = p.get('error') || 'popup';
+    return it;
+  }
+  const returned = takeReturn();
 
   const pad = n => String(n).padStart(2, '0');
   const dayStamp = (d = new Date()) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -53,11 +88,12 @@
   }
 
   // ---------- اجازت ----------
-  function getToken(interactive) {
+  function getToken(interactive, act) {
     if (hasToken()) return Promise.resolve(token);
     if (!SUPPORTED) return Promise.reject(new Error('unsupported'));
     if (!interactive) return Promise.reject(new Error('need-consent'));
     if (!navigator.onLine) return Promise.reject(new Error('offline'));
+    if (USE_REDIRECT) return goAuth(act || 'backup', false);
     return loadGis().then(() => new Promise((res, rej) => {
       if (!tokenClient) tokenClient = google.accounts.oauth2.initTokenClient({ client_id: CLIENT_ID, scope: SCOPE, callback: () => {} });
       tokenClient.callback = r => {
@@ -74,7 +110,7 @@
 
   async function api(url, opt = {}) {
     const r = await fetch(url, Object.assign({}, opt, { headers: Object.assign({ Authorization: 'Bearer ' + token }, opt.headers || {}) }));
-    if (r.status === 401) { token = null; throw new Error('expired'); }
+    if (r.status === 401) { token = null; meta.tok = null; meta.tokExp = 0; saveMeta(); throw new Error('expired'); }
     if (!r.ok) throw new Error('http ' + r.status);
     return r;
   }
@@ -212,7 +248,7 @@
     const box = document.getElementById('driveFiles'); if (!box) return;
     box.innerHTML = '<div class="muted" style="text-align:center">ڈرائیو سے فائلیں آ رہی ہیں…</div>';
     try {
-      await getToken(true);
+      await getToken(true, 'restore');
       if (!meta.email) await whoAmI();
       const files = (await listFiles()).filter(f => /\.json$/.test(f.name));
       render();
@@ -230,7 +266,7 @@
 
   async function restoreFile(id) {
     try {
-      await getToken(true);
+      await getToken(true, 'restore');
       const j = await (await api(`${DRIVE}/${id}?alt=media`)).json();
       if (await host().apply(j)) { meta.lastDrive = new Date().toISOString(); meta.pending = false; saveMeta(); render(); }
     } catch (e) { handleErr(e, true); }
@@ -256,19 +292,21 @@
   }
   async function autoRun() {
     const s = due(); if (!s || busy || !navigator.onLine) return;
-    if (!hasToken()) { waitTap = true; return; } // اجازت پہلے دی جا چکی؛ اگلے ٹچ پر خاموشی سے نیا ٹوکن
+    if (!hasToken()) {
+      // ایپ کھلتے ہی (کچھ لکھنے سے پہلے) گوگل سے خاموشی سے نئی اجازت — آدھے گھنٹے میں ایک بار؛ باقی وقت اوپر ⚠️ اور «ابھی محفوظ کریں»
+      const typing = document.activeElement && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
+      const modalOpen = document.querySelector('#modal.open');
+      if (USE_REDIRECT && meta.email && Date.now() - LOAD_AT < 15000 && !typing && !modalOpen && Date.now() - (meta.silentAt || 0) > 30 * 60000) {
+        meta.silentAt = Date.now(); saveMeta(); goAuth('auto', true);
+      }
+      return;
+    }
     const n = await backup(false);
     if (n !== false) toast('☁️ ' + SLOT_NAME[s.h] + ' کا خودکار بیک اپ ہو گیا');
   }
   function onChanged() { meta.pending = true; saveMeta(); render(); }
   setInterval(autoRun, 60000);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') autoRun(); });
-  document.addEventListener('pointerdown', () => {
-    if (!waitTap || busy) return;
-    waitTap = false;
-    if (!due()) return;
-    getToken(true).then(() => autoRun()).catch(() => { waitTap = true; });
-  }, true);
   window.addEventListener('online', () => autoRun());
 
   // ---------- جوڑنا / الگ کرنا ----------
@@ -297,7 +335,21 @@
 
   window.addEventListener('ab-data-changed', onChanged);
   if (meta.email && navigator.onLine && SUPPORTED) loadGis().catch(() => {});
-  setTimeout(autoRun, 3000);
+  // گوگل سے واپس آئے: جو کام دبایا تھا وہ مکمل کریں (ایپ کے پوری طرح کھلنے کے بعد)
+  if (returned) {
+    const go = async () => {
+      if (!host() || !window.App) return setTimeout(go, 200);
+      await wait(700);
+      if (returned.err) {
+        if (!returned.silent) toast(returned.err === 'access_denied' ? '⚠️ گوگل اکاؤنٹ کی اجازت نہیں ملی' : '⚠️ گوگل سے اجازت نہیں مل سکی — دوبارہ «ابھی محفوظ کریں» دبائیں');
+        render(); return;
+      }
+      if (returned.act === 'restore') { try { window.App.go('backup'); } catch (e) {} await wait(400); openRestore(); }
+      else if (returned.act === 'auto') autoRun();
+      else { try { window.App.go('backup'); } catch (e) {} await wait(300); backup(true, true); }
+    };
+    go();
+  } else setTimeout(autoRun, 3000);
 
   window.AB_DRIVE = {
     connect, now, disconnect, openRestore, render, supported: SUPPORTED,
