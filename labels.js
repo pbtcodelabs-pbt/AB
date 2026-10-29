@@ -30,15 +30,16 @@
   ];
   // تیار سانچے
   const PRESETS = {
-    plain: { label: 'عام (زمیندار / خریدار)', map: {} },
+    plain: { label: 'عام (زمیندار / خریدار)', map: { 'زمیندار': 'زمیندار', 'خریدار': 'خریدار' } },
     beopari: { label: 'فروٹ / سبزی منڈی (بیوپاری / گاہک)', map: { 'زمیندار': 'بیوپاری', 'زمینداروں': 'بیوپاریوں', 'خریدار': 'گاہک', 'خریداروں': 'گاہکوں', 'کل کٹوتی': 'ٹوٹل میزان', 'منڈی خرچہ': 'مارکیٹ فیس' } }
   };
   const host = () => window.AB_HOST;
-  // مالک کی ہدایت (AB2510SU029): منڈی میں «زمیندار» کی جگہ «بیوپاری» — جب تک ڈویلپر پینل سے کچھ اور نہ چنا جائے
-  const DEFAULT = { 'زمیندار': 'بیوپاری' };
-  const curLabels = st => (st && st.labels) ? st.labels : DEFAULT;
+  // مالک کی ہدایت (AB2510SU029، AB2910TH058): پوری ایپ میں «زمیندار» کی جگہ «بیوپاری» اور «خریدار» کی جگہ «گاہک»
+  //   ڈویلپر پینل سے بدلا ہوا لفظ اس پر غالب؛ اصل لفظ رکھنا ہو تو پینل میں وہی لفظ لکھیں (یا «عام» سانچہ)
+  const DEFAULT = { 'زمیندار': 'بیوپاری', 'خریدار': 'گاہک' };
+  const curLabels = st => Object.assign({}, DEFAULT, (st && st.labels) || {});
   const AR = '\\u0621-\\u064A\\u0660-\\u06FF';   // اردو حروف — لفظ کی حد
-  let map = {}, rx = null;
+  let map = {}, rx = null, twice = true;
   function build() {
     const st = host() && host().settings ? host().settings() : {};
     map = Object.assign({}, curLabels(st));
@@ -46,6 +47,7 @@
     [['زمیندار', 'زمینداروں'], ['خریدار', 'خریداروں']].forEach(([s, p]) => { if (map[s] && !map[p]) map[p] = map[s] + 'وں'; });
     Object.keys(map).forEach(k => { if (!map[k] || map[k] === k) delete map[k]; });
     const ks = Object.keys(map).sort((a, b) => b.length - a.length).map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    twice = !Object.keys(map).some(k => map[map[k]]);   // کوئی نیا لفظ خود بھی بدلنے والا ہو تو دوبارہ نہ بدلیں
     rx = ks.length ? new RegExp(`(^|[^${AR}])(${ks.join('|')})(?=[^${AR}]|$)`, 'g') : null;
   }
   function L(s) {
@@ -60,6 +62,23 @@
     if (o && typeof o === 'object') { const r = {}; Object.keys(o).forEach(k => { r[k] = Lspec(o[k]); }); return r; }
     return o;
   }
+  // ---------- اسکرین سے باہر جانے والا متن بھی (AB2910TH058): کینوس کی تصویر / پوسٹر، واٹس ایپ پیغام، شیئر، کاپی ----------
+  (function hookOut() {
+    try {
+      const CP = CanvasRenderingContext2D.prototype;
+      ['fillText', 'strokeText', 'measureText'].forEach(fn => { const o = CP[fn]; CP[fn] = function (t, ...a) { return o.call(this, twice && typeof t === 'string' ? L(t) : t, ...a); }; });
+    } catch (e) {}
+    const wo = window.open;
+    window.open = function (u, ...a) {
+      try { if (typeof u === 'string') u = u.replace(/([?&]text=)([^&#]*)/, (m, p, v) => p + encodeURIComponent(L(decodeURIComponent(v)))); } catch (e) {}
+      return wo.call(window, u, ...a);
+    };
+    try {
+      if (navigator.share) { const sh = navigator.share.bind(navigator); navigator.share = d => { if (d && typeof d === 'object') { d = Object.assign({}, d); if (typeof d.text === 'string') d.text = L(d.text); if (typeof d.title === 'string') d.title = L(d.title); } return sh(d); }; }
+      if (navigator.clipboard && navigator.clipboard.writeText) { const cw = navigator.clipboard.writeText.bind(navigator.clipboard); navigator.clipboard.writeText = t => cw(typeof t === 'string' ? L(t) : t); }
+    } catch (e) {}
+  })();
+
   // ---------- اسکرین پر نیا متن آتے ہی بدلیں ----------
   const SKIP = new Set(['SCRIPT', 'STYLE', 'TEXTAREA', 'INPUT']);
   function fixNode(n) {
@@ -117,7 +136,7 @@
     KEYS, PRESETS, L, Lspec, install,
     open() { draft = null; editor(); },
     filter(q) { q = String(q || '').trim(); document.querySelectorAll('#modalBox .lblRow').forEach(r => { const i = r.querySelector('input[data-k]'); if (!i) return; r.style.display = !q || i.dataset.k.includes(q) || i.value.includes(q) ? '' : 'none'; }); },
-    preset(k) { draft = Object.assign(collect(), PRESETS[k].map); if (k === 'plain') draft = {}; editor(); },
+    preset(k) { draft = Object.assign(collect(), PRESETS[k].map); editor(); },
     reset() { draft = {}; editor(); },
     save() { const m = collect(); host().setLabels(m); draft = null; host().closeModal(); host().toast('✅ الفاظ محفوظ — سب ڈیوائسز پر لگ جائیں گے'); },
     close() { draft = null; host().closeModal(); }
