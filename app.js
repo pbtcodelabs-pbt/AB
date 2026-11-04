@@ -8,8 +8,8 @@
    ===================================================================== */
 (function(){
   'use strict';
-  const APP_VERSION = 'AB0111SU059';
-  const UPDATE_NOTE = '🆘 نیا «پی بی ٹی ہیلپ ڈیسک» بٹن (اوپر اور مینیو میں): مسئلہ یا مشورہ تصویر اور آواز کے ساتھ بھیجیں، جواب ایپ ہی میں آئے گا';
+  const APP_VERSION = 'AB0511TH060';
+  const UPDATE_NOTE = 'Help Desk کا پیلا بٹن ہر جگہ — SOS کا نشان ختم';
   const C = window.ABCalc;
   // ---------- اردو / عربی کی بورڈ کے ہندسے (۰۱۲… / ٠١٢…) لکھتے ہی 0-9 میں — ورنہ رقم، نمبر اور کوڈ نہیں پہچانے جاتے ----------
   document.addEventListener('input', e => {
@@ -377,7 +377,7 @@
       + (m ? `<div class="sideSort"><button class="${srt === 'num' ? 'on' : ''}" onclick="App.menuSort('num')">1️⃣ نمبر سے</button><button class="${srt === 'alpha' ? 'on' : ''}" onclick="App.menuSort('alpha')">ا الف سے</button></div>
         <button class="nav home ${screen === 'home' ? 'on' : ''}" onclick="App.go('home')"><span class="no">🏠</span><span class="tx">ہوم</span></button>`
         + ls.map(x => `<button class="nav ${screen === x.n[0] ? 'on' : ''}" style="--nc:${NAV_CLR[x.i % NAV_CLR.length]}" onclick="App.go('${x.n[0]}')"><span class="no num">${x.i}</span><span class="e">${x.n[1]}</span><span class="tx">${x.n[2]}</span><span class="dh" title="پکڑ کر ہوم پر لائیں" onpointerdown="App.menuDrag(event,'${x.n[0]}')" onclick="event.stopPropagation()">⣿</span></button>`).join('') : '')
-      + `<button class="nav" onclick="App.helpDesk()" style="--nc:#1e3a8a"><span class="no">🆘</span><span class="tx">پی بی ٹی ہیلپ ڈیسک — مسئلہ یا مشورہ بتائیں</span></button>`
+      + `<button class="nav" onclick="App.helpDesk()" style="--nc:#1e3a8a"><span class="no"><span class="pbthd-sos" style="display:inline-flex;align-items:center;gap:4px;background:linear-gradient(#fde047,#facc15);color:#111;border-radius:999px;padding:2px 9px;font:800 12px/1.35 Arial,sans-serif;box-shadow:0 2px 0 #ca8a04;white-space:nowrap;vertical-align:middle;direction:ltr"><b style="background:#111;color:#facc15;border-radius:50%;width:15px;height:15px;display:inline-flex;align-items:center;justify-content:center;font-size:11px">?</b>Help Desk</span></span><span class="tx">پی بی ٹی ہیلپ ڈیسک — مسئلہ یا مشورہ بتائیں</span></button>`
       + `<button class="nav" onclick="App.shareApp()"><span class="no">📤</span><span class="tx">ایپ دوست کو بھیجیں (واٹس ایپ)</span></button>`
       + (m && needsLogin() ? `<button class="nav" onclick="App.logout()"><span class="no">🔒</span><span class="tx">تالا / صارف بدلیں</span></button>` : '');
   }
@@ -2174,7 +2174,7 @@
     return cv;
   }
   let posterCv = null;
-  // ---------- 🆘 AB0111SU059: پی بی ٹی ہیلپ ڈیسک — مسئلہ / مشورہ ایپ کے اندر پاپ اپ میں (pbtcodelabs-pbt.github.io/help) ----------
+  // ---------- 🆘 AB0511TH060: پی بی ٹی ہیلپ ڈیسک — مسئلہ / مشورہ ایپ کے اندر پاپ اپ میں (pbtcodelabs-pbt.github.io/help) ----------
   function helpDesk(){
     menu(false);
     const st = DB.settings || {};
