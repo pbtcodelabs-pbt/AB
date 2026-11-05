@@ -24,7 +24,9 @@
   const isNum = t => /^[\d,.\s\-–/+()]+$/.test(String(t));
 
   // 📣 ہر پرچی / بل / رسید / پرنٹ کے نیچے ہماری پہچان (مالک کی ہدایت) — منڈی کی زبان والے الفاظ اس پر نہیں لگتے
-  const BRAND = ['اپنی منڈی یا کاروبار کا موبائل، کمپیوٹر اور لیپ ٹاپ سافٹ ویئر اپنی مرضی کا بنوائیں', 'رابطہ کریں: پی بی ٹی کوڈ لیبز ☎ 0320-6793793'];
+  /* مالک کا حکم (5 نومبر): پرچی / بل / رسید کے نیچے پی بی ٹی کوڈ لیبز + ڈویلپر کا نمبر نہیں — اسی آڑھت کا نام + رابطہ (app.js `AB_FOOT`) */
+  const BRAND = ['آڑھت بک', ''];
+  const foot = () => { try{ const f = typeof window.AB_FOOT === 'function' && window.AB_FOOT(); if(f && (f[0] || f[1])) { const ltr = t => String(t || '').replace(/(\+?\d[\d\- ]{5,}\d)/g, '\u202A$1\u202C'); return [ltr(f[0]), ltr(f[1])]; } }catch(e){} return BRAND; };
   async function draw(spec, opt) {
     opt = opt || {};
     if (window.AB_LBL) spec = AB_LBL.Lspec(spec);   // منڈی کی زبان کے الفاظ
@@ -114,14 +116,15 @@
     // نیچے
     ctx.fillStyle = th ? '#000' : '#78716c'; ctx.textAlign = 'center'; ctx.font = `${th ? 18 : 19}px ${UR}`;
     ctx.fillText(spec.foot || 'آڑھت بک', W / 2, H - (th ? 96 : 102));
-    // پی بی ٹی کوڈ لیبز کی پٹی
+    // نیچے کی پٹی: اسی آڑھت کا نام + رابطہ
     const BH = th ? 66 : 70, by = H - BH;
     if (th) { ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.strokeRect(PAD, by + 2, W - 2 * PAD, BH - 6); ctx.fillStyle = '#000'; }
     else { ctx.fillStyle = C.c4; ctx.fillRect(0, by, W, BH); ctx.fillStyle = '#fff'; }
     ctx.textAlign = 'center';
-    fit(ctx, BRAND[0], W - 2 * PAD - 12, th ? 18 : 20, UR); ctx.fillText(BRAND[0], W / 2, by + (th ? 26 : 28));
+    const BR = foot();
+    fit(ctx, BR[0], W - 2 * PAD - 12, th ? 18 : 20, UR); ctx.fillText(BR[0], W / 2, by + (th ? 26 : 28));
     if (!th) ctx.fillStyle = '#fde68a';
-    fit(ctx, BRAND[1], W - 2 * PAD - 12, th ? 20 : 22, UR, 'bold'); ctx.fillText(BRAND[1], W / 2, by + (th ? 54 : 58));
+    if (BR[1]) { fit(ctx, BR[1], W - 2 * PAD - 12, th ? 20 : 22, UR, 'bold'); ctx.fillText(BR[1], W / 2, by + (th ? 54 : 58)); }
     return cv;
   }
 

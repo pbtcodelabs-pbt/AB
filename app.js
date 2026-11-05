@@ -8,8 +8,8 @@
    ===================================================================== */
 (function(){
   'use strict';
-  const APP_VERSION = 'AB0511TH060';
-  const UPDATE_NOTE = 'Help Desk کا پیلا بٹن ہر جگہ — SOS کا نشان ختم';
+  const APP_VERSION = 'AB0511TH061';
+  const UPDATE_NOTE = 'پرچی، بل اور رسید کے نیچے اب آپ کی آڑھت کا اپنا نام اور نمبر';
   const C = window.ABCalc;
   // ---------- اردو / عربی کی بورڈ کے ہندسے (۰۱۲… / ٠١٢…) لکھتے ہی 0-9 میں — ورنہ رقم، نمبر اور کوڈ نہیں پہچانے جاتے ----------
   document.addEventListener('input', e => {
@@ -991,8 +991,9 @@
       <div class="muted" style="text-align:center;margin-top:10px">آڑھت بک • ${esc(urDate(today()))}</div>${brandHtml()}<script>setTimeout(function(){print()},600)<\/script></body></html>`);
     w.document.close();
   }
-  // 📣 ہر پرنٹ کے نیچے پی بی ٹی کوڈ لیبز
-  function brandHtml(){ const B = (window.AB_RECEIPT && AB_RECEIPT.BRAND) || []; return B.length ? `<div style="text-align:center;margin-top:8px;padding:6px;border:2px solid #7f1d1d;border-radius:8px;font-size:15px">${esc(B[0])}<br><b>${esc(B[1])}</b></div>` : ''; }
+  // 📣 ہر پرنٹ کے نیچے اسی آڑھت کا نام + رابطہ (پی بی ٹی کوڈ لیبز / ڈویلپر کا نمبر نہیں — مالک کا حکم 5 نومبر)
+  window.AB_FOOT = () => [shopName(), shopContacts() || (DB.settings.phone || '')];   /* مالک کا حکم: نیچے آڑھت کا اپنا نام + نمبر */
+  function brandHtml(){ const B = window.AB_FOOT ? AB_FOOT().filter(Boolean) : []; return B.length ? `<div style="text-align:center;margin-top:8px;padding:6px;border:2px solid #7f1d1d;border-radius:8px;font-size:15px">${esc(B[0])}<br><b>${esc(B[1])}</b></div>` : ''; }
   function parchiHead(p){ return `<div style="text-align:center;margin-bottom:6px">${p.no ? 'پرچی نمبر <b class="num">' + p.no + '</b> • ' : ''}تاریخ: ${esc(urDate(p.date))}<br>زمیندار: <b>${esc(p.zamindar)}</b>${pNo(party(p.zamindarId)) ? ' (نمبر <span class="num">' + pNo(party(p.zamindarId)) + '</span>)' : ''} ${p.place ? '— ' + esc(p.place) : ''} ${p.vehicle ? '• گاڑی: ' + esc(p.vehicle) : ''} ${p.bilty ? '• بلٹی: ' + esc(p.bilty) : ''}</div>`; }
   function printParchi(){
     const r = calcParchi(cur, parchiCharges());
@@ -2120,8 +2121,7 @@
       '⚠️ کوئی مشکل یا غلطی آئے تو بھی بتائیں',
       '💡 کوئی نیا مشورہ یا تجویز ہو تو وہ بھی بھیجیں',
       'تاکہ ہم اسے آپ کے لیے اچھے سے اچھا اور آسان سے آسان بنا سکیں۔', '',
-      '💬 رائے / مشورہ سیدھا واٹس ایپ پر:', 'https://wa.me/92' + DEV_NO.slice(1), '',
-      '📞 پی بی ٹی کوڈ لیبز:', DEV_NO
+      '💬 رائے / مشورہ / مسئلہ: ایپ کے اندر «? Help Desk» بٹن سے بتائیں'
     ].join('\n');
   }
   async function appPoster(){
@@ -2166,15 +2166,11 @@
     c.fillStyle = '#fff'; rr(110, 1650, W - 220, 96, 30); c.fill();
     txt('pbtcodelabs-pbt.github.io/AB', W / 2, 1714, `bold 46px ${E}`, '#991b1b', 'ltr');
     // نیچے ڈویلپر
-    const fu = `46px ${U}`, fe = `bold 50px ${E}`, gap = 34;
-    c.font = fu; const wu = c.measureText('رابطہ: پی بی ٹی کوڈ لیبز').width; c.font = fe; const we = c.measureText(DEV_NO).width;
-    const x0 = (W - wu - we - gap) / 2;
-    txt(DEV_NO, x0 + we / 2, 1830, fe, '#fff', 'ltr');
-    txt('رابطہ: پی بی ٹی کوڈ لیبز', x0 + we + gap + wu / 2, 1832, fu, '#fde68a');
+    txt('مسئلہ / مشورہ: ایپ کے اندر Help Desk', W / 2, 1832, `46px ${U}`, '#fde68a');   /* ڈویلپر کا نام / نمبر نہیں */
     return cv;
   }
   let posterCv = null;
-  // ---------- 🆘 AB0511TH060: پی بی ٹی ہیلپ ڈیسک — مسئلہ / مشورہ ایپ کے اندر پاپ اپ میں (pbtcodelabs-pbt.github.io/help) ----------
+  // ---------- 🆘 AB0511TH061: پی بی ٹی ہیلپ ڈیسک — مسئلہ / مشورہ ایپ کے اندر پاپ اپ میں (pbtcodelabs-pbt.github.io/help) ----------
   function helpDesk(){
     menu(false);
     const st = DB.settings || {};
