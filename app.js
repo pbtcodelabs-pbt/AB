@@ -8,8 +8,8 @@
    ===================================================================== */
 (function(){
   'use strict';
-  const APP_VERSION = 'AB0811SU062'; window.APP_UPD_OLD = APP_VERSION;
-  const UPDATE_NOTE = 'اپڈیٹ کے دوران ہی پرانا → نیا ورژن اور کیا بدلا نظر آتا ہے';
+  const APP_VERSION = 'AB1611MO063'; window.APP_UPD_OLD = APP_VERSION;
+  const UPDATE_NOTE = '🔐 ہیلپ ڈیسک سے سیدھا اس ایپ کا ڈویلپر پینل — سب ایپس میں ایک ہی پاس ورڈ';
   const C = window.ABCalc;
   // ---------- اردو / عربی کی بورڈ کے ہندسے (۰۱۲… / ٠١٢…) لکھتے ہی 0-9 میں — ورنہ رقم، نمبر اور کوڈ نہیں پہچانے جاتے ----------
   document.addEventListener('input', e => {
