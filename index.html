@@ -834,5 +834,17 @@ html[data-theme="white"] .licChip.trial{background:var(--l1); border-color:var(-
 <script src="datewheel.js"></script>
 <script src="app.js"></script>
 <script src="https://pbtcodelabs-pbt.github.io/help/widget.js" data-app="AB" defer></script>
+<script>
+/* 🔐 PBT-DEVHUB (مالک کا حکم، 16 نومبر 2026): ہیلپ ڈیسک «🔐 سب ڈویلپر پینل» سے سیدھا یہاں کا ڈویلپر پینل (`?devpanel=1`)
+   + ایک مشترکہ پاس ورڈ: ہیلپ ڈیسک اسی ویب سائٹ پر `pbt_devpass_v1` = SHA-256('PBTDEV|' + پاس ورڈ) رکھتا ہے — یہ پینل اسے بھی مانتا ہے (`pbtHubPwOk`)۔ */
+window.pbtHubPwOk = async function(p){
+  try{ const h = (function(){ try{ const f = document.createElement('iframe'); f.style.display = 'none'; document.documentElement.appendChild(f); const v = f.contentWindow.localStorage.getItem('pbt_devpass_v1'); f.remove(); return v; }catch(e){ return null; } })() || localStorage.getItem('pbt_devpass_v1');   /* ایپ کا اپنا نام والا خانہ نہیں — سیدھا ویب سائٹ کا */ if(!h || !p) return false;
+    const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('PBTDEV|' + String(p).trim()));
+    return Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2, '0')).join('') === h; }catch(e){ return false; }
+};
+(function(){ try{ if(!/[?&]devpanel=1\b/.test(location.search)) return;
+  window.addEventListener('load', () => setTimeout(() => { try{ AB_LIC.dev(); }catch(e){} }, 3500));
+}catch(e){} })();
+</script>
 </body>
 </html>
