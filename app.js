@@ -8,8 +8,8 @@
    ===================================================================== */
 (function(){
   'use strict';
-  const APP_VERSION = 'AB1711TU065'; window.APP_UPD_OLD = APP_VERSION;
-  const UPDATE_NOTE = '🔐 ڈویلپر پینل پھر سے ورژن پر 7 بار دبانے سے بھی کھلتا ہے (پاس ورڈ کے ساتھ) — ہیلپ ڈیسک والا راستہ بھی ویسا';
+  const APP_VERSION = 'AB1711TU066'; window.APP_UPD_OLD = APP_VERSION;
+  const UPDATE_NOTE = '🔄 اپڈیٹ اب پیچھے خاموشی سے لگتی ہے — کوئی کارڈ یا رکاوٹ نہیں؛ صرف مالک کے فون پر اوپر باریک پٹی';
   const C = window.ABCalc;
   // ---------- اردو / عربی کی بورڈ کے ہندسے (۰۱۲… / ٠١٢…) لکھتے ہی 0-9 میں — ورنہ رقم، نمبر اور کوڈ نہیں پہچانے جاتے ----------
   document.addEventListener('input', e => {
