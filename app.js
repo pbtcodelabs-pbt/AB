@@ -8,8 +8,8 @@
    ===================================================================== */
 (function(){
   'use strict';
-  const APP_VERSION = 'AB2611TH067'; window.APP_UPD_OLD = APP_VERSION;
-  const UPDATE_NOTE = '📲 «ایپ شیئر» اب موبائل ایپ (APK) کا لنک بھیجتا ہے — ساتھ انسٹال کا آسان طریقہ؛ کمپیوٹر کے لیے ویب لنک بھی';
+  const APP_VERSION = 'AB2611TH068'; window.APP_UPD_OLD = APP_VERSION;
+  const UPDATE_NOTE = '⏻ لاگ آؤٹ اب گول سرخ پاور بٹن سے — پہلے «Logout / Yes / Cancel» پوچھتا ہے (سب ایپس میں ایک جیسا)';
   const C = window.ABCalc;
   // ---------- اردو / عربی کی بورڈ کے ہندسے (۰۱۲… / ٠١٢…) لکھتے ہی 0-9 میں — ورنہ رقم، نمبر اور کوڈ نہیں پہچانے جاتے ----------
   document.addEventListener('input', e => {
